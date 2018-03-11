@@ -1,7 +1,7 @@
 package margaret // import "cryptoscope.co/go/margaret"
 
 import (
-  "cryptoscope.co/go/luigi"
+	"cryptoscope.co/go/luigi"
 )
 
 type Seq int64
@@ -30,4 +30,3 @@ func IsOutOfBounds(err error) bool {
 	_, ok := err.(oob)
 	return ok
 }
-

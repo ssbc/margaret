@@ -2,90 +2,90 @@ package mem // import "cryptoscope.co/go/margaret/mem"
 
 import (
 	"context"
-  "fmt"
+	"fmt"
 
-  "cryptoscope.co/go/luigi"
-  "cryptoscope.co/go/margaret"
+	"cryptoscope.co/go/luigi"
+	"cryptoscope.co/go/margaret"
 )
 
 type memlogQuery struct {
 	log *memlog
 	cur *memlogElem
 
-  gt, lt, gte, lte margaret.Seq
+	gt, lt, gte, lte margaret.Seq
 
-	limit           int
-	live bool
+	limit int
+	live  bool
 }
 
 func (qry *memlogQuery) seek(ctx context.Context) error {
-  var err error
+	var err error
 
-  if qry.gt != margaret.SeqEmpty {
-    if qry.cur.seq > qry.gt {
-      qry.cur = qry.log.head
-    }
+	if qry.gt != margaret.SeqEmpty {
+		if qry.cur.seq > qry.gt {
+			qry.cur = qry.log.head
+		}
 
-    for qry.cur.seq+1 <= qry.gt {
-      qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
-      if err != nil {
-        return err
-      }
-    }
+		for qry.cur.seq+1 <= qry.gt {
+			qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
+			if err != nil {
+				return err
+			}
+		}
 
-    fmt.Printf("requested >%v, found %v\n", qry.gt, qry.cur.seq)
-  } else if qry.gte != margaret.SeqEmpty {
-    if qry.cur.seq > qry.gte {
-      qry.cur = qry.log.head
-    }
+		fmt.Printf("requested >%v, found %v\n", qry.gt, qry.cur.seq)
+	} else if qry.gte != margaret.SeqEmpty {
+		if qry.cur.seq > qry.gte {
+			qry.cur = qry.log.head
+		}
 
-    for qry.cur.seq+1 < qry.gte {
-      qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
-      if err != nil {
-        return err
-      }
-    }
+		for qry.cur.seq+1 < qry.gte {
+			qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
+			if err != nil {
+				return err
+			}
+		}
 
-    fmt.Printf("requested >=%v, found %v\n", qry.gte, qry.cur.seq)
-  }
+		fmt.Printf("requested >=%v, found %v\n", qry.gte, qry.cur.seq)
+	}
 
-  return nil
+	return nil
 }
 
 func (qry *memlogQuery) Gt(s margaret.Seq) error {
-  if qry.gt != margaret.SeqEmpty ||  qry.gte != margaret.SeqEmpty {
-    return fmt.Errorf("lower bound already set")
-  }
+	if qry.gt != margaret.SeqEmpty || qry.gte != margaret.SeqEmpty {
+		return fmt.Errorf("lower bound already set")
+	}
 
-  qry.gt = s
-  return nil
+	qry.gt = s
+	return nil
 }
 
 func (qry *memlogQuery) Gte(s margaret.Seq) error {
-  if qry.gt != margaret.SeqEmpty ||  qry.gte != margaret.SeqEmpty {
-    return fmt.Errorf("lower bound already set")
-  }
+	if qry.gt != margaret.SeqEmpty || qry.gte != margaret.SeqEmpty {
+		return fmt.Errorf("lower bound already set")
+	}
 
-  qry.gte = s
-  return nil
+	qry.gte = s
+	return nil
 }
 
 func (qry *memlogQuery) Lt(s margaret.Seq) error {
-  if qry.lt != margaret.SeqEmpty ||  qry.lte != margaret.SeqEmpty {
-    return fmt.Errorf("upper bound already set")
-  }
+	if qry.lt != margaret.SeqEmpty || qry.lte != margaret.SeqEmpty {
+		return fmt.Errorf("upper bound already set")
+	}
 
-  qry.lt = s
-  return nil
+	qry.lt = s
+	return nil
 }
 
 func (qry *memlogQuery) Lte(s margaret.Seq) error {
-  if qry.lt != margaret.SeqEmpty ||  qry.lte != margaret.SeqEmpty {
-    return fmt.Errorf("upper bound already set")
-  }
+	if qry.lt != margaret.SeqEmpty || qry.lte != margaret.SeqEmpty {
+		return fmt.Errorf("upper bound already set")
+	}
 
-  qry.lte = s
-  return nil
+	qry.lte = s
+	return nil
 }
 
 func (qry *memlogQuery) Limit(n int) error {
@@ -109,17 +109,17 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 
 	// no new data yet and non-blocking
 	if qry.cur.next == nil && !qry.live {
-    return nil, luigi.EOS{}
+		return nil, luigi.EOS{}
 	}
 
-  fmt.Printf("lte:%v lt:%v seq:%v\n", qry.lte, qry.lt, qry.cur.seq)
-  if qry.lt != margaret.SeqEmpty && !(qry.cur.seq < qry.lt-1) {
-    return nil, luigi.EOS{}
-  } else if qry.lte != margaret.SeqEmpty && !(qry.cur.seq < qry.lte) {
-    return nil, luigi.EOS{}
-  }
+	fmt.Printf("lte:%v lt:%v seq:%v\n", qry.lte, qry.lt, qry.cur.seq)
+	if qry.lt != margaret.SeqEmpty && !(qry.cur.seq < qry.lt-1) {
+		return nil, luigi.EOS{}
+	} else if qry.lte != margaret.SeqEmpty && !(qry.cur.seq < qry.lte) {
+		return nil, luigi.EOS{}
+	}
 
-  var err error
+	var err error
 	qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
 	return qry.cur.v, err
 }
