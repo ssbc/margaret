@@ -112,7 +112,6 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, luigi.EOS{}
 	}
 
-	fmt.Printf("lte:%v lt:%v seq:%v\n", qry.lte, qry.lt, qry.cur.seq)
 	if qry.lt != margaret.SeqEmpty && !(qry.cur.seq < qry.lt-1) {
 		return nil, luigi.EOS{}
 	} else if qry.lte != margaret.SeqEmpty && !(qry.cur.seq < qry.lte) {

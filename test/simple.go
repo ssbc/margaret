@@ -10,8 +10,9 @@ import (
 	"cryptoscope.co/go/margaret"
 )
 
-func LogTestSimple(f func() margaret.Log) func(*testing.T) {
+func LogTestSimple(f func(name string, tipe interface{}) margaret.Log) func(*testing.T) {
 	type testcase struct {
+    tipe   interface{}
 		values []interface{}
 		specs  []margaret.QuerySpec
 		result []interface{}
@@ -21,7 +22,7 @@ func LogTestSimple(f func() margaret.Log) func(*testing.T) {
 
 	mkTest := func(tc testcase) func(*testing.T) {
 		return func(t *testing.T) {
-			log := f()
+			log := f(t.Name(), tc.tipe)
 			for _, v := range tc.values {
 				err := log.Append(v)
 				if err != nil {
@@ -65,7 +66,7 @@ func LogTestSimple(f func() margaret.Log) func(*testing.T) {
 			}
 
 			if err != nil && tc.errStr == "" {
-				t.Errorf("unexpected error %s", err)
+				t.Errorf("unexpected error %+v", err)
 			} else if err == nil && tc.errStr != "" {
 				t.Errorf("expected error %q but got nil", tc.errStr)
 			} else if tc.errStr != "" && err.Error() != tc.errStr {
@@ -81,9 +82,9 @@ func LogTestSimple(f func() margaret.Log) func(*testing.T) {
 			}()
 			_, err = src.Next(ctx)
 			if !tc.live && !luigi.IsEOS(err) {
-				t.Errorf("expected end-of-stream but got %q", err)
+				t.Errorf("expected end-of-stream but got %+v", err)
 			} else if tc.live && err != context.Canceled {
-				t.Errorf("expected context canceled but got %q", err)
+				t.Errorf("expected context canceled but got %+v", err)
 			}
 
 			select {
@@ -96,47 +97,55 @@ func LogTestSimple(f func() margaret.Log) func(*testing.T) {
 
 	tcs := []testcase{
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 		},
 
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
 			specs:  []margaret.QuerySpec{margaret.Gt(0)},
 		},
 
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
 			specs:  []margaret.QuerySpec{margaret.Gte(1)},
 		},
 
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Lt(2)},
 		},
 
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Lte(1)},
 		},
 
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Limit(2)},
 		},
 
 		{
+      tipe:   0,
 			values: []interface{}{1, 2},
 			result: []interface{}{1, 2, 3},
 			errStr: "end of stream",
 		},
 
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 			specs:  []margaret.QuerySpec{margaret.Live(true)},

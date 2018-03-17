@@ -9,8 +9,9 @@ import (
 	"cryptoscope.co/go/margaret"
 )
 
-func LogTestConcurrent(f func() margaret.Log) func(*testing.T) {
+func LogTestConcurrent(f func(name string, tipe interface{}) margaret.Log) func(*testing.T) {
 	type testcase struct {
+    tipe   interface{}
 		values []interface{}
 		specs  []margaret.QuerySpec
 		result []interface{}
@@ -18,14 +19,14 @@ func LogTestConcurrent(f func() margaret.Log) func(*testing.T) {
 
 	mkTest := func(tc testcase) func(*testing.T) {
 		return func(t *testing.T) {
-			log := f()
+			log := f(t.Name(), tc.tipe)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			seq, err := log.Seq().Value()
 			if err != nil {
-				t.Error("unexpected error", err)
+				t.Errorf("unexpected error %+v", err)
 			}
 			if seq != margaret.SeqEmpty {
 				t.Errorf("expected empty log but got seq=%d", seq)
@@ -38,13 +39,13 @@ func LogTestConcurrent(f func() margaret.Log) func(*testing.T) {
 
 				src, err := log.Query(tc.specs...)
 				if err != nil {
-					t.Errorf("expected nil error but got %s", err)
+					t.Errorf("expected nil error but got %+v", err)
 				}
 
 				for i, exp := range tc.result {
 					v, err := src.Next(ctx)
 					if err != nil {
-						t.Errorf("unexpected error %s", err)
+						t.Errorf("unexpected error %+v", err)
 					}
 
 					if v != exp {
@@ -78,11 +79,13 @@ func LogTestConcurrent(f func() margaret.Log) func(*testing.T) {
 
 	tcs := []testcase{
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 			specs:  []margaret.QuerySpec{margaret.Live(true)},
 		},
 		{
+      tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Live(true), margaret.Limit(2)},
