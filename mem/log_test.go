@@ -9,7 +9,7 @@ import (
 
 func TestMemoryLog(t *testing.T) {
 	t.Run("Memlog", test.LogTest(
-    func(string,interface{}) margaret.Log {
-      return NewMemoryLog()
-  }))
+		func(string, interface{}) margaret.Log {
+			return NewMemoryLog()
+		}))
 }
