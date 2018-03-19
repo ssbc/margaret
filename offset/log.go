@@ -87,17 +87,9 @@ func (log *offsetLog) Append(v interface{}) error {
 	log.l.Lock()
 	defer log.l.Unlock()
 
-	// only seek to eof if file not empty
-	fi, err := log.f.Stat()
+	_, err = log.f.Seek(0, io.SeekEnd)
 	if err != nil {
-		return errors.Wrap(err, "stat error")
-	}
-
-	if fi.Size() > 0 {
-		_, err = log.f.Seek(0, io.SeekEnd)
-		if err != nil {
-			return errors.Wrap(err, "errors seeking to end of file")
-		}
+		return errors.Wrap(err, "error seeking to end of file")
 	}
 
 	frame, err := log.framing.EncodeFrame(data)
