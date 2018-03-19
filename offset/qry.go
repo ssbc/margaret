@@ -2,21 +2,20 @@ package offset // import "cryptoscope.co/go/margaret/offset"
 
 import (
 	"context"
-  "encoding/binary"
-  "io"
+	"io"
 	"sync"
 
 	"cryptoscope.co/go/luigi"
 	"cryptoscope.co/go/margaret"
 	"cryptoscope.co/go/margaret/codec"
 
-  "github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
 type offsetQuery struct {
-  l sync.Mutex
-	log *offsetLog
-  codec codec.Codec
+	l     sync.Mutex
+	log   *offsetLog
+	codec codec.Codec
 
 	nextSeq, lt margaret.Seq
 
@@ -29,8 +28,8 @@ func (qry *offsetQuery) Gt(s margaret.Seq) error {
 		return errors.Errorf("lower bound already set")
 	}
 
-  qry.nextSeq = s+1
-  return nil
+	qry.nextSeq = s + 1
+	return nil
 }
 
 func (qry *offsetQuery) Gte(s margaret.Seq) error {
@@ -38,8 +37,8 @@ func (qry *offsetQuery) Gte(s margaret.Seq) error {
 		return errors.Errorf("lower bound already set")
 	}
 
-  qry.nextSeq = s
-  return nil
+	qry.nextSeq = s
+	return nil
 }
 
 func (qry *offsetQuery) Lt(s margaret.Seq) error {
@@ -56,7 +55,7 @@ func (qry *offsetQuery) Lte(s margaret.Seq) error {
 		return errors.Errorf("upper bound already set")
 	}
 
-	qry.lt = s+1
+	qry.lt = s + 1
 	return nil
 }
 
@@ -71,89 +70,97 @@ func (qry *offsetQuery) Live(live bool) error {
 }
 
 func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
-  qry.l.Lock()
-  defer qry.l.Unlock()
+	qry.l.Lock()
+	defer qry.l.Unlock()
 
 	if qry.limit == 0 {
 		return nil, luigi.EOS{}
 	}
 	qry.limit--
 
-  if qry.nextSeq == margaret.SeqEmpty {
-    qry.nextSeq = 0
-  }
+	if qry.nextSeq == margaret.SeqEmpty {
+		qry.nextSeq = 0
+	}
 
 	qry.log.l.Lock()
 	defer qry.log.l.Unlock()
 
-  // only seek to eof if file not empty
-  fi, err := qry.log.f.Stat()
-  if err != nil {
-    return nil, errors.Wrap(err, "stat error")
-  }
+	// only seek to eof if file not empty
+	fi, err := qry.log.f.Stat()
+	if err != nil {
+		return nil, errors.Wrap(err, "stat error")
+	}
 
-  seekTo := int64(qry.nextSeq) * qry.log.blocksize
+	seekTo := int64(qry.nextSeq) * qry.log.framing.FrameSize()
 
-  if size:= fi.Size(); size < seekTo + qry.log.blocksize {
-    if !qry.live {
-      return nil, luigi.EOS{}
-    }
+	if size := fi.Size(); size < seekTo+qry.log.framing.FrameSize() {
+		if !qry.live {
+			return nil, luigi.EOS{}
+		}
 
-    wait := make(chan struct{})
-    var cancel func()
-    cancel = qry.log.seq.Register(luigi.FuncSink(
-      func(ctx context.Context, v interface{}, doClose bool) error {
-        if doClose {
-          return luigi.EOS{}
-        }
-        if v.(margaret.Seq) >= qry.nextSeq {
-          close(wait)
-          cancel()
-        }
+		wait := make(chan struct{})
+		var cancel func()
+		cancel = qry.log.seq.Register(luigi.FuncSink(
+			func(ctx context.Context, v interface{}, doClose bool) error {
+				if doClose {
+					return luigi.EOS{}
+				}
+				if v.(margaret.Seq) >= qry.nextSeq {
+					close(wait)
+					cancel()
+				}
 
-        return nil
-      }))
+				return nil
+			}))
 
-    err := func() error {
-      qry.log.l.Unlock()
-      defer qry.log.l.Lock()
+		err := func() error {
+			qry.log.l.Unlock()
+			defer qry.log.l.Lock()
 
-      select {
-      case <-wait:
-      case <-ctx.Done():
-        return ctx.Err()
-      }
-      return nil
-    }()
-    if err != nil {
-      return nil, err
-    }
-  }
+			select {
+			case <-wait:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+			return nil
+		}()
+		if err != nil {
+			return nil, err
+		}
+	}
 
-  _, err = qry.log.f.Seek(int64(qry.nextSeq) * qry.log.blocksize, io.SeekStart)
-  if err != nil {
-    return nil, errors.Wrap(err, "seek failed")
-  }
+	_, err = qry.log.f.Seek(int64(qry.nextSeq)*qry.log.framing.FrameSize(), io.SeekStart)
+	if err != nil {
+		return nil, errors.Wrap(err, "seek failed")
+	}
 
 	if qry.lt != margaret.SeqEmpty && !(qry.nextSeq < qry.lt) {
 		return nil, luigi.EOS{}
 	}
 
-  out := make([]byte, qry.log.blocksize)
-  _, err = qry.log.f.Read(out)
-  if err == io.EOF {
-    return nil, luigi.EOS{}
-  } else if err != nil {
-    return nil, errors.Wrap(err, "error reading block")
-  }
+	frame := make([]byte, qry.log.framing.FrameSize())
+	n, err := qry.log.f.Read(frame)
+	if err == io.EOF {
+		return nil, luigi.EOS{}
+	} else if err != nil {
+		return nil, errors.Wrap(err, "error reading frame")
+	}
 
-  l := binary.BigEndian.Uint32(out)
-  v, err := qry.codec.Unmarshal(out[4:l+4])
-  if err != nil {
-    return nil, errors.Wrap(err, "error unmarshaling block")
-  }
+	if int64(n) != qry.log.framing.FrameSize() {
+		return nil, errors.New("short read")
+	}
 
-  qry.nextSeq++
+	data, err := qry.log.framing.DecodeFrame(frame)
+	if err != nil {
+		return nil, errors.Wrap(err, "error decoding frame")
+	}
 
-  return v, nil
+	v, err := qry.codec.Unmarshal(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling data")
+	}
+
+	qry.nextSeq++
+
+	return v, nil
 }
