@@ -12,7 +12,7 @@ import (
 
 func LogTestSimple(f func(name string, tipe interface{}) margaret.Log) func(*testing.T) {
 	type testcase struct {
-    tipe   interface{}
+		tipe   interface{}
 		values []interface{}
 		specs  []margaret.QuerySpec
 		result []interface{}
@@ -97,55 +97,55 @@ func LogTestSimple(f func(name string, tipe interface{}) margaret.Log) func(*tes
 
 	tcs := []testcase{
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 		},
 
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
 			specs:  []margaret.QuerySpec{margaret.Gt(0)},
 		},
 
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
 			specs:  []margaret.QuerySpec{margaret.Gte(1)},
 		},
 
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Lt(2)},
 		},
 
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Lte(1)},
 		},
 
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Limit(2)},
 		},
 
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2},
 			result: []interface{}{1, 2, 3},
 			errStr: "end of stream",
 		},
 
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 			specs:  []margaret.QuerySpec{margaret.Live(true)},

@@ -9,7 +9,7 @@ import (
 
 func LogTestGet(f func(name string, tipe interface{}) margaret.Log) func(*testing.T) {
 	type testcase struct {
-    tipe   interface{}
+		tipe   interface{}
 		values []interface{}
 		result []interface{}
 	}
@@ -40,7 +40,7 @@ func LogTestGet(f func(name string, tipe interface{}) margaret.Log) func(*testin
 
 	tcs := []testcase{
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 		},

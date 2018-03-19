@@ -11,7 +11,7 @@ import (
 
 func LogTestConcurrent(f func(name string, tipe interface{}) margaret.Log) func(*testing.T) {
 	type testcase struct {
-    tipe   interface{}
+		tipe   interface{}
 		values []interface{}
 		specs  []margaret.QuerySpec
 		result []interface{}
@@ -79,13 +79,13 @@ func LogTestConcurrent(f func(name string, tipe interface{}) margaret.Log) func(
 
 	tcs := []testcase{
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 			specs:  []margaret.QuerySpec{margaret.Live(true)},
 		},
 		{
-      tipe:   0,
+			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Live(true), margaret.Limit(2)},
