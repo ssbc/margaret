@@ -11,29 +11,25 @@ import (
 // interface{ Addr() string }?
 type Addr string
 
-// Index provides an index table keyed by Addr that can be fed with
-// a stream
+// Index provides an index table keyed by Addr.
+// Often also implements Setter.
 type Index interface {
-	luigi.Sink
-
 	// Get returns the an observable of the value stored at the address.
 	// Getting an unset value retuns a valid Observable with a value
 	// of type Unset and a nil error.
 	Get(context.Context, Addr) (luigi.Observable, error)
 }
 
-// Unset is the value of observable returned by idx.Get() when the
+// UnsetValue is the value of observable returned by idx.Get() when the
 // requested address has not been set yet.
-type Unset struct {
+type UnsetValue struct {
 	Addr Addr
 }
 
-// Setter is passed to the function managing an index, which uses it
-// to modify it.
-//
-// TODO maybe provide other index builders as well, e.g. for managing
-// sets: add and remove values from and to sets, stored at address
-type Setter interface {
+// SetterIndex is an index that can be updated using calls to Set and Delete.
+type SetterIndex interface {
+	Index
+
 	// Set sets a value in the index
 	Set(context.Context, Addr, interface{}) error
 
@@ -41,6 +37,17 @@ type Setter interface {
 	Delete(context.Context, Addr) error
 }
 
-// IndexSetterFunc is a function that processes the values read from
-// the source and updates an index using Setter.
-type IndexSetterFunc func(context.Context, luigi.Source, Setter) error
+// SinkIndex is an index that is updated by processing a stream.
+type SinkIndex interface {
+	luigi.Sink
+	Index
+}
+
+// TODO maybe provide other index builders as well, e.g. for managing
+// sets: add and remove values from and to sets, stored at address
+
+/*
+// IndexerFunc is a function that processes the values read from
+// the source and updates an Index.
+type IndexerFunc func(context.Context, luigi.Source, Index) error
+*/
