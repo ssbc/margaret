@@ -48,4 +48,3 @@ type SinkIndex interface {
 
 // TODO maybe provide other index builders as well, e.g. for managing
 // sets: add and remove values from and to sets, stored at address
-

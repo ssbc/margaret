@@ -20,10 +20,9 @@ func newIdx(name string, tipe interface{}) (librarian.SetterIndex, error) {
 
 	return setterindex{
 		Setter: setter,
-		Index: idx,
+		Index:  idx,
 	}, nil
 }
-	
 
 func TestRemote(t *testing.T) {
 	t.Run("TestSetterIndex", test.TestSetterIndex(newIdx))

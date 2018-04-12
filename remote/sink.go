@@ -3,9 +3,9 @@ package remote
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"cryptoscope.co/go/luigi"
-	
+	"github.com/pkg/errors"
+
 	"cryptoscope.co/go/librarian"
 )
 
@@ -23,19 +23,19 @@ func (sink *indexSink) Pour(ctx context.Context, v interface{}) error {
 	msg := v.(Message)
 
 	/*
-	for _, set := range msg.Sets {
-		err := sink.idx.Set(ctx, set.Addr, set.Value)
-		if err != nil {
-			return errors.Wrap(err, "errors setting value")
+		for _, set := range msg.Sets {
+			err := sink.idx.Set(ctx, set.Addr, set.Value)
+			if err != nil {
+				return errors.Wrap(err, "errors setting value")
+			}
 		}
-	}
 
-	for _, del := range msg.Deletes {
-		err := sink.idx.Delete(ctx, del.Addr)
-		if err != nil {
-			return errors.Wrap(err, "errors deleting value")
+		for _, del := range msg.Deletes {
+			err := sink.idx.Delete(ctx, del.Addr)
+			if err != nil {
+				return errors.Wrap(err, "errors deleting value")
+			}
 		}
-	}
 	*/
 
 	switch msg.Type {
@@ -57,4 +57,3 @@ func (sink *indexSink) Pour(ctx context.Context, v interface{}) error {
 }
 
 func (sink *indexSink) Close() error { return nil } // noop
-

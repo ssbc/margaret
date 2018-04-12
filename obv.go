@@ -6,13 +6,12 @@ import (
 	"cryptoscope.co/go/luigi"
 )
 
-
 // NewObservable returns a regular observable that calls f when the last registration is cancelled.
 // This is used to garbage-collect observables from the maps in the indexes.
 func NewObservable(v interface{}, f func()) luigi.Observable {
 	return &observable{
 		Observable: luigi.NewObservable(v),
-		f: f,
+		f:          f,
 	}
 }
 

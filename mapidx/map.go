@@ -6,7 +6,7 @@ import (
 
 	"cryptoscope.co/go/luigi"
 	"github.com/pkg/errors"
-	
+
 	"cryptoscope.co/go/librarian"
 )
 
@@ -64,4 +64,3 @@ func (idx *mapSetterIndex) Delete(_ context.Context, addr librarian.Addr) error 
 
 	return nil
 }
-

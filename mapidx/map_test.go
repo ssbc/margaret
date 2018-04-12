@@ -14,4 +14,3 @@ func newIdx(name string, tipe interface{}) (librarian.SetterIndex, error) {
 func TestMap(t *testing.T) {
 	t.Run("TestSetterIndex", test.TestSetterIndex(newIdx))
 }
-
