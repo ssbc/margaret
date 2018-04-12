@@ -26,15 +26,18 @@ type UnsetValue struct {
 	Addr Addr
 }
 
-// SetterIndex is an index that can be updated using calls to Set and Delete.
-type SetterIndex interface {
-	Index
-
+type Setter interface {
 	// Set sets a value in the index
 	Set(context.Context, Addr, interface{}) error
 
 	// Delete deletes a value from the index
 	Delete(context.Context, Addr) error
+}
+
+// SetterIndex is an index that can be updated using calls to Set and Delete.
+type SetterIndex interface {
+	Index
+	Setter
 }
 
 // SinkIndex is an index that is updated by processing a stream.
@@ -46,8 +49,3 @@ type SinkIndex interface {
 // TODO maybe provide other index builders as well, e.g. for managing
 // sets: add and remove values from and to sets, stored at address
 
-/*
-// IndexerFunc is a function that processes the values read from
-// the source and updates an Index.
-type IndexerFunc func(context.Context, luigi.Source, Index) error
-*/

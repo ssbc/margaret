@@ -75,14 +75,20 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 	}
 
 	if errors.Cause(err) == badger.ErrKeyNotFound {
-		obv = luigi.NewObservable(librarian.UnsetValue{addr})
+		obv = librarian.NewObservable(librarian.UnsetValue{addr}, idx.deleter(addr))
 	} else {
-		obv = luigi.NewObservable(v)
+		obv = librarian.NewObservable(v, idx.deleter(addr))
 	}
 
 	idx.obvs[addr] = obv
 
-	return obv, nil
+	return roObv{obv}, nil
+}
+
+func (idx *index) deleter(addr librarian.Addr) func() {
+	return func() {
+		delete(idx.obvs, addr)
+	}
 }
 
 func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) error {
@@ -148,6 +154,6 @@ type roObv struct {
 	luigi.Observable
 }
 
-func (obv *roObv) Set(context.Context, interface{}) error {
+func (obv roObv) Set(interface{}) error {
 	return errors.New("read-only observable")
 }
