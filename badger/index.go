@@ -15,7 +15,7 @@ import (
 	"cryptoscope.co/go/librarian"
 )
 
-func NewIndex(db *badger.DB, tipe interface{}) librarian.SetterIndex {
+func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
 	return &index{
 		db:     db,
 		tipe:   tipe,

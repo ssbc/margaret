@@ -11,7 +11,7 @@ import (
 	"cryptoscope.co/go/librarian"
 )
 
-func New() librarian.SetterIndex {
+func New() librarian.SeqSetterIndex {
 	return &mapSetterIndex{
 		m: make(map[librarian.Addr]luigi.Observable),
 	}
