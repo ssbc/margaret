@@ -14,7 +14,7 @@ type Log interface {
 	Seq() luigi.Observable
 	Get(Seq) (interface{}, error)
 	Query(...QuerySpec) (luigi.Source, error)
-	Append(interface{}) error
+	Append(interface{}) (Seq, error)
 }
 
 type oob struct{}

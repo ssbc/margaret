@@ -66,8 +66,9 @@ func LogTestConcurrent(f NewLogFunc) func(*testing.T) {
 				defer wg.Done()
 
 				for i, v := range tc.values {
-					err := log.Append(v)
+					seq, err := log.Append(v)
 					a.NoError(err, "error appending to log")
+					a.Equal(margaret.Seq(i), seq, "sequence missmatch")
 
 					if t.Failed() {
 						t.Log("error in iteration", i)

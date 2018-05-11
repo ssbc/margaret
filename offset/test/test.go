@@ -32,7 +32,7 @@ func init() {
 				return nil, errors.Wrap(err, "error creating database file")
 			}
 
-			return offset.NewOffsetLog(f, framing, newCodec(tipe)), nil
+			return offset.NewOffsetLog(f, framing, newCodec(tipe))
 		}
 	}
 

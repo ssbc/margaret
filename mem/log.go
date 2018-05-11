@@ -121,7 +121,7 @@ func (log *memlog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	return qry, nil
 }
 
-func (log *memlog) Append(v interface{}) error {
+func (log *memlog) Append(v interface{}) (margaret.Seq, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 
@@ -132,5 +132,5 @@ func (log *memlog) Append(v interface{}) error {
 	close(oldtail.wait)
 	log.seq.Set(log.tail.seq)
 
-	return nil
+	return log.tail.seq, nil
 }

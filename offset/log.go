@@ -75,10 +75,10 @@ func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	return qry, nil
 }
 
-func (log *offsetLog) Append(v interface{}) error {
+func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	data, err := log.codec.Marshal(v)
 	if err != nil {
-		return errors.Wrap(err, "error marshaling value")
+		return -1, errors.Wrap(err, "error marshaling value")
 	}
 
 	log.l.Lock()
@@ -86,26 +86,25 @@ func (log *offsetLog) Append(v interface{}) error {
 
 	_, err = log.f.Seek(0, io.SeekEnd)
 	if err != nil {
-		return errors.Wrap(err, "error seeking to end of file")
+		return -1, errors.Wrap(err, "error seeking to end of file")
 	}
 
 	frame, err := log.framing.EncodeFrame(data)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	_, err = log.f.Write(frame)
 	if err != nil {
-		return errors.Wrap(err, "error writng frame")
+		return -1, errors.Wrap(err, "error writng frame")
 	}
 
-	nextSeq, err := log.seq.Value()
+	currSeq, err := log.seq.Value()
 	if err != nil {
-		return errors.Wrap(err, "error reading current sequence number")
+		return -1, errors.Wrap(err, "error reading current sequence number")
 	}
-
-	go log.seq.Set(nextSeq.(margaret.Seq) + 1)
-	return nil
+	nextSeq := currSeq.(margaret.Seq) + 1
+	return nextSeq, log.seq.Set(nextSeq)
 }
 
 func (log *offsetLog) FileName() string {

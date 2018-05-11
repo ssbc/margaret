@@ -41,9 +41,11 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 				}
 			}()
 
-			for _, v := range tc.values {
-				err := log.Append(v)
+			for i, v := range tc.values {
+				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
+				r.Equal(margaret.Seq(i), seq, "sequence missmatch")
+
 			}
 
 			src, err := log.Query(tc.specs...)
