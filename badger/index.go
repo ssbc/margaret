@@ -2,11 +2,13 @@ package badger // import "cryptoscope.co/go/librarian/badger"
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"reflect"
 	"sync"
 
 	"cryptoscope.co/go/luigi"
+	"cryptoscope.co/go/margaret"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
 
@@ -15,17 +17,19 @@ import (
 
 func NewIndex(db *badger.DB, tipe interface{}) librarian.SetterIndex {
 	return &index{
-		db:   db,
-		tipe: tipe,
-		obvs: make(map[librarian.Addr]luigi.Observable),
+		db:     db,
+		tipe:   tipe,
+		obvs:   make(map[librarian.Addr]luigi.Observable),
+		curSeq: -2,
 	}
 }
 
 type index struct {
-	l    sync.Mutex
-	db   *badger.DB
-	obvs map[librarian.Addr]luigi.Observable
-	tipe interface{}
+	l      sync.Mutex
+	db     *badger.DB
+	obvs   map[librarian.Addr]luigi.Observable
+	tipe   interface{}
+	curSeq margaret.Seq
 }
 
 func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observable, error) {
@@ -148,6 +152,72 @@ func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
 	}
 
 	return err
+}
+
+func (idx *index) SetSeq(seq margaret.Seq) error {
+	var (
+		raw  = make([]byte, 8)
+		err  error
+		addr librarian.Addr = "__current_observable"
+	)
+
+	binary.BigEndian.PutUint64(raw, uint64(seq))
+
+	err = idx.db.Update(func(txn *badger.Txn) error {
+		err := txn.Set([]byte(addr), raw)
+		return errors.Wrap(err, "error setting item")
+	})
+	if err != nil {
+		return errors.Wrap(err, "error in badger transaction (update)")
+	}
+
+	idx.l.Lock()
+	defer idx.l.Unlock()
+
+	idx.curSeq = seq
+
+	return nil
+}
+
+func (idx *index) GetSeq() (margaret.Seq, error) {
+	var addr = "__current_observable"
+
+	idx.l.Lock()
+	defer idx.l.Unlock()
+
+	if idx.curSeq != -2 {
+		return idx.curSeq, nil
+	}
+
+	err := idx.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(addr))
+		if err != nil {
+			return errors.Wrap(err, "error getting item")
+		}
+
+		data, err := item.Value()
+		if err != nil {
+			return errors.Wrap(err, "error getting value")
+		}
+
+		if l := len(data); l != 8 {
+			return errors.Errorf("expected data of length 8, got %v", l)
+		}
+
+		idx.curSeq = margaret.Seq(binary.BigEndian.Uint64(data))
+
+		return nil
+	})
+
+	if err != nil {
+		if errors.Cause(err) == badger.ErrKeyNotFound {
+			return -1, nil
+		} else {
+			return 0, errors.Wrap(err, "error in badger transaction (view)")
+		}
+	}
+
+	return idx.curSeq, nil
 }
 
 type roObv struct {
