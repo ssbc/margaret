@@ -23,7 +23,7 @@ func JSONOffsetLog(framing Framing) func(*testing.T) {
 				t.Fatal("error opening offset file", err)
 			}
 
-			return NewOffsetLog(f, framing, json.NewCodec(tipe))
+			return NewOffsetLog(f, framing, json.New(tipe))
 		}
 		t.Run("JSON", test.LogTest(f))
 	}

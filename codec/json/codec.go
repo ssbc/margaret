@@ -9,7 +9,7 @@ import (
 )
 
 // NewCodec creates a json codec that decodes into values of type tipe.
-func NewCodec(tipe interface{}) cdc.Codec {
+func New(tipe interface{}) cdc.Codec {
 	if tipe == nil {
 		return &codec{any: true}
 	}

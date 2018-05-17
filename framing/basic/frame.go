@@ -9,9 +9,9 @@ import (
 )
 
 type Framing interface {
-  margaret.Framing
+	margaret.Framing
 
-  FrameSize() int64
+	FrameSize() int64
 }
 
 var _ Framing = &frame32{}
