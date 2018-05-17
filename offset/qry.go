@@ -19,8 +19,9 @@ type offsetQuery struct {
 
 	nextSeq, lt margaret.Seq
 
-	limit int
-	live  bool
+	limit   int
+	live    bool
+	seqWrap bool
 }
 
 func (qry *offsetQuery) Gt(s margaret.Seq) error {
@@ -66,6 +67,11 @@ func (qry *offsetQuery) Limit(n int) error {
 
 func (qry *offsetQuery) Live(live bool) error {
 	qry.live = live
+	return nil
+}
+
+func (qry *offsetQuery) SeqWrap(wrap bool) error {
+	qry.seqWrap = wrap
 	return nil
 }
 
@@ -160,7 +166,11 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, errors.Wrap(err, "error unmarshaling data")
 	}
 
-	qry.nextSeq++
+	defer func() { qry.nextSeq++ }()
+
+	if qry.seqWrap {
+		return margaret.WrapWithSeq(v, qry.nextSeq-1), nil
+	}
 
 	return v, nil
 }

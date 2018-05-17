@@ -8,6 +8,7 @@ type Query interface {
 	Limit(int) error
 
 	Live(bool) error
+	SeqWrap(bool) error
 }
 
 type QuerySpec func(Query) error
@@ -45,5 +46,11 @@ func Limit(n int) QuerySpec {
 func Live(live bool) QuerySpec {
 	return func(q Query) error {
 		return q.Live(live)
+	}
+}
+
+func SeqWrap(wrap bool) QuerySpec {
+	return func(q Query) error {
+		return q.SeqWrap(wrap)
 	}
 }

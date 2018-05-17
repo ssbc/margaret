@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"cryptoscope.co/go/luigi"
+	"github.com/pkg/errors"
+
 	"cryptoscope.co/go/margaret"
 )
 
@@ -14,8 +16,9 @@ type memlogQuery struct {
 
 	gt, lt, gte, lte margaret.Seq
 
-	limit int
-	live  bool
+	limit   int
+	live    bool
+	seqWrap bool
 }
 
 func (qry *memlogQuery) seek(ctx context.Context) error {
@@ -120,5 +123,18 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 
 	var err error
 	qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
-	return qry.cur.v, err
+	if err != nil {
+		return nil, errors.Wrap(err, "error waiting for next value")
+	}
+
+	if qry.seqWrap {
+		return margaret.WrapWithSeq(qry.cur.v, qry.cur.seq), nil
+	}
+
+	return qry.cur.v, nil
+}
+
+func (qry *memlogQuery) SeqWrap(wrap bool) error {
+	qry.seqWrap = wrap
+	return nil
 }

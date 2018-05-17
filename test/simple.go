@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"cryptoscope.co/go/luigi"
 	"cryptoscope.co/go/margaret"
 )
@@ -80,11 +82,12 @@ func LogTestSimple(f func(name string, tipe interface{}) margaret.Log) func(*tes
 				case <-waiter:
 				}
 			}()
-			_, err = src.Next(ctx)
+
+			v, err := src.Next(ctx)
 			if !tc.live && !luigi.IsEOS(err) {
 				t.Errorf("expected end-of-stream but got %+v", err)
-			} else if tc.live && err != context.Canceled {
-				t.Errorf("expected context canceled but got %+v", err)
+			} else if tc.live && errors.Cause(err) != context.Canceled {
+				t.Errorf("expected context canceled but got %v, %+v", v, err)
 			}
 
 			select {
