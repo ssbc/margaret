@@ -8,17 +8,14 @@ import (
 
 	"cryptoscope.co/go/luigi"
 	"cryptoscope.co/go/margaret"
-	"cryptoscope.co/go/margaret/codec"
 
 	"github.com/pkg/errors"
 )
 
-const defaultFrameSize = 4096
+const DefaultFrameSize = 4096
 
 type Framing interface {
 	margaret.Framing
-
-	FrameSize() int64
 }
 
 type offsetLog struct {
@@ -26,11 +23,11 @@ type offsetLog struct {
 	f *os.File
 
 	seq     luigi.Observable
-	codec   codec.Codec
+	codec   margaret.Codec
 	framing Framing
 }
 
-func NewOffsetLog(f *os.File, framing Framing, cdc codec.Codec) margaret.Log {
+func NewOffsetLog(f *os.File, framing Framing, cdc margaret.Codec) margaret.Log {
 	log := &offsetLog{
 		f:       f,
 		seq:     luigi.NewObservable(margaret.SeqEmpty),

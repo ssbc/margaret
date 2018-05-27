@@ -7,7 +7,7 @@ import (
 	"cryptoscope.co/go/margaret"
 )
 
-func LogTestGet(f func(name string, tipe interface{}) margaret.Log) func(*testing.T) {
+func LogTestGet(f NewLogFunc) func(*testing.T) {
 	type testcase struct {
 		tipe   interface{}
 		values []interface{}
@@ -16,7 +16,15 @@ func LogTestGet(f func(name string, tipe interface{}) margaret.Log) func(*testin
 
 	mkTest := func(tc testcase) func(*testing.T) {
 		return func(t *testing.T) {
-			log := f(t.Name(), tc.tipe)
+			log, err := f(t.Name(), tc.tipe)
+			if err != nil {
+				t.Fatal("error creating log:", err)
+			}
+
+			if log == nil {
+				t.Fatal("returned log is nil")
+			}
+
 			for _, v := range tc.values {
 				err := log.Append(v)
 				if err != nil {

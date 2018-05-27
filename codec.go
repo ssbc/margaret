@@ -1,8 +1,10 @@
-package codec // import "cryptoscope.co/go/margaret/codec"
+package margaret // import "cryptoscope.co/go/margaret"
 
 import (
 	"io"
 )
+
+type NewCodecFunc func(tipe interface{}) Codec
 
 type Codec interface {
 	// Marshal encodes a single value and returns the serialized byte slice.

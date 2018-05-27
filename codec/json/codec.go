@@ -5,11 +5,11 @@ import (
 	"io"
 	"reflect"
 
-	cdc "cryptoscope.co/go/margaret/codec"
+	"cryptoscope.co/go/margaret"
 )
 
-// NewCodec creates a json codec that decodes into values of type tipe.
-func New(tipe interface{}) cdc.Codec {
+// New creates a json codec that decodes into values of type tipe.
+func New(tipe interface{}) margaret.Codec {
 	if tipe == nil {
 		return &codec{any: true}
 	}
@@ -51,11 +51,11 @@ func (c *codec) Unmarshal(data []byte) (interface{}, error) {
 	return v, err
 }
 
-func (*codec) NewEncoder(w io.Writer) cdc.Encoder {
+func (*codec) NewEncoder(w io.Writer) margaret.Encoder {
 	return json.NewEncoder(w)
 }
 
-func (c *codec) NewDecoder(r io.Reader) cdc.Decoder {
+func (c *codec) NewDecoder(r io.Reader) margaret.Decoder {
 	return &decoder{
 		tipe: c.tipe,
 		dec:  json.NewDecoder(r),

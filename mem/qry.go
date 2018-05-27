@@ -35,8 +35,6 @@ func (qry *memlogQuery) seek(ctx context.Context) error {
 				return err
 			}
 		}
-
-		fmt.Printf("requested >%v, found %v\n", qry.gt, qry.cur.seq)
 	} else if qry.gte != margaret.SeqEmpty {
 		if qry.cur.seq > qry.gte {
 			qry.cur = qry.log.head
@@ -48,8 +46,6 @@ func (qry *memlogQuery) seek(ctx context.Context) error {
 				return err
 			}
 		}
-
-		fmt.Printf("requested >=%v, found %v\n", qry.gte, qry.cur.seq)
 	}
 
 	return nil

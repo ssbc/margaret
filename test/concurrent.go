@@ -9,7 +9,7 @@ import (
 	"cryptoscope.co/go/margaret"
 )
 
-func LogTestConcurrent(f func(name string, tipe interface{}) margaret.Log) func(*testing.T) {
+func LogTestConcurrent(f NewLogFunc) func(*testing.T) {
 	type testcase struct {
 		tipe   interface{}
 		values []interface{}
@@ -19,7 +19,14 @@ func LogTestConcurrent(f func(name string, tipe interface{}) margaret.Log) func(
 
 	mkTest := func(tc testcase) func(*testing.T) {
 		return func(t *testing.T) {
-			log := f(t.Name(), tc.tipe)
+			log, err := f(t.Name(), tc.tipe)
+			if err != nil {
+				t.Fatal("error creating log:", err)
+			}
+
+			if log == nil {
+				t.Fatal("returned log is nil")
+			}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

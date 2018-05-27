@@ -7,7 +7,6 @@ import (
 
 	"cryptoscope.co/go/luigi"
 	"cryptoscope.co/go/margaret"
-	"cryptoscope.co/go/margaret/codec"
 
 	"github.com/pkg/errors"
 )
@@ -15,7 +14,7 @@ import (
 type offsetQuery struct {
 	l     sync.Mutex
 	log   *offsetLog
-	codec codec.Codec
+	codec margaret.Codec
 
 	nextSeq, lt margaret.Seq
 

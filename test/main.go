@@ -6,7 +6,9 @@ import (
 	"cryptoscope.co/go/margaret"
 )
 
-func LogTest(f func(name string, tipe interface{}) margaret.Log) func(*testing.T) {
+type NewLogFunc func(string, interface{}) (margaret.Log, error)
+
+func LogTest(f NewLogFunc) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Run("Get", LogTestGet(f))
 		t.Run("Simple", LogTestSimple(f))

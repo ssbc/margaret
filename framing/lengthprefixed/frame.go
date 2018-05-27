@@ -8,17 +8,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Framing interface {
-	margaret.Framing
-
-	FrameSize() int64
-}
-
-var _ Framing = &frame32{}
+var _ margaret.Framing = &frame32{}
 
 // New32 returns a new framing for blocks of size framesize.
 // It prefixes the block by the data's length in 32bit big endian format.
-func New32(framesize int64) Framing {
+func New32(framesize int64) margaret.Framing {
 	return &frame32{framesize}
 }
 
