@@ -168,7 +168,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	defer func() { qry.nextSeq++ }()
 
 	if qry.seqWrap {
-		return margaret.WrapWithSeq(v, qry.nextSeq-1), nil
+		return margaret.WrapWithSeq(v, qry.nextSeq), nil
 	}
 
 	return v, nil

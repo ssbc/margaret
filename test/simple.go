@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"cryptoscope.co/go/luigi"
 	"cryptoscope.co/go/margaret"
@@ -14,38 +16,31 @@ import (
 
 func LogTestSimple(f NewLogFunc) func(*testing.T) {
 	type testcase struct {
-		tipe   interface{}
-		values []interface{}
-		specs  []margaret.QuerySpec
-		result []interface{}
-		errStr string
-		live   bool
+		tipe    interface{}
+		values  []interface{}
+		specs   []margaret.QuerySpec
+		result  []interface{}
+		errStr  string
+		live    bool
+		seqWrap bool
 	}
 
 	mkTest := func(tc testcase) func(*testing.T) {
 		return func(t *testing.T) {
-			log, err := f(t.Name(), tc.tipe)
-			if err != nil {
-				t.Fatal("error creating log:", err)
-			}
+			a := assert.New(t)
+			r := require.New(t)
 
-			if log == nil {
-				t.Fatal("returned log is nil")
-			}
+			log, err := f(t.Name(), tc.tipe)
+			r.NoError(err, "error creating log")
+			r.NotNil(log, "returned log is nil")
 
 			for _, v := range tc.values {
 				err := log.Append(v)
-				if err != nil {
-					t.Error("error appending:", err)
-					return
-				}
+				r.NoError(err, "error appending to log")
 			}
 
 			src, err := log.Query(tc.specs...)
-			if err != nil {
-				t.Error("error querying:", err)
-				return
-			}
+			r.NoError(err, "error querying log")
 
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
@@ -66,8 +61,16 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 				}()
 
 				v_, err = src.Next(ctx)
-				if v_ != v && tc.errStr == "" {
-					t.Errorf("expected %v but got %v", v, v_)
+				if tc.errStr == "" {
+					if tc.seqWrap {
+						sw := v.(margaret.SeqWrapper)
+						sw_ := v_.(margaret.SeqWrapper)
+
+						a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
+						a.Equal(sw.Value(), sw_.Value(), "value doesn't match")
+					} else {
+						a.Equal(v, v, "values don't match")
+					}
 				}
 				if err != nil {
 					break
@@ -161,6 +164,18 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			result: []interface{}{1, 2, 3},
 			specs:  []margaret.QuerySpec{margaret.Live(true)},
 			live:   true,
+		},
+
+		{
+			tipe:   0,
+			values: []interface{}{1, 2, 3},
+			result: []interface{}{
+				margaret.WrapWithSeq(1, 0),
+				margaret.WrapWithSeq(2, 1),
+				margaret.WrapWithSeq(3, 2),
+			},
+			specs:   []margaret.QuerySpec{margaret.SeqWrap(true)},
+			seqWrap: true,
 		},
 	}
 
