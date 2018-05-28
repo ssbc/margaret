@@ -12,10 +12,6 @@ import (
 	"cryptoscope.co/go/librarian"
 	"cryptoscope.co/go/luigi"
 	mtest "cryptoscope.co/go/margaret/test"
-
-	// imported to register tests
-	_ "cryptoscope.co/go/margaret/mem"
-	_ "cryptoscope.co/go/margaret/offset"
 )
 
 type NewSinkIndexFunc func(name string, tipe interface{}, f librarian.StreamProcFunc) (librarian.SinkIndex, error)
