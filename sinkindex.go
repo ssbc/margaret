@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type StreamProcFunc func(context.Context, interface{}, SetterIndex) error
+type StreamProcFunc func(context.Context, margaret.Seq, interface{}, SetterIndex) error
 
 func NewSinkIndex(f StreamProcFunc, idx SeqSetterIndex) SinkIndex {
 	return &sinkIndex{
@@ -19,7 +19,7 @@ func NewSinkIndex(f StreamProcFunc, idx SeqSetterIndex) SinkIndex {
 
 type sinkIndex struct {
 	idx SeqSetterIndex
-	f   func(ctx context.Context, v interface{}, idxset SetterIndex) error
+	f   StreamProcFunc
 }
 
 func (r *sinkIndex) QuerySpec() margaret.QuerySpec {
@@ -38,7 +38,7 @@ func (idx *sinkIndex) Pour(ctx context.Context, v interface{}) error {
 		return errors.New("expecting seqwrapped value")
 	}
 
-	err := idx.f(ctx, seqwrap.Value(), idx.idx)
+	err := idx.f(ctx, seqwrap.Seq(), seqwrap.Value(), idx.idx)
 	if err != nil {
 		return errors.Wrap(err, "error calling setter func")
 	}

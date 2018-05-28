@@ -11,6 +11,7 @@ import (
 
 	"cryptoscope.co/go/librarian"
 	"cryptoscope.co/go/luigi"
+	"cryptoscope.co/go/margaret"
 	mtest "cryptoscope.co/go/margaret/test"
 )
 
@@ -28,9 +29,9 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		r := require.New(t)
 		ctx := context.Background()
 
-		f := func(ctx context.Context, v interface{}, idx librarian.SetterIndex) error {
+		f := func(ctx context.Context, seq margaret.Seq, v interface{}, idx librarian.SetterIndex) error {
 			if strings.Contains(v.(string), "interesting") {
-				return idx.Set(ctx, "interesting", v)
+				return idx.Set(ctx, "interesting" , v)
 			} else if strings.Contains(v.(string), "boring") {
 				return idx.Set(ctx, "boring", v)
 			}
