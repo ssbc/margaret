@@ -14,11 +14,13 @@ import (
 func New() librarian.SeqSetterIndex {
 	return &mapSetterIndex{
 		m: make(map[librarian.Addr]luigi.Observable),
+		curSeq: -1,
 	}
 }
 
 type mapSetterIndex struct {
 	m map[librarian.Addr]luigi.Observable
+	curSeq margaret.Seq
 	l sync.Mutex
 }
 
@@ -70,52 +72,14 @@ func (idx *mapSetterIndex) GetSeq() (margaret.Seq, error) {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
-	var addr librarian.Addr = "__current_observable"
-
-	obv, ok := idx.m[addr]
-	if !ok {
-		return 0, nil
-	}
-
-	v, err := obv.Value()
-	if err != nil {
-		return 0, errors.Wrap(err, "error obtaining value from observable")
-	}
-
-	seq, ok := v.(margaret.Seq)
-	if !ok {
-		return 0, errors.Errorf("type error: expected %T, got %T", seq, v)
-	}
-
-	return seq, nil
+	return idx.curSeq, nil
 }
 
 func (idx *mapSetterIndex) SetSeq(seq margaret.Seq) error {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
-	var addr librarian.Addr = "__current_observable"
-
-	obv, ok := idx.m[addr]
-	if ok {
-		v, err := obv.Value()
-		if err != nil {
-			return errors.Wrap(err, "error getting old sequence number")
-		}
-		oldseq, ok := v.(margaret.Seq)
-		if !ok {
-			return errors.Errorf("type error: expected %T, got %T", oldseq, v)
-		}
-		if oldseq > seq {
-			return errors.New("sequnce number not larger than last")
-		}
-
-		err = obv.Set(seq)
-		return errors.Wrap(err, "error setting observable")
-	}
-
-	obv = luigi.NewObservable(seq)
-	idx.m[addr] = obv
+	idx.curSeq = seq
 
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"cryptoscope.co/go/luigi"
+	"cryptoscope.co/go/margaret"
 )
 
 // Addr is an address (or key) in the index.
@@ -44,6 +45,15 @@ type SetterIndex interface {
 type SinkIndex interface {
 	luigi.Sink
 	Index
+
+	QuerySpec() margaret.QuerySpec
+}
+
+type SeqSetterIndex interface {
+	SetterIndex
+
+	SetSeq(margaret.Seq) error
+	GetSeq() (margaret.Seq, error)
 }
 
 // TODO maybe provide other index builders as well, e.g. for managing
