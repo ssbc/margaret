@@ -4,13 +4,12 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/dgraph-io/badger"
-	
+	"github.com/pkg/errors"
+
 	"cryptoscope.co/go/librarian"
 	"cryptoscope.co/go/librarian/test"
 )
-
 
 func init() {
 	newSeqSetterIdx := func(name string, tipe interface{}) (librarian.SeqSetterIndex, error) {
@@ -39,7 +38,7 @@ func init() {
 			return idx, err
 		}
 	}
-	
+
 	test.RegisterSeqSetterIndex("badger", newSeqSetterIdx)
 	test.RegisterSetterIndex("badger", toSetterIdx(newSeqSetterIdx))
 }

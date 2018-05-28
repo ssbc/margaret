@@ -13,15 +13,15 @@ import (
 
 func New() librarian.SeqSetterIndex {
 	return &mapSetterIndex{
-		m: make(map[librarian.Addr]luigi.Observable),
+		m:      make(map[librarian.Addr]luigi.Observable),
 		curSeq: -1,
 	}
 }
 
 type mapSetterIndex struct {
-	m map[librarian.Addr]luigi.Observable
+	m      map[librarian.Addr]luigi.Observable
 	curSeq margaret.Seq
-	l sync.Mutex
+	l      sync.Mutex
 }
 
 func (idx *mapSetterIndex) Get(_ context.Context, addr librarian.Addr) (luigi.Observable, error) {

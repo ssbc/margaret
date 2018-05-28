@@ -42,7 +42,7 @@ func (idx *sinkIndex) Pour(ctx context.Context, v interface{}) error {
 	if err != nil {
 		return errors.Wrap(err, "error calling setter func")
 	}
-	
+
 	err = idx.idx.SetSeq(seqwrap.Seq())
 	return errors.Wrap(err, "error setting sequence number")
 }

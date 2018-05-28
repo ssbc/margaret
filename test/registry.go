@@ -12,7 +12,7 @@ var (
 )
 
 func init() {
-	NewSetterIndexFuncs    = map[string]NewSetterIndexFunc{}
+	NewSetterIndexFuncs = map[string]NewSetterIndexFunc{}
 	NewSeqSetterIndexFuncs = map[string]NewSeqSetterIndexFunc{}
 }
 
@@ -39,7 +39,7 @@ func RunSeqSetterIndexTests(t *testing.T) {
 func RunSinkIndexTests(t *testing.T) {
 	for logname, newLog := range mtest.NewLogFuncs {
 		for idxname, newSeqSetterIdx := range NewSeqSetterIndexFuncs {
-			t.Run(logname + "/" + idxname, TestSinkIndex(newLog, newSeqSetterIdx))
-		} 
+			t.Run(logname+"/"+idxname, TestSinkIndex(newLog, newSeqSetterIdx))
+		}
 	}
 }

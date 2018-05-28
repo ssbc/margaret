@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -40,13 +41,20 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 
 			return nil
 		}
-		
+
 		seqSetIdx, err := newIdx(t.Name(), "str")
 		r.NoError(err, "error creating SeqSetterIndex")
 
 		idx := librarian.NewSinkIndex(f, seqSetIdx)
 		log, err := newLog(t.Name(), "str")
 		r.NoError(err, "error creating log")
+		r.NotNil(log, "returned log is nil")
+
+		defer func() {
+			if namer, ok := log.(interface{ FileName() string }); ok {
+				r.NoError(os.Remove(namer.FileName()), "error deleting log after test")
+			}
+		}()
 
 		a.NoError(log.Append("boring string"), "error appending")
 		a.NoError(log.Append("another boring string"), "error appending")
@@ -68,7 +76,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		v, err = obv.Value()
 		a.NoError(err, "error getting boring value from observable")
 		a.Equal("another boring string", v)
-		
+
 		a.NoError(log.Append("so-so string"), "error appending")
 		a.NoError(log.Append("highly interesting string"), "error appending")
 
