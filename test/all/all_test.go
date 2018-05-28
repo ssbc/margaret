@@ -1,10 +1,7 @@
-package testall
+package all
 
 import (
 	"testing"
-
-	_ "cryptoscope.co/go/margaret/mem"
-	_ "cryptoscope.co/go/margaret/offset"
 
 	mtest "cryptoscope.co/go/margaret/test"
 )
