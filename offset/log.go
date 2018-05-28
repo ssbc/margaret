@@ -107,3 +107,7 @@ func (log *offsetLog) Append(v interface{}) error {
 	go log.seq.Set(nextSeq.(margaret.Seq) + 1)
 	return nil
 }
+
+func (log *offsetLog) FileName() string {
+	return log.f.Name()
+}

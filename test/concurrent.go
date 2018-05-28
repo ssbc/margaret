@@ -3,8 +3,12 @@ package test // import "cryptoscope.co/go/margaret/test"
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"cryptoscope.co/go/margaret"
 )
@@ -19,25 +23,25 @@ func LogTestConcurrent(f NewLogFunc) func(*testing.T) {
 
 	mkTest := func(tc testcase) func(*testing.T) {
 		return func(t *testing.T) {
-			log, err := f(t.Name(), tc.tipe)
-			if err != nil {
-				t.Fatal("error creating log:", err)
-			}
+			a := assert.New(t)
+			r := require.New(t)
 
-			if log == nil {
-				t.Fatal("returned log is nil")
-			}
+			log, err := f(t.Name(), tc.tipe)
+			r.NoError(err, "error creating log")
+			r.NotNil(log, "returned log is nil")
+
+			defer func() {
+				if namer, ok := log.(interface{ FileName() string }); ok {
+					r.NoError(os.Remove(namer.FileName()), "error deleting log after test")
+				}
+			}()
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			seq, err := log.Seq().Value()
-			if err != nil {
-				t.Errorf("unexpected error %+v", err)
-			}
-			if seq != margaret.SeqEmpty {
-				t.Errorf("expected empty log but got seq=%d", seq)
-			}
+			a.NoError(err, "unexpected error")
+			a.Equal(margaret.SeqEmpty, seq, "expected empty log")
 
 			var wg sync.WaitGroup
 			wg.Add(2)
@@ -45,19 +49,12 @@ func LogTestConcurrent(f NewLogFunc) func(*testing.T) {
 				defer wg.Done()
 
 				src, err := log.Query(tc.specs...)
-				if err != nil {
-					t.Errorf("expected nil error but got %+v", err)
-				}
+				a.NoError(err, "error querying log")
 
 				for i, exp := range tc.result {
 					v, err := src.Next(ctx)
-					if err != nil {
-						t.Errorf("unexpected error %+v", err)
-					}
-
-					if v != exp {
-						t.Errorf("expected result %v but got %v", exp, v)
-					}
+					a.NoError(err, "error in call to Next()")
+					a.Equal(exp, v, "result doesn't match")
 
 					if t.Failed() {
 						t.Log("error in iteration", i)
@@ -70,9 +67,7 @@ func LogTestConcurrent(f NewLogFunc) func(*testing.T) {
 
 				for i, v := range tc.values {
 					err := log.Append(v)
-					if err != nil {
-						t.Errorf("unexpected error %s", err)
-					}
+					a.NoError(err, "error appending to log")
 
 					if t.Failed() {
 						t.Log("error in iteration", i)

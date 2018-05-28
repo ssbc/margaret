@@ -10,7 +10,5 @@ import (
 )
 
 func TestLog(t *testing.T) {
-	for name, newLog := range mtest.NewLogFuncs {
-		t.Run(name, mtest.LogTest(newLog))
-	}
+	mtest.RunTests(t)
 }

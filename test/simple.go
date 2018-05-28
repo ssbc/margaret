@@ -3,6 +3,7 @@ package test // import "cryptoscope.co/go/margaret/test"
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -33,6 +34,12 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			log, err := f(t.Name(), tc.tipe)
 			r.NoError(err, "error creating log")
 			r.NotNil(log, "returned log is nil")
+
+			defer func() {
+				if namer, ok := log.(interface{ FileName() string }); ok {
+					r.NoError(os.Remove(namer.FileName()), "error deleting log after test")
+				}
+			}()
 
 			for _, v := range tc.values {
 				err := log.Append(v)

@@ -13,6 +13,25 @@ type Query interface {
 
 type QuerySpec func(Query) error
 
+func MergeQuerySpec(spec ...QuerySpec) QuerySpec {
+	return func(qry Query) error {
+		for _, f := range spec {
+			err := f(qry)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+func ErrorQuerySpec(err error) QuerySpec {
+	return func(Query) error {
+		return err
+	}
+}
+
 func Gt(s Seq) QuerySpec {
 	return func(q Query) error {
 		return q.Gt(s)
