@@ -8,7 +8,6 @@ import (
 
 	"cryptoscope.co/go/luigi"
 	"cryptoscope.co/go/margaret"
-
 	"github.com/pkg/errors"
 )
 
@@ -27,15 +26,22 @@ type offsetLog struct {
 	framing Framing
 }
 
-func NewOffsetLog(f *os.File, framing Framing, cdc margaret.Codec) margaret.Log {
+func NewOffsetLog(f *os.File, framing Framing, cdc margaret.Codec) (margaret.Log, error) {
 	log := &offsetLog{
 		f:       f,
-		seq:     luigi.NewObservable(margaret.SeqEmpty),
 		framing: framing,
 		codec:   cdc,
 	}
 
-	return log
+	// get current sequence by end / blocksize
+	end, err := f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to seek to end of log-file")
+	}
+	// assumes -1 is SeqEmpty
+	log.seq = luigi.NewObservable(margaret.Seq((end / framing.FrameSize()) - 1))
+
+	return log, nil
 }
 
 func (log *offsetLog) Seq() luigi.Observable {
