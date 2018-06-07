@@ -1,4 +1,4 @@
-package offset
+package test
 
 import (
 	"os"
@@ -10,6 +10,7 @@ import (
 	"cryptoscope.co/go/margaret/codec/json"
 	"cryptoscope.co/go/margaret/framing/basic"
 	"cryptoscope.co/go/margaret/framing/lengthprefixed"
+	"cryptoscope.co/go/margaret/offset"
 	mtest "cryptoscope.co/go/margaret/test"
 )
 
@@ -19,8 +20,8 @@ func init() {
 	}
 
 	framings := map[string]margaret.Framing{
-		"basic":          basic.New32(DefaultFrameSize),
-		"lengthprefixed": lengthprefixed.New32(DefaultFrameSize),
+		"basic":          basic.New32(offset.DefaultFrameSize),
+		"lengthprefixed": lengthprefixed.New32(offset.DefaultFrameSize),
 	}
 
 	buildNewLogFunc := func(framing margaret.Framing, newCodec margaret.NewCodecFunc) mtest.NewLogFunc {
@@ -31,7 +32,7 @@ func init() {
 				return nil, errors.Wrap(err, "error creating database file")
 			}
 
-			return NewOffsetLog(f, framing, newCodec(tipe)), nil
+			return offset.NewOffsetLog(f, framing, newCodec(tipe)), nil
 		}
 	}
 
