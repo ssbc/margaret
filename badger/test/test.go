@@ -1,4 +1,4 @@
-package badger
+package test
 
 import (
 	"io/ioutil"
@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"cryptoscope.co/go/librarian"
+	libadger "cryptoscope.co/go/librarian/badger"
 	"cryptoscope.co/go/librarian/test"
 )
 
@@ -29,7 +30,7 @@ func init() {
 			return nil, errors.Wrap(err, "error opening database")
 		}
 
-		return NewIndex(db, tipe), nil
+		return libadger.NewIndex(db, tipe), nil
 	}
 
 	toSetterIdx := func(f test.NewSeqSetterIndexFunc) test.NewSetterIndexFunc {

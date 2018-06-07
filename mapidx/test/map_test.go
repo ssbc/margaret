@@ -1,4 +1,4 @@
-package mapidx // import "cryptoscope.co/go/librarian/mapidx"
+package test
 
 import (
 	"testing"
