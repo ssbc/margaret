@@ -6,6 +6,14 @@ import (
 
 type Seq int64
 
+func (s Seq) Seq() Seq {
+	return s
+}
+
+func (Seq) Name() string {
+	return "root"
+}
+
 const (
 	SeqEmpty Seq = -1
 )
