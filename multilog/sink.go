@@ -43,7 +43,7 @@ func (slog *sinkLog) Get(addr librarian.Addr) (margaret.Log, error) {
 // Pour calls the processing function to add a value to a sublog.
 func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
 	seq := v.(ValueSeq)
-	err := slog.f(ctx, seq, seq.Value, slog.mlog)
+	err := slog.f(ctx, seq, seq.Value(), slog.mlog)
 	return errors.Wrap(err, "error in processing function")
 }
 

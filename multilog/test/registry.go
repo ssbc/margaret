@@ -1,6 +1,10 @@
 package test
 
-import "testing"
+import (
+	"testing"
+
+	mtest "cryptoscope.co/go/margaret/test"
+)
 
 var NewLogFuncs map[string]NewLogFunc
 
@@ -13,7 +17,11 @@ func Register(name string, f NewLogFunc) {
 }
 
 func RunTests(t *testing.T) {
+	t.Logf("found logs %v", mtest.NewLogFuncs)
+	t.Logf("found multilogs %v", NewLogFuncs)
 	for name, newLog := range NewLogFuncs {
-		t.Run(name, LogTest(newLog))
+		for mName, mNewLog := range mtest.NewLogFuncs {
+			t.Run(name+"/"+mName, SinkTest(newLog, mNewLog))
+		}
 	}
 }

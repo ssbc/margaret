@@ -3,10 +3,9 @@ package test
 import (
 	"testing"
 
-	"cryptoscope.co/go/librarian/test"
+	"cryptoscope.co/go/margaret/multilog/test"
 )
 
 func TestBadger(t *testing.T) {
-	t.Run("SetterIndex", test.RunSetterIndexTests)
-	t.Run("SeqSetterIndex", test.RunSeqSetterIndexTests)
+	t.Run("Sink", test.RunTests)
 }

@@ -7,13 +7,15 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/librarian"
-	libadger "cryptoscope.co/go/librarian/badger"
-	"cryptoscope.co/go/librarian/test"
+	"cryptoscope.co/go/margaret/codec/json"
+	"cryptoscope.co/go/margaret/multilog"
+	mlbadger "cryptoscope.co/go/margaret/multilog/badger"
+	mltest "cryptoscope.co/go/margaret/multilog/test"
+	_ "cryptoscope.co/go/margaret/test/all"
 )
 
 func init() {
-	newSeqSetterIdx := func(name string, tipe interface{}) (librarian.SeqSetterIndex, error) {
+	newMultiLog := func(name string, tipe interface{}) (multilog.MultiLog, error) {
 		dir, err := ioutil.TempDir("", "badger")
 		if err != nil {
 			return nil, errors.Wrap(err, "error creating tempdir")
@@ -30,16 +32,8 @@ func init() {
 			return nil, errors.Wrap(err, "error opening database")
 		}
 
-		return libadger.NewIndex(db, tipe), nil
+		return mlbadger.New(db, tipe, 10, json.New(tipe)), nil
 	}
 
-	toSetterIdx := func(f test.NewSeqSetterIndexFunc) test.NewSetterIndexFunc {
-		return func(name string, tipe interface{}) (librarian.SetterIndex, error) {
-			idx, err := f(name, tipe)
-			return idx, err
-		}
-	}
-
-	test.RegisterSeqSetterIndex("badger", newSeqSetterIdx)
-	test.RegisterSetterIndex("badger", toSetterIdx(newSeqSetterIdx))
+	mltest.Register("badger", newMultiLog)
 }

@@ -13,13 +13,15 @@ import (
 	"cryptoscope.co/go/librarian"
 )
 
-func New(db *badger.DB, tipe interface{}) multilog.MultiLog {
+func New(db *badger.DB, tipe interface{}, prefLen int, codec margaret.Codec) multilog.MultiLog {
 	return &mlog{
 		db:   db,
 		tipe: tipe,
 
 		sublogs: make(map[librarian.Addr]*sublog),
 		curSeq:  -2,
+		prefixLen: prefLen,
+		codec: codec,
 	}
 }
 

@@ -1,15 +1,16 @@
-package test // import "cryptoscope.co/go/margaret/test"
+package test // import "cryptoscope.co/go/margaret/multilog/test"
 
 import (
 	"testing"
 
 	"cryptoscope.co/go/margaret/multilog"
+	mtest "cryptoscope.co/go/margaret/test"
 )
 
-type NewLogFunc func(name string, type interface{}) (multilog.MultiLog, error)
+type NewLogFunc func(name string, tipe interface{}) (multilog.MultiLog, error)
 
-func LogTest(f NewLogFunc) func(*testing.T) {
+func SinkTest(f NewLogFunc, g mtest.NewLogFunc) func(*testing.T) {
 	return func(t *testing.T) {
-		t.Run("Simple", LogTestSimple(f))
+		t.Run("Simple", SinkTestSimple(f, g))
 	}
 }

@@ -106,6 +106,10 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.log.l.Lock()
 	defer qry.log.l.Unlock()
 
+	if qry.cur.seq <= qry.gt || qry.cur.seq < qry.gt {
+		qry.seek(ctx)
+	}
+
 	// no new data yet and non-blocking
 	if qry.cur.next == nil && !qry.live {
 		return nil, luigi.EOS{}

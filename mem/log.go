@@ -116,8 +116,6 @@ func (log *memlog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 		}
 	}
 
-	qry.seek(context.TODO())
-
 	return qry, nil
 }
 
