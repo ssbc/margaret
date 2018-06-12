@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -16,15 +15,14 @@ import (
 	"cryptoscope.co/go/luigi"
 	"cryptoscope.co/go/margaret"
 	"cryptoscope.co/go/margaret/multilog"
-	mtest "cryptoscope.co/go/margaret/test"
 )
 
-func SinkTestSimple(f NewLogFunc, g mtest.NewLogFunc) func(*testing.T) {
+func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 	type testcase struct {
 		tipe    interface{}
 		values  []interface{}
 		specs   []margaret.QuerySpec
-		f       multilog.Func
+		f       func(t *testing.T) multilog.Func
 		result  map[librarian.Addr][]interface{}
 		errStr  string
 		live    bool
@@ -38,45 +36,23 @@ func SinkTestSimple(f NewLogFunc, g mtest.NewLogFunc) func(*testing.T) {
 			ctx := context.Background()
 
 			/*
-				- make log
 				- make multilog and sink
 				- query entire log and pump stream into multilog-sink
 				- append values to log
 				- check if multilog entries match
 			*/
 
-			// make log
-			log, err := g(t.Name(), tc.tipe)
-			r.NoError(err, "error creating log")
-			r.NotNil(log, "returned log is nil")
-			log = multilog.NameLog(log, "root")
-
-			defer func() {
-				if namer, ok := log.(interface{ FileName() string }); ok {
-					a.NoError(os.Remove(namer.FileName()), "error deleting log after test")
-				}
-			}()
 
 			// make multilog
 			mlog, err := f(t.Name(), tc.tipe)
 			r.NoError(err, "error creating multilog")
-				
-			sink := multilog.NewSink(mlog, tc.f)
 
-			// query entire log and pump stream into multilog-sink
-			src, err := log.Query(margaret.Live(true), margaret.Gte(0), margaret.SeqWrap(true), margaret.Limit(len(tc.values)))
-			r.NoError(err, "error querying log")
-
-			go func() {
-				err := luigi.Pump(ctx, sink, src)
-				r.NoError(err, "error pumping from log to multilog-sink")
-			}()
-
+			sink := multilog.NewSink(mlog, tc.f(t))
 			// append values
+			
 			for i, v := range tc.values {
-				seq, err := log.Append(v)
-				r.NoError(err, "error appending to log")
-				r.Equal(margaret.Seq(i), seq, "sequence missmatch")
+				err := sink.Pour(ctx, multilog.WithValue(margaret.Seq(i), v))
+				a.NoError(err, "error pouring into sink")
 			}
 
 			// check if multilog entries match
@@ -98,26 +74,30 @@ func SinkTestSimple(f NewLogFunc, g mtest.NewLogFunc) func(*testing.T) {
 				for _, v := range results {
 					go func() {
 						select {
-						case <-time.After(time.Millisecond):
+						case <-time.After(50 * time.Millisecond):
 							t.Log("canceling context")
 							cancel()
 						case <-waiter:
 						}
 					}()
+					func () {
+						ctx, cancel := context.WithTimeout(ctx, 50 * time.Millisecond)
+						defer cancel()
 
-					v_, err = src.Next(ctx)
-					t.Logf("for prefix %x got value %v and error %v - expected %v", addr, v_, err, v)
-					if tc.errStr == "" {
-						if tc.seqWrap {
-							sw := v.(margaret.SeqWrapper)
-							sw_ := v_.(margaret.SeqWrapper)
+						v_, err = src.Next(ctx)
+						t.Logf("for prefix %x got value %v - expected %v. detailed error: %+v", addr, v_, v, err)
+						if tc.errStr == "" {
+							if tc.seqWrap {
+								sw := v.(margaret.SeqWrapper)
+								sw_ := v_.(margaret.SeqWrapper)
 
-							a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
-							a.Equal(sw.Value(), sw_.Value(), "value doesn't match")
-						} else {
-							a.Equal(v, v, "values don't match")
+								a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
+								a.Equal(sw.Value(), sw_.Value(), "value doesn't match")
+							} else {
+								a.Equal(v, v, "values don't match")
+							}
 						}
-					}
+					}()
 					if err != nil {
 						break
 					}
@@ -153,51 +133,58 @@ func SinkTestSimple(f NewLogFunc, g mtest.NewLogFunc) func(*testing.T) {
 				case waiter <- struct{}{}:
 				}
 			}
+
+			t.Log("sleeping for a second")
+			time.Sleep(1 * time.Second)
 		}
 	}
 
 	tcs := []testcase{
 		{
 			tipe:   margaret.Seq(0),
-			values: count(1, 20),
-			f: func(ctx context.Context, seq multilog.Seq, v interface{}, mlog multilog.MultiLog) error {
-				facs := uniq(factorize(int(v.(margaret.Seq))))
-				for _, fac := range facs {
-					prefixBs := make([]byte, 4)
-					binary.BigEndian.PutUint32(prefixBs, uint32(fac))
-					prefix := librarian.Addr(prefixBs)
-					slog, err := mlog.Get(prefix)
-					if err != nil {
-						return errors.Wrapf(err, "error getting sublog for prefix %d", fac)
+			values: count(0, 20),
+			f: func(t *testing.T) multilog.Func {
+				return func(ctx context.Context, seq multilog.Seq, v interface{}, mlog multilog.MultiLog) (err error) {
+					t.Logf("in f: seq:%v v:%v(%T)\n", seq.Seq(), v, v)
+					defer func() {t.Log("err returned by f:", err)}()
+
+					facs := uniq(factorize(int(v.(margaret.Seq))))
+					for _, fac := range facs {
+						t.Log("in f: loop. fac:", fac)
+
+						prefixBs := make([]byte, 4)
+						binary.BigEndian.PutUint32(prefixBs, uint32(fac))
+						prefix := librarian.Addr(prefixBs)
+
+						var slog margaret.Log
+						slog, err = mlog.Get(prefix)
+						if err != nil {
+							err = errors.Wrapf(err, "error getting sublog for prefix %d", fac)
+							return err
+						}
+
+						_, err = slog.Append(seq.Seq())
+						t.Log("appended", seq.Seq(), "to", fac, "for seq", v, "with prefix", prefixBs)
+						if err != nil {
+							err = errors.Wrapf(err, "error appending to sublog for prefix %d", fac)
+							return err
+						}
 					}
 
-					_, err = slog.Append(seq.Seq())
-					if err != nil {
-						return errors.Wrapf(err, "error appending to sublog for prefix %d", fac)
-					}
+					err = nil
+					return nil
 				}
-
-				return nil
 			},
+			specs: []margaret.QuerySpec{margaret.Live(true)},
+			live: true,
 			result: map[librarian.Addr][]interface{}{
 				librarian.Addr([]byte{0,0,0,2}): []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
 				librarian.Addr([]byte{0,0,0,3}): []interface{}{3, 6, 9, 12, 15, 18},
-				librarian.Addr([]byte{0,0,0,4}): []interface{}{4, 8, 12, 16},
 				librarian.Addr([]byte{0,0,0,5}): []interface{}{5, 10, 15},
-				librarian.Addr([]byte{0,0,0,6}): []interface{}{6, 12, 18},
 				librarian.Addr([]byte{0,0,0,7}): []interface{}{7, 14},
-				librarian.Addr([]byte{0,0,0,8}): []interface{}{8, 16},
-				librarian.Addr([]byte{0,0,0,9}): []interface{}{9, 18},
-				librarian.Addr([]byte{0,0,0,10}): []interface{}{10},
 				librarian.Addr([]byte{0,0,0,11}): []interface{}{11},
-				librarian.Addr([]byte{0,0,0,12}): []interface{}{12},
-				librarian.Addr([]byte{0,0,0,12}): []interface{}{12},
 				librarian.Addr([]byte{0,0,0,13}): []interface{}{13},
-				librarian.Addr([]byte{0,0,0,14}): []interface{}{14},
-				librarian.Addr([]byte{0,0,0,15}): []interface{}{15},
-				librarian.Addr([]byte{0,0,0,16}): []interface{}{16},
 				librarian.Addr([]byte{0,0,0,17}): []interface{}{17},
-				librarian.Addr([]byte{0,0,0,18}): []interface{}{18},
 				librarian.Addr([]byte{0,0,0,19}): []interface{}{19},
 			},
 		},
@@ -219,10 +206,11 @@ func count(from, to int) []interface{} {
 }
 
 func factorize(n int) []int {
+	if n == 0 { return nil }
 	var out []int
 
 	for i := 2; n != 1; i++ {
-		for n % i == 0 {
+		for n!=0 && n % i == 0 {
 			out = append(out, i)
 			n = n/i
 		}

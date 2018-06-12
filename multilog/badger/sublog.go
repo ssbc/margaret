@@ -2,6 +2,7 @@ package badger
 
 import (
 	"encoding/binary"
+	"fmt"
 	"reflect"
 
 	"cryptoscope.co/go/luigi"
@@ -87,9 +88,15 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 		seqBs := make([]byte, 8)
 		binary.BigEndian.PutUint64(seqBs, uint64(seq))
 		key := append(log.prefix, seqBs...)
+		fmt.Println("setting key", key)
 
 		err = txn.Set(key, data)
-		return errors.Wrap(err, "errors setting value")
+		if err != nil {
+			return errors.Wrap(err, "errors setting value")
+		}
+
+		log.seq.Set(seq)
+		return nil
 	})
 	if err != nil {
 		return -2, errors.Wrap(err, "error in write transaction")

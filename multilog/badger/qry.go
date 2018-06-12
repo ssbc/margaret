@@ -3,6 +3,7 @@ package badger
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"sync"
 
 	"cryptoscope.co/go/luigi"
@@ -74,6 +75,12 @@ func (qry *query) SeqWrap(wrap bool) error {
 }
 
 func (qry *query) Next(ctx context.Context) (interface{}, error) {
+	/*
+	fmt.Println("qry.Next called", qry.log.prefix)
+	defer debug.PrintStack()
+	defer fmt.Println("qry.Nwxt returned", qry.log.prefix)
+	*/
+
 	qry.l.Lock()
 	defer qry.l.Unlock()
 
@@ -91,6 +98,7 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 	nextSeqBs := make([]byte, 8)
 	binary.BigEndian.PutUint64(nextSeqBs, uint64(qry.nextSeq))
 	key := append(qry.log.prefix, nextSeqBs...)
+	fmt.Println("getting key", key)
 
 	var v interface{}
 
@@ -113,6 +121,7 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 		if errors.Cause(err) == badger.ErrKeyNotFound {
 			// abort if not a live query, else wait until it's written
 			if !qry.live {
+				fmt.Printf("error cause: %+v\n\n\n", err)
 				return nil, luigi.EOS{}
 			}
 
@@ -124,6 +133,7 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 				func(ctx context.Context, v interface{}, doClose bool) error {
 					if doClose {
 						close(closed)
+						return nil
 					}
 					if v.(margaret.Seq) >= qry.nextSeq {
 						close(wait)
@@ -142,7 +152,7 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 				case <-closed:
 					return errors.New("seq observable closed")
 				case <-ctx.Done():
-					return ctx.Err()
+					return errors.Wrap(ctx.Err(), "cancelled while waiting for value to be written")
 				}
 				return nil
 			}()

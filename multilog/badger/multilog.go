@@ -47,9 +47,19 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 	zeroes := make([]byte, log.prefixLen-len(shortPrefix))
 	prefix := append(zeroes, shortPrefix...)
 
+	log.l.Lock()
+	defer log.l.Unlock()
+
+	slog := log.sublogs[librarian.Addr(prefix)]
+	if slog != nil {
+		return slog, nil
+	}
+
+	// find the current seq
 	var seq margaret.Seq
 	err := log.db.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.IteratorOptions{Reverse: true})
+		defer iter.Close()
 		iter.Rewind()
 		iter.Seek(prefix)
 		if !iter.ValidForPrefix(prefix) {
@@ -69,9 +79,12 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 		return nil, errors.Wrap(err, "error in read transaction")
 	}
 
-	return &sublog{
+	slog = &sublog{
 		mlog:   log,
 		prefix: prefix,
 		seq:    luigi.NewObservable(seq),
-	}, nil
+	}
+
+	log.sublogs[librarian.Addr(prefix)] = slog
+	return slog, nil
 }

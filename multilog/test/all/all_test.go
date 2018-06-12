@@ -6,6 +6,10 @@ import (
 	mltest "cryptoscope.co/go/margaret/multilog/test"
 )
 
-func TestLog(t *testing.T) {
-	mltest.RunTests(t)
+func TestSink(t *testing.T) {
+	mltest.RunSinkTests(t)
+}
+
+func TestMultiLog(t *testing.T) {
+	mltest.RunMultiLogTests(t)
 }
