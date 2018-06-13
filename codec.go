@@ -4,8 +4,7 @@ import (
 	"io"
 )
 
-type NewCodecFunc func(tipe interface{}) Codec
-
+// Codec marshals and unmarshals values and creates encoders and decoders
 type Codec interface {
 	// Marshal encodes a single value and returns the serialized byte slice.
 	Marshal(value interface{}) ([]byte, error)
@@ -17,12 +16,13 @@ type Codec interface {
 	NewEncoder(io.Writer) Encoder
 }
 
+// Decoder decodes values
 type Decoder interface {
 	Decode() (interface{}, error)
 }
 
+// Encoder encodes values
 type Encoder interface {
 	Encode(v interface{}) error
 }
 
-// func (T interface{}) func(rw io.ReadWriter) Codec {...}

@@ -8,6 +8,6 @@ import (
 
 func init() {
 	mtest.Register("mem", func(string, interface{}) (margaret.Log, error) {
-		return mem.NewMemoryLog(), nil
+		return mem.New(), nil
 	})
 }

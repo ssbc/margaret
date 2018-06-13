@@ -35,7 +35,6 @@ func (f *frame32) DecodeFrame(block []byte) ([]byte, error) {
 		return nil, errors.New("frame sizes don't match")
 	}
 	return block[4 : sizeStart+4], nil
-
 }
 
 func (f *frame32) EncodeFrame(data []byte) ([]byte, error) {

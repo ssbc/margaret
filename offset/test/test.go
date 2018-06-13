@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	codecs := map[string]margaret.NewCodecFunc{
+	codecs := map[string]mtest.NewCodecFunc{
 		"json": json.New,
 	}
 
@@ -24,7 +24,7 @@ func init() {
 		"lengthprefixed": lengthprefixed.New32(offset.DefaultFrameSize),
 	}
 
-	buildNewLogFunc := func(framing margaret.Framing, newCodec margaret.NewCodecFunc) mtest.NewLogFunc {
+	buildNewLogFunc := func(framing margaret.Framing, newCodec mtest.NewCodecFunc) mtest.NewLogFunc {
 		return func(name string, tipe interface{}) (margaret.Log, error) {
 			name = strings.Replace(name, "/", "_", -1)
 			f, err := os.Create(name)
@@ -32,7 +32,7 @@ func init() {
 				return nil, errors.Wrap(err, "error creating database file")
 			}
 
-			return offset.NewOffsetLog(f, framing, newCodec(tipe))
+			return offset.New(f, framing, newCodec(tipe))
 		}
 	}
 

@@ -22,7 +22,7 @@ func TestReadWrite(t *testing.T) {
 	f, err := ioutil.TempFile("", t.Name())
 	r.NoError(err)
 
-	log, err := NewOffsetLog(f, lengthprefixed.New32(4096), mjson.New(&testEvent{}))
+	log, err := New(f, lengthprefixed.New32(4096), mjson.New(&testEvent{}))
 	r.NoError(err, "error during log creation")
 
 	// fill
@@ -63,7 +63,7 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	f, err := ioutil.TempFile("", t.Name())
 	r.NoError(err)
 
-	log, err := NewOffsetLog(f, lengthprefixed.New32(4096), mjson.New(&testEvent{}))
+	log, err := New(f, lengthprefixed.New32(4096), mjson.New(&testEvent{}))
 	r.NoError(err, "error during log creation")
 
 	// fill
@@ -85,7 +85,7 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	log = nil
 	f, err = os.OpenFile(name, os.O_RDWR, 0600)
 	r.NoError(err, "failed to re-open file")
-	log, err = NewOffsetLog(f, lengthprefixed.New32(4096), mjson.New(&testEvent{}))
+	log, err = New(f, lengthprefixed.New32(4096), mjson.New(&testEvent{}))
 	r.NoError(err, "error during log creation")
 
 	// fill again
@@ -100,7 +100,7 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	log = nil
 	f, err = os.Open(name)
 	r.NoError(err, "failed to re-open file")
-	log, err = NewOffsetLog(f, lengthprefixed.New32(4096), mjson.New(&testEvent{}))
+	log, err = New(f, lengthprefixed.New32(4096), mjson.New(&testEvent{}))
 	r.NoError(err, "error during log creation")
 
 	currSeq, err := log.Seq().Value()

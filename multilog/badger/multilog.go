@@ -13,6 +13,7 @@ import (
 	"cryptoscope.co/go/librarian"
 )
 
+// New returns a new badger-backed multilog with maximum prefix length prefLen and given codec.
 func New(db *badger.DB, tipe interface{}, prefLen int, codec margaret.Codec) multilog.MultiLog {
 	return &mlog{
 		db:   db,

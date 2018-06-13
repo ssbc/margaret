@@ -11,11 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// DefaultFrameSize is the default frame size.
 const DefaultFrameSize = 4096
-
-type Framing interface {
-	margaret.Framing
-}
 
 type offsetLog struct {
 	l sync.Mutex
@@ -23,10 +20,11 @@ type offsetLog struct {
 
 	seq     luigi.Observable
 	codec   margaret.Codec
-	framing Framing
+	framing margaret.Framing
 }
 
-func NewOffsetLog(f *os.File, framing Framing, cdc margaret.Codec) (margaret.Log, error) {
+// New returns a new offset log.
+func New(f *os.File, framing margaret.Framing, cdc margaret.Codec) (margaret.Log, error) {
 	log := &offsetLog{
 		f:       f,
 		framing: framing,

@@ -50,7 +50,8 @@ type memlog struct {
 	head, tail *memlogElem
 }
 
-func NewMemoryLog() margaret.Log {
+// New returns a new in-memory log
+func New() margaret.Log {
 	root := &memlogElem{
 		seq:  margaret.SeqEmpty,
 		wait: make(chan struct{}),

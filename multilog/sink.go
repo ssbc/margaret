@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Func is a processing function that consumes a stream and sets values in the multilog.
 type Func func(ctx context.Context, seq Seq, value interface{}, mlog MultiLog) error
 
 // Sink is both a multilog and a luigi sink. Pouring values into it will append values to the multilog, usually by calling a user-defined processing function.
