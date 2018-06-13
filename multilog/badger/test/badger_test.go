@@ -7,5 +7,7 @@ import (
 )
 
 func TestBadger(t *testing.T) {
-	t.Run("Sink", test.RunTests)
+	t.Run("SubLog", test.RunSubLogTests)
+	t.Run("MultiLog", test.RunMultiLogTests)
+	t.Run("Sink", test.RunSinkTests)
 }

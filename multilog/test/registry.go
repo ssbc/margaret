@@ -27,3 +27,10 @@ func RunMultiLogTests(t *testing.T) {
 		t.Run(name, MultiLogTest(newLog))
 	}
 }
+
+func RunSubLogTests(t *testing.T) {
+	t.Logf("found multilogs %v", NewLogFuncs)
+	for name, newLog := range NewLogFuncs {
+		t.Run(name, SubLogTest(newLog))
+	}
+}

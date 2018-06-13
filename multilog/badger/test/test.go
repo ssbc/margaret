@@ -11,7 +11,6 @@ import (
 	"cryptoscope.co/go/margaret/multilog"
 	mlbadger "cryptoscope.co/go/margaret/multilog/badger"
 	mltest "cryptoscope.co/go/margaret/multilog/test"
-	_ "cryptoscope.co/go/margaret/test/all"
 )
 
 func init() {

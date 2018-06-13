@@ -13,3 +13,7 @@ func TestSink(t *testing.T) {
 func TestMultiLog(t *testing.T) {
 	mltest.RunMultiLogTests(t)
 }
+
+func TestSubLog(t *testing.T) {
+	mltest.RunSubLogTests(t)
+}

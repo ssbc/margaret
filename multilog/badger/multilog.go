@@ -18,18 +18,18 @@ func New(db *badger.DB, tipe interface{}, prefLen int, codec margaret.Codec) mul
 		db:   db,
 		tipe: tipe,
 
-		sublogs: make(map[librarian.Addr]*sublog),
-		curSeq:  -2,
+		sublogs:   make(map[librarian.Addr]*sublog),
+		curSeq:    -2,
 		prefixLen: prefLen,
-		codec: codec,
+		codec:     codec,
 	}
 }
 
 type mlog struct {
 	l sync.Mutex
 
-	db   *badger.DB
-	tipe interface{}
+	db    *badger.DB
+	tipe  interface{}
 	codec margaret.Codec
 
 	prefixLen int

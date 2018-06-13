@@ -19,3 +19,9 @@ func MultiLogTest(f NewLogFunc) func(*testing.T) {
 		t.Run("Simple", MultiLogTestSimple(f))
 	}
 }
+
+func SubLogTest(f NewLogFunc) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Run("Get", SubLogTestGet(f))
+	}
+}

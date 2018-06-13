@@ -2,7 +2,6 @@ package badger
 
 import (
 	"encoding/binary"
-	"fmt"
 	"reflect"
 
 	"cryptoscope.co/go/luigi"
@@ -55,7 +54,8 @@ func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	qry := &query{
 		log: log,
 
-		lt:  margaret.SeqEmpty,
+		lt:      margaret.SeqEmpty,
+		nextSeq: margaret.SeqEmpty,
 
 		limit: -1, //i.e. no limit
 	}
@@ -88,7 +88,6 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 		seqBs := make([]byte, 8)
 		binary.BigEndian.PutUint64(seqBs, uint64(seq))
 		key := append(log.prefix, seqBs...)
-		fmt.Println("setting key", key)
 
 		err = txn.Set(key, data)
 		if err != nil {

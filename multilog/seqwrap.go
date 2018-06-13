@@ -41,7 +41,7 @@ func Push(lower Seq, newHead Seq) SeqStack {
 }
 
 type seqStack struct {
-	seq Seq
+	seq   Seq
 	lower Seq
 }
 
@@ -57,9 +57,9 @@ func (seq *seqStack) Name() string {
 	return seq.seq.Name()
 }
 
-type ValueSeq interface{
+type ValueSeq interface {
 	Seq
-	
+
 	Value() interface{}
 }
 
@@ -74,18 +74,18 @@ func WithValue(seq Seq, value interface{}) ValueSeq {
 		if !ok {
 			break
 		}
-		
+
 		seq = next.Pop()
 	}
-	
+
 	return valSeq{
-		seq: seq,
+		seq:   seq,
 		value: value,
 	}
 }
 
 type valSeq struct {
-	seq Seq
+	seq   Seq
 	value interface{}
 }
 

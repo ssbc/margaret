@@ -3,7 +3,6 @@ package badger
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"sync"
 
 	"cryptoscope.co/go/luigi"
@@ -13,7 +12,7 @@ import (
 )
 
 type query struct {
-	l sync.Mutex
+	l   sync.Mutex
 	log *sublog
 
 	nextSeq, lt margaret.Seq
@@ -75,12 +74,6 @@ func (qry *query) SeqWrap(wrap bool) error {
 }
 
 func (qry *query) Next(ctx context.Context) (interface{}, error) {
-	/*
-	fmt.Println("qry.Next called", qry.log.prefix)
-	defer debug.PrintStack()
-	defer fmt.Println("qry.Nwxt returned", qry.log.prefix)
-	*/
-
 	qry.l.Lock()
 	defer qry.l.Unlock()
 
@@ -93,12 +86,17 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 		qry.nextSeq = 0
 	}
 
+	if qry.lt != margaret.SeqEmpty {
+		if qry.nextSeq >= qry.lt {
+			return nil, luigi.EOS{}
+		}
+	}
+
 	// TODO: use iterator instead of getting sequentially
 
 	nextSeqBs := make([]byte, 8)
 	binary.BigEndian.PutUint64(nextSeqBs, uint64(qry.nextSeq))
 	key := append(qry.log.prefix, nextSeqBs...)
-	fmt.Println("getting key", key)
 
 	var v interface{}
 
@@ -121,7 +119,6 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 		if errors.Cause(err) == badger.ErrKeyNotFound {
 			// abort if not a live query, else wait until it's written
 			if !qry.live {
-				fmt.Printf("error cause: %+v\n\n\n", err)
 				return nil, luigi.EOS{}
 			}
 
