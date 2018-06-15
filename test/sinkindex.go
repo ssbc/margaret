@@ -66,9 +66,12 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		}()
 
 		// put some values into the log
-		a.NoError(log.Append("boring string"), "error appending")
-		a.NoError(log.Append("another boring string"), "error appending")
-		a.NoError(log.Append("mildly interesting string"), "error appending")
+		_, err = log.Append("boring string")
+		a.NoError(err, "error appending")
+		_, err = log.Append("another boring string")
+		a.NoError(err, "error appending")
+		_, err = log.Append("mildly interesting string")
+		a.NoError(err, "error appending")
 
 		// pump the log into the indexer
 		src, err := log.Query(idx.QuerySpec())
@@ -94,8 +97,10 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		a.Equal("another boring string", v)
 
 		// put some more values into the log
-		a.NoError(log.Append("so-so string"), "error appending")
-		a.NoError(log.Append("highly interesting string"), "error appending")
+		_, err = log.Append("so-so string")
+		a.NoError(err, "error appending")
+		_, err = log.Append("highly interesting string")
+		a.NoError(err, "error appending")
 
 		// pump log values into the indexer
 		src, err = log.Query(idx.QuerySpec())
