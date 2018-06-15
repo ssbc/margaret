@@ -11,9 +11,9 @@ import (
 	ugorjiCodec "github.com/ugorji/go/codec"
 )
 
-// NewCodec creates a msgpack codec
+// New creates a msgpack codec
 // tipe is required because our Decode() interface doesn't take an argument
-func NewCodec(tipe interface{}) margaret.Codec {
+func New(tipe interface{}) margaret.Codec {
 	ch := ugorjiCodec.MsgpackHandle{}
 	ch.Canonical = true
 

@@ -25,4 +25,3 @@ type Decoder interface {
 type Encoder interface {
 	Encode(v interface{}) error
 }
-

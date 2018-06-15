@@ -8,6 +8,7 @@ import (
 
 	"cryptoscope.co/go/margaret"
 	"cryptoscope.co/go/margaret/codec/json"
+	"cryptoscope.co/go/margaret/codec/msgpack"
 	"cryptoscope.co/go/margaret/framing/basic"
 	"cryptoscope.co/go/margaret/framing/lengthprefixed"
 	"cryptoscope.co/go/margaret/offset"
@@ -16,7 +17,8 @@ import (
 
 func init() {
 	codecs := map[string]mtest.NewCodecFunc{
-		"json": json.New,
+		"json":    json.New,
+		"msgpack": msgpack.New,
 	}
 
 	framings := map[string]margaret.Framing{
