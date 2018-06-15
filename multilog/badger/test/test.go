@@ -31,7 +31,7 @@ func init() {
 			return nil, errors.Wrap(err, "error opening database")
 		}
 
-		return mlbadger.New(db, tipe, 10, json.New(tipe)), nil
+		return mlbadger.New(db, tipe, json.New(tipe)), nil
 	}
 
 	mltest.Register("badger", newMultiLog)

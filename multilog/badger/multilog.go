@@ -13,15 +13,14 @@ import (
 	"go.cryptoscope.co/librarian"
 )
 
-// New returns a new badger-backed multilog with maximum prefix length prefLen and given codec.
-func New(db *badger.DB, tipe interface{}, prefLen int, codec margaret.Codec) multilog.MultiLog {
+// New returns a new badger-backed multilog with given codec.
+func New(db *badger.DB, tipe interface{}, codec margaret.Codec) multilog.MultiLog {
 	return &mlog{
 		db:   db,
 		tipe: tipe,
 
 		sublogs:   make(map[librarian.Addr]*sublog),
 		curSeq:    -2,
-		prefixLen: prefLen,
 		codec:     codec,
 	}
 }
@@ -33,20 +32,17 @@ type mlog struct {
 	tipe  interface{}
 	codec margaret.Codec
 
-	prefixLen int
-
 	sublogs map[librarian.Addr]*sublog
 	curSeq  margaret.Seq
 }
 
 func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 	shortPrefix := []byte(addr)
-	if len(shortPrefix) > log.prefixLen {
-		return nil, errors.Errorf("supplied prefix longer than maximum prefix length %d", log.prefixLen)
+	if len(shortPrefix) > 255 {
+		return nil, errors.New("supplied address than maximum prefix length 255")
 	}
 
-	zeroes := make([]byte, log.prefixLen-len(shortPrefix))
-	prefix := append(zeroes, shortPrefix...)
+	prefix := append([]byte{byte(len(shortPrefix))}, shortPrefix...)
 
 	log.l.Lock()
 	defer log.l.Unlock()
