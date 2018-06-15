@@ -1,9 +1,9 @@
-package test // import "cryptoscope.co/go/margaret/test"
+package test // import "go.cryptoscope.co/margaret/test"
 
 import (
 	"testing"
 
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/margaret"
 )
 
 type NewLogFunc func(string, interface{}) (margaret.Log, error)

@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"reflect"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
 )

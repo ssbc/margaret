@@ -1,9 +1,9 @@
-package basic // import "cryptoscope.co/go/margaret/framing/basic"
+package basic // import "go.cryptoscope.co/margaret/framing/basic"
 
 import (
 	"encoding/binary"
 
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/margaret"
 
 	"github.com/pkg/errors"
 )

@@ -1,11 +1,11 @@
-package json // import "cryptoscope.co/go/margaret/codec/json"
+package json // import "go.cryptoscope.co/margaret/codec/json"
 
 import (
 	"encoding/json"
 	"io"
 	"reflect"
 
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/margaret"
 )
 
 // New creates a json codec that decodes into values of type tipe.

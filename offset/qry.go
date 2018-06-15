@@ -1,12 +1,12 @@
-package offset // import "cryptoscope.co/go/margaret/offset"
+package offset // import "go.cryptoscope.co/margaret/offset"
 
 import (
 	"context"
 	"io"
 	"sync"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 
 	"github.com/pkg/errors"
 )

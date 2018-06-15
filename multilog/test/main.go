@@ -1,9 +1,9 @@
-package test // import "cryptoscope.co/go/margaret/multilog/test"
+package test // import "go.cryptoscope.co/margaret/multilog/test"
 
 import (
 	"testing"
 
-	"cryptoscope.co/go/margaret/multilog"
+	"go.cryptoscope.co/margaret/multilog"
 )
 
 type NewLogFunc func(name string, tipe interface{}) (multilog.MultiLog, error)

@@ -1,5 +1,5 @@
-module "cryptoscope.co/go/margaret"
+module "go.cryptoscope.co/margaret"
 
 require (
-	"cryptoscope.co/go/luigi" v0.0.0-20180317172528-57258f6d38fb
+	"go.cryptoscope.co/luigi" v0.0.0-20180317172528-57258f6d38fb
 )

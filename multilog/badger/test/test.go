@@ -7,10 +7,10 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/margaret/codec/json"
-	"cryptoscope.co/go/margaret/multilog"
-	mlbadger "cryptoscope.co/go/margaret/multilog/badger"
-	mltest "cryptoscope.co/go/margaret/multilog/test"
+	"go.cryptoscope.co/margaret/codec/json"
+	"go.cryptoscope.co/margaret/multilog"
+	mlbadger "go.cryptoscope.co/margaret/multilog/badger"
+	mltest "go.cryptoscope.co/margaret/multilog/test"
 )
 
 func init() {

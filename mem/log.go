@@ -1,11 +1,11 @@
-package mem // import "cryptoscope.co/go/margaret/mem"
+package mem // import "go.cryptoscope.co/margaret/mem"
 
 import (
 	"context"
 	"sync"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 )
 
 // TODO optimization idea: skip list

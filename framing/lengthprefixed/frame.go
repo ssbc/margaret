@@ -1,9 +1,9 @@
-package lengthprefixed // import "cryptoscope.co/go/margaret/framing/lengthprefixed"
+package lengthprefixed // import "go.cryptoscope.co/margaret/framing/lengthprefixed"
 
 import (
 	"encoding/binary"
 
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/margaret"
 
 	"github.com/pkg/errors"
 )

@@ -3,7 +3,7 @@ package all
 import (
 	"testing"
 
-	mtest "cryptoscope.co/go/margaret/test"
+	mtest "go.cryptoscope.co/margaret/test"
 )
 
 func TestLog(t *testing.T) {

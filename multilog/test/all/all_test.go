@@ -3,7 +3,7 @@ package all
 import (
 	"testing"
 
-	mltest "cryptoscope.co/go/margaret/multilog/test"
+	mltest "go.cryptoscope.co/margaret/multilog/test"
 )
 
 func TestSink(t *testing.T) {

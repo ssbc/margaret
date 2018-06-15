@@ -2,8 +2,8 @@ package all
 
 import (
 	// import to register testing helpers
-	_ "cryptoscope.co/go/margaret/mem/test"
-	_ "cryptoscope.co/go/margaret/offset/test"
+	_ "go.cryptoscope.co/margaret/mem/test"
+	_ "go.cryptoscope.co/margaret/offset/test"
 
-	_ "cryptoscope.co/go/margaret/multilog/badger/test"
+	_ "go.cryptoscope.co/margaret/multilog/badger/test"
 )

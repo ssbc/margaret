@@ -6,13 +6,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/margaret"
-	"cryptoscope.co/go/margaret/codec/json"
-	"cryptoscope.co/go/margaret/codec/msgpack"
-	"cryptoscope.co/go/margaret/framing/basic"
-	"cryptoscope.co/go/margaret/framing/lengthprefixed"
-	"cryptoscope.co/go/margaret/offset"
-	mtest "cryptoscope.co/go/margaret/test"
+	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/codec/json"
+	"go.cryptoscope.co/margaret/codec/msgpack"
+	"go.cryptoscope.co/margaret/framing/basic"
+	"go.cryptoscope.co/margaret/framing/lengthprefixed"
+	"go.cryptoscope.co/margaret/offset"
+	mtest "go.cryptoscope.co/margaret/test"
 )
 
 func init() {

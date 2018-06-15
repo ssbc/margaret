@@ -1,11 +1,11 @@
-package msgpack // import "cryptoscope.co/go/margaret/codec/msgpack"
+package msgpack // import "go.cryptoscope.co/margaret/codec/msgpack"
 
 import (
 	"bytes"
 	"io"
 	"reflect"
 
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/margaret"
 
 	"github.com/pkg/errors"
 	ugorjiCodec "github.com/ugorji/go/codec"

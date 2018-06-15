@@ -1,6 +1,6 @@
 package multilog
 
-import "cryptoscope.co/go/margaret"
+import "go.cryptoscope.co/margaret"
 
 // Seq is a named sequence number.
 type Seq interface {

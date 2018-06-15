@@ -1,13 +1,13 @@
-package mem // import "cryptoscope.co/go/margaret/mem"
+package mem // import "go.cryptoscope.co/margaret/mem"
 
 import (
 	"context"
 	"fmt"
 
-	"cryptoscope.co/go/luigi"
+	"go.cryptoscope.co/luigi"
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/margaret"
 )
 
 type memlogQuery struct {

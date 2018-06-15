@@ -1,8 +1,8 @@
 package multilog
 
 import (
-	"cryptoscope.co/go/librarian"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/margaret"
 )
 
 // MultiLog is a collection of logs, keyed by a librarian.Addr

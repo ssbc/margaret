@@ -1,16 +1,16 @@
-package badger // import "cryptoscope.co/go/margaret/multilog/badger"
+package badger // import "go.cryptoscope.co/margaret/multilog/badger"
 
 import (
 	"encoding/binary"
 	"sync"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
-	"cryptoscope.co/go/margaret/multilog"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/multilog"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/librarian"
+	"go.cryptoscope.co/librarian"
 )
 
 // New returns a new badger-backed multilog with maximum prefix length prefLen and given codec.

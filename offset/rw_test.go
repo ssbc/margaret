@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"cryptoscope.co/go/margaret"
-	mjson "cryptoscope.co/go/margaret/codec/json"
-	"cryptoscope.co/go/margaret/framing/lengthprefixed"
+	"go.cryptoscope.co/margaret"
+	mjson "go.cryptoscope.co/margaret/codec/json"
+	"go.cryptoscope.co/margaret/framing/lengthprefixed"
 	"github.com/stretchr/testify/require"
 )
 

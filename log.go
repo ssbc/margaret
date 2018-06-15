@@ -1,7 +1,7 @@
-package margaret // import "cryptoscope.co/go/margaret"
+package margaret // import "go.cryptoscope.co/margaret"
 
 import (
-	"cryptoscope.co/go/luigi"
+	"go.cryptoscope.co/luigi"
 )
 
 // Seq is the sequence number of an item in the log

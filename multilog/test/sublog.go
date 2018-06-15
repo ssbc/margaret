@@ -1,4 +1,4 @@
-package test // import "cryptoscope.co/go/margaret/multilog/test"
+package test // import "go.cryptoscope.co/margaret/multilog/test"
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"cryptoscope.co/go/librarian"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/margaret"
 )
 
 func SubLogTestGet(f NewLogFunc) func(*testing.T) {

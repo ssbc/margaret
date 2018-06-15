@@ -3,8 +3,8 @@ package multilog
 import (
 	"context"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 	"github.com/pkg/errors"
 )
 

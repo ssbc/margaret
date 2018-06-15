@@ -1,9 +1,9 @@
 package test
 
 import (
-	"cryptoscope.co/go/margaret"
-	"cryptoscope.co/go/margaret/mem"
-	mtest "cryptoscope.co/go/margaret/test"
+	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/mem"
+	mtest "go.cryptoscope.co/margaret/test"
 )
 
 func init() {

@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"cryptoscope.co/go/margaret/multilog/test"
+	"go.cryptoscope.co/margaret/multilog/test"
 )
 
 func TestBadger(t *testing.T) {

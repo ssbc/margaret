@@ -1,4 +1,4 @@
-package margaret // import "cryptoscope.co/go/margaret"
+package margaret // import "go.cryptoscope.co/margaret"
 
 import (
 	"io"

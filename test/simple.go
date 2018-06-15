@@ -1,4 +1,4 @@
-package test // import "cryptoscope.co/go/margaret/test"
+package test // import "go.cryptoscope.co/margaret/test"
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 )
 
 func LogTestSimple(f NewLogFunc) func(*testing.T) {
