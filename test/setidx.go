@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"cryptoscope.co/go/librarian"
-	"cryptoscope.co/go/luigi"
+	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/luigi"
 )
 
 type NewSetterIndexFunc func(name string, tipe interface{}) (librarian.SetterIndex, error)

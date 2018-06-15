@@ -1,10 +1,10 @@
-package librarian // import "cryptoscope.co/go/librarian"
+package librarian // import "go.cryptoscope.co/librarian"
 
 import (
 	"context"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 )
 
 // Addr is an address (or key) in the index.

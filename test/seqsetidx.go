@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"cryptoscope.co/go/librarian"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/margaret"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -3,7 +3,7 @@ package all
 import (
 	"testing"
 
-	ltest "cryptoscope.co/go/librarian/test"
+	ltest "go.cryptoscope.co/librarian/test"
 )
 
 func Test(t *testing.T) {

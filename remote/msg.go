@@ -3,9 +3,9 @@ package remote
 import (
 	"context"
 
-	"cryptoscope.co/go/luigi"
+	"go.cryptoscope.co/luigi"
 
-	"cryptoscope.co/go/librarian"
+	"go.cryptoscope.co/librarian"
 )
 
 // MsgType is either "set" or "delete"

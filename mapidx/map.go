@@ -1,14 +1,14 @@
-package mapidx // import "cryptoscope.co/go/librarian/mapidx"
+package mapidx // import "go.cryptoscope.co/librarian/mapidx"
 
 import (
 	"context"
 	"sync"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/librarian"
+	"go.cryptoscope.co/librarian"
 )
 
 func New() librarian.SeqSetterIndex {

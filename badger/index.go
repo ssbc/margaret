@@ -1,4 +1,4 @@
-package badger // import "cryptoscope.co/go/librarian/badger"
+package badger // import "go.cryptoscope.co/librarian/badger"
 
 import (
 	"context"
@@ -7,12 +7,12 @@ import (
 	"reflect"
 	"sync"
 
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/librarian"
+	"go.cryptoscope.co/librarian"
 )
 
 func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {

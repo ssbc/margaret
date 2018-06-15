@@ -7,9 +7,9 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/librarian"
-	libadger "cryptoscope.co/go/librarian/badger"
-	"cryptoscope.co/go/librarian/test"
+	"go.cryptoscope.co/librarian"
+	libadger "go.cryptoscope.co/librarian/badger"
+	"go.cryptoscope.co/librarian/test"
 )
 
 func init() {

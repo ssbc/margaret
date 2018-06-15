@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"cryptoscope.co/go/librarian"
-	"cryptoscope.co/go/luigi"
-	"cryptoscope.co/go/margaret"
-	mtest "cryptoscope.co/go/margaret/test"
+	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
+	mtest "go.cryptoscope.co/margaret/test"
 )
 
 type NewSinkIndexFunc func(name string, tipe interface{}, f librarian.StreamProcFunc) (librarian.SinkIndex, error)

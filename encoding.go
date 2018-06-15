@@ -1,4 +1,4 @@
-package librarian // import "cryptoscope.co/go/librarian"
+package librarian // import "go.cryptoscope.co/librarian"
 
 type Marshaler interface {
 	Marshal() ([]byte, error)

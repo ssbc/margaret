@@ -3,10 +3,10 @@ package remote
 import (
 	"context"
 
-	"cryptoscope.co/go/luigi"
+	"go.cryptoscope.co/luigi"
 	"github.com/pkg/errors"
 
-	"cryptoscope.co/go/librarian"
+	"go.cryptoscope.co/librarian"
 )
 
 func NewSetter(sink luigi.Sink) librarian.Setter {

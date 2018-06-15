@@ -3,7 +3,7 @@ package librarian
 import (
 	"sync"
 
-	"cryptoscope.co/go/luigi"
+	"go.cryptoscope.co/luigi"
 )
 
 // NewObservable returns a regular observable that calls f when the last registration is cancelled.

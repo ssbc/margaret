@@ -1,7 +1,7 @@
-module "cryptoscope.co/go/librarian"
+module "go.cryptoscope.co/librarian"
 
 require (
-	"cryptoscope.co/go/luigi" v0.0.0-20180404224940-c97d75a8bb56
+	"go.cryptoscope.co/luigi" v0.0.0-20180404224940-c97d75a8bb56
 	"github.com/AndreasBriese/bbloom" v0.0.0-20170702084017-28f7e881ca57
 	"github.com/dgraph-io/badger" v1.3.0
 	"github.com/dgryski/go-farm" v0.0.0-20180109070241-2de33835d102

@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"cryptoscope.co/go/librarian/test"
+	"go.cryptoscope.co/librarian/test"
 )
 
 func TestMap(t *testing.T) {

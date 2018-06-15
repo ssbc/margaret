@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	mtest "cryptoscope.co/go/margaret/test"
+	mtest "go.cryptoscope.co/margaret/test"
 )
 
 var (
