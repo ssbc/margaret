@@ -57,7 +57,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 
 			// check if multilog entries match
 			for addr, results := range tc.result {
-				slog, err := mlog.Get(addr)
+				slog, err := sink.Get(addr)
 				r.NoError(err, "error getting sublog")
 				r.NotNil(slog, "retrieved sublog is nil")
 
