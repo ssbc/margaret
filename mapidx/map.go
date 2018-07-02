@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	"github.com/pkg/errors"
 
 	"go.cryptoscope.co/librarian"
 )
@@ -14,7 +14,7 @@ import (
 func New() librarian.SeqSetterIndex {
 	return &mapSetterIndex{
 		m:      make(map[librarian.Addr]luigi.Observable),
-		curSeq: -1,
+		curSeq: margaret.SeqEmpty,
 	}
 }
 

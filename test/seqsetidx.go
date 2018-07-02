@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/margaret"
-	"github.com/stretchr/testify/assert"
 )
 
 type NewSeqSetterIndexFunc func(name string, tipe interface{}) (librarian.SeqSetterIndex, error)
@@ -29,14 +29,14 @@ func TestSeqSetterIndexSequential(newIdx NewSeqSetterIndexFunc) func(*testing.T)
 
 		seq, err := idx.GetSeq()
 		a.NoError(err, "returned by GetSeq before setting")
-		a.Equal(margaret.Seq(-1), seq, "returned by GetSeq before setting")
+		a.Equal(margaret.BaseSeq(-1), seq, "returned by GetSeq before setting")
 
 		err = idx.Set(ctx, "test", "omg what is this")
 		if err != nil {
 			t.Error("error setting value", err)
 		}
 
-		err = idx.SetSeq(0)
+		err = idx.SetSeq(margaret.BaseSeq(0))
 		a.NoError(err, "returned by SetSeq")
 
 		obv, err := idx.Get(ctx, "test")
@@ -46,7 +46,7 @@ func TestSeqSetterIndexSequential(newIdx NewSeqSetterIndexFunc) func(*testing.T)
 
 		seq, err = idx.GetSeq()
 		a.NoError(err, "returned by GetSeq after setting")
-		a.Equal(margaret.Seq(0), seq, "returned by GetSeq after setting")
+		a.Equal(margaret.BaseSeq(0), seq, "returned by GetSeq after setting")
 
 		v, err := obv.Value()
 		if err != nil {

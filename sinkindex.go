@@ -3,9 +3,9 @@ package librarian
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	"github.com/pkg/errors"
 )
 
 type StreamProcFunc func(context.Context, margaret.Seq, interface{}, SetterIndex) error

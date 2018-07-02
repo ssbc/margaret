@@ -7,10 +7,10 @@ import (
 	"reflect"
 	"sync"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 
 	"go.cryptoscope.co/librarian"
 )
@@ -20,7 +20,7 @@ func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
 		db:     db,
 		tipe:   tipe,
 		obvs:   make(map[librarian.Addr]luigi.Observable),
-		curSeq: -2,
+		curSeq: margaret.BaseSeq(-2),
 	}
 }
 
@@ -161,7 +161,7 @@ func (idx *index) SetSeq(seq margaret.Seq) error {
 		addr librarian.Addr = "__current_observable"
 	)
 
-	binary.BigEndian.PutUint64(raw, uint64(seq))
+	binary.BigEndian.PutUint64(raw, uint64(seq.Seq()))
 
 	err = idx.db.Update(func(txn *badger.Txn) error {
 		err := txn.Set([]byte(addr), raw)
@@ -185,7 +185,7 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
-	if idx.curSeq != -2 {
+	if idx.curSeq.Seq() != -2 {
 		return idx.curSeq, nil
 	}
 
@@ -204,16 +204,16 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 			return errors.Errorf("expected data of length 8, got %v", l)
 		}
 
-		idx.curSeq = margaret.Seq(binary.BigEndian.Uint64(data))
+		idx.curSeq = margaret.BaseSeq(binary.BigEndian.Uint64(data))
 
 		return nil
 	})
 
 	if err != nil {
 		if errors.Cause(err) == badger.ErrKeyNotFound {
-			return -1, nil
+			return margaret.SeqEmpty, nil
 		} else {
-			return 0, errors.Wrap(err, "error in badger transaction (view)")
+			return margaret.BaseSeq(0), errors.Wrap(err, "error in badger transaction (view)")
 		}
 	}
 

@@ -30,7 +30,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		ctx := context.Background()
 
 		// track this to check that we get every sequence number just once
-		var lastSeq margaret.Seq = -1
+		var lastSeq margaret.BaseSeq = -1
 
 		// define indexing function
 		f := func(ctx context.Context, seq margaret.Seq, v interface{}, idx librarian.SetterIndex) error {
@@ -38,7 +38,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 			lastSeq++
 
 			if strings.Contains(v.(string), "interesting") {
-				return idx.Set(ctx, "interesting" , v)
+				return idx.Set(ctx, "interesting", v)
 			} else if strings.Contains(v.(string), "boring") {
 				return idx.Set(ctx, "boring", v)
 			}
