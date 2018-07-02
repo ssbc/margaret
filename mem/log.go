@@ -11,7 +11,7 @@ import (
 // TODO optimization idea: skip list
 type memlogElem struct {
 	v    interface{}
-	seq  margaret.Seq
+	seq  margaret.BaseSeq
 	next *memlogElem
 
 	wait chan struct{}
@@ -78,15 +78,15 @@ func (log *memlog) Get(s margaret.Seq) (interface{}, error) {
 		cur = log.head
 	)
 
-	for cur.seq < s && cur.next != nil {
+	for cur.seq.Seq() < s.Seq() && cur.next != nil {
 		cur = cur.next
 	}
 
-	if cur.seq < s {
+	if cur.seq.Seq() < s.Seq() {
 		return nil, margaret.OOB
 	}
 
-	if cur.seq > s {
+	if cur.seq.Seq() > s.Seq() {
 		// TODO maybe better handling of this case?
 		panic("datastructure borked, sequence number missing")
 	}

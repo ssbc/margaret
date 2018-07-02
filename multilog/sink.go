@@ -3,14 +3,14 @@ package multilog
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	"github.com/pkg/errors"
 )
 
 // Func is a processing function that consumes a stream and sets values in the multilog.
-type Func func(ctx context.Context, seq Seq, value interface{}, mlog MultiLog) error
+type Func func(ctx context.Context, seq margaret.Seq, value interface{}, mlog MultiLog) error
 
 // Sink is both a multilog and a luigi sink. Pouring values into it will append values to the multilog, usually by calling a user-defined processing function.
 type Sink interface {
@@ -43,8 +43,9 @@ func (slog *sinkLog) Get(addr librarian.Addr) (margaret.Log, error) {
 
 // Pour calls the processing function to add a value to a sublog.
 func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
-	seq := v.(ValueSeq)
-	err := slog.f(ctx, seq, seq.Value(), slog.mlog)
+	//seq := v.(ValueSeq)
+	seq := v.(margaret.SeqWrapper)
+	err := slog.f(ctx, seq.Seq(), seq.Value(), slog.mlog)
 	return errors.Wrap(err, "error in processing function")
 }
 
@@ -57,5 +58,5 @@ type roLog struct {
 
 // Append always returns an error that indicates that this log is read only.
 func (roLog) Append(v interface{}) (margaret.Seq, error) {
-	return -1, errors.New("can't append to read-only log")
+	return margaret.SeqEmpty, errors.New("can't append to read-only log")
 }

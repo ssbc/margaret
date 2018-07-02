@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"go.cryptoscope.co/luigi"
 	"github.com/pkg/errors"
+	"go.cryptoscope.co/luigi"
 
 	"go.cryptoscope.co/margaret"
 )
@@ -25,22 +25,22 @@ func (qry *memlogQuery) seek(ctx context.Context) error {
 	var err error
 
 	if qry.gt != margaret.SeqEmpty {
-		if qry.cur.seq > qry.gt {
+		if qry.cur.seq.Seq() > qry.gt.Seq() {
 			qry.cur = qry.log.head
 		}
 
-		for qry.cur.seq+1 <= qry.gt {
+		for (qry.cur.seq+1).Seq() <= qry.gt.Seq() {
 			qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
 			if err != nil {
 				return err
 			}
 		}
 	} else if qry.gte != margaret.SeqEmpty {
-		if qry.cur.seq > qry.gte {
+		if qry.cur.seq.Seq() > qry.gte.Seq() {
 			qry.cur = qry.log.head
 		}
 
-		for qry.cur.seq+1 < qry.gte {
+		for (qry.cur.seq+1).Seq() < qry.gte.Seq() {
 			qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
 			if err != nil {
 				return err
@@ -106,7 +106,7 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.log.l.Lock()
 	defer qry.log.l.Unlock()
 
-	if qry.cur.seq <= qry.gt || qry.cur.seq < qry.gt {
+	if qry.cur.seq.Seq() <= qry.gt.Seq() || qry.cur.seq.Seq() < qry.gt.Seq() {
 		qry.seek(ctx)
 	}
 
@@ -115,9 +115,9 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, luigi.EOS{}
 	}
 
-	if qry.lt != margaret.SeqEmpty && !(qry.cur.seq < qry.lt-1) {
+	if qry.lt != margaret.SeqEmpty && !(qry.cur.seq.Seq() < (qry.lt).Seq()-1) {
 		return nil, luigi.EOS{}
-	} else if qry.lte != margaret.SeqEmpty && !(qry.cur.seq < qry.lte) {
+	} else if qry.lte != margaret.SeqEmpty && !(qry.cur.seq.Seq() < qry.lte.Seq()) {
 		return nil, luigi.EOS{}
 	}
 

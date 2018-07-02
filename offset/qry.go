@@ -16,7 +16,7 @@ type offsetQuery struct {
 	log   *offsetLog
 	codec margaret.Codec
 
-	nextSeq, lt margaret.Seq
+	nextSeq, lt margaret.BaseSeq
 
 	limit   int
 	live    bool
@@ -28,7 +28,7 @@ func (qry *offsetQuery) Gt(s margaret.Seq) error {
 		return errors.Errorf("lower bound already set")
 	}
 
-	qry.nextSeq = s + 1
+	qry.nextSeq = margaret.BaseSeq(s.Seq() + 1)
 	return nil
 }
 
@@ -37,7 +37,7 @@ func (qry *offsetQuery) Gte(s margaret.Seq) error {
 		return errors.Errorf("lower bound already set")
 	}
 
-	qry.nextSeq = s
+	qry.nextSeq = margaret.BaseSeq(s.Seq())
 	return nil
 }
 
@@ -46,7 +46,7 @@ func (qry *offsetQuery) Lt(s margaret.Seq) error {
 		return errors.Errorf("upper bound already set")
 	}
 
-	qry.lt = s
+	qry.lt = margaret.BaseSeq(s.Seq())
 	return nil
 }
 
@@ -55,7 +55,7 @@ func (qry *offsetQuery) Lte(s margaret.Seq) error {
 		return errors.Errorf("upper bound already set")
 	}
 
-	qry.lt = s + 1
+	qry.lt = margaret.BaseSeq(s.Seq() + 1)
 	return nil
 }
 
@@ -110,7 +110,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 				if doClose {
 					return luigi.EOS{}
 				}
-				if v.(margaret.Seq) >= qry.nextSeq {
+				if v.(margaret.Seq).Seq() >= qry.nextSeq.Seq() {
 					close(wait)
 					cancel()
 				}

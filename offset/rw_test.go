@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/margaret"
 	mjson "go.cryptoscope.co/margaret/codec/json"
 	"go.cryptoscope.co/margaret/framing/lengthprefixed"
-	"github.com/stretchr/testify/require"
 )
 
 type testEvent struct {
@@ -35,12 +35,12 @@ func TestReadWrite(t *testing.T) {
 	for i, ev := range tevs {
 		seq, err := log.Append(ev)
 		r.NoError(err, "failed to append event %d", i)
-		r.Equal(margaret.Seq(i), seq, "sequence missmatch")
+		r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
 	}
 
 	// read
 	for i := 0; i < len(tevs); i++ {
-		v, err := log.Get(margaret.Seq(i))
+		v, err := log.Get(margaret.BaseSeq(i))
 		r.NoError(err, "failed to get event %d", i)
 
 		ev, ok := v.(*testEvent)
@@ -76,7 +76,7 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	for i, ev := range tevs {
 		seq, err := log.Append(ev)
 		r.NoError(err, "failed to append event %d", i)
-		r.Equal(margaret.Seq(i), seq, "sequence missmatch")
+		r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
 	}
 
 	// close and open
@@ -92,7 +92,7 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	for i, ev := range tevs {
 		seq, err := log.Append(ev)
 		r.NoError(err, "failed to do 2nd append %d", i)
-		r.Equal(margaret.Seq(len(tevs)+i), seq, "sequence missmatch %d", i)
+		r.Equal(margaret.BaseSeq(len(tevs)+i), seq, "sequence missmatch %d", i)
 	}
 
 	// close
@@ -105,11 +105,11 @@ func TestWriteAndWriteAgain(t *testing.T) {
 
 	currSeq, err := log.Seq().Value()
 	r.NoError(err, "failed to get current sequence")
-	r.Equal(margaret.Seq(2*len(tevs)-1), currSeq.(margaret.Seq))
+	r.Equal(margaret.BaseSeq(2*len(tevs)-1), currSeq.(margaret.BaseSeq))
 
 	// read by seq
 	for i := 0; i < 2*len(tevs); i++ {
-		v, err := log.Get(margaret.Seq(i))
+		v, err := log.Get(margaret.BaseSeq(i))
 		r.NoError(err, "failed to get event %d", i)
 
 		ev, ok := v.(*testEvent)

@@ -50,7 +50,8 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 			// append values
 
 			for i, v := range tc.values {
-				err := sink.Pour(ctx, multilog.WithValue(margaret.Seq(i), v))
+				//err := sink.Pour(ctx, multilog.WithValue(margaret.BaseSeq(i), v))
+				err := sink.Pour(ctx, margaret.WrapWithSeq(v, margaret.BaseSeq(i)))
 				a.NoError(err, "error pouring into sink")
 			}
 
@@ -136,11 +137,11 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 
 	tcs := []testcase{
 		{
-			tipe:   margaret.Seq(0),
+			tipe:   margaret.BaseSeq(0),
 			values: count(0, 20),
 			f: func(t *testing.T) multilog.Func {
-				return func(ctx context.Context, seq multilog.Seq, v interface{}, mlog multilog.MultiLog) (err error) {
-					facs := uniq(factorize(int(v.(margaret.Seq))))
+				return func(ctx context.Context, seq margaret.Seq, v interface{}, mlog multilog.MultiLog) (err error) {
+					facs := uniq(factorize(int(v.(margaret.Seq).Seq())))
 					for _, fac := range facs {
 						prefixBs := make([]byte, 4)
 						binary.BigEndian.PutUint32(prefixBs, uint32(fac))
@@ -189,7 +190,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 func count(from, to int) []interface{} {
 	out := make([]interface{}, to-from)
 	for i := from; i < to; i++ {
-		out[i-from] = margaret.Seq(i)
+		out[i-from] = margaret.BaseSeq(i)
 	}
 	return out
 }

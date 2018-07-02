@@ -6,9 +6,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	"github.com/pkg/errors"
 )
 
 // DefaultFrameSize is the default frame size.
@@ -37,7 +37,7 @@ func New(f *os.File, framing margaret.Framing, cdc margaret.Codec) (margaret.Log
 		return nil, errors.Wrap(err, "failed to seek to end of log-file")
 	}
 	// assumes -1 is SeqEmpty
-	log.seq = luigi.NewObservable(margaret.Seq((end / framing.FrameSize()) - 1))
+	log.seq = luigi.NewObservable(margaret.BaseSeq((end / framing.FrameSize()) - 1))
 
 	return log, nil
 }
@@ -82,7 +82,7 @@ func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	data, err := log.codec.Marshal(v)
 	if err != nil {
-		return -1, errors.Wrap(err, "error marshaling value")
+		return margaret.SeqEmpty, errors.Wrap(err, "error marshaling value")
 	}
 
 	log.l.Lock()
@@ -90,24 +90,27 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 
 	_, err = log.f.Seek(0, io.SeekEnd)
 	if err != nil {
-		return -1, errors.Wrap(err, "error seeking to end of file")
+		return margaret.SeqEmpty, errors.Wrap(err, "error seeking to end of file")
 	}
 
 	frame, err := log.framing.EncodeFrame(data)
 	if err != nil {
-		return -1, err
+		return margaret.SeqEmpty, err
 	}
 
 	_, err = log.f.Write(frame)
 	if err != nil {
-		return -1, errors.Wrap(err, "error writng frame")
+		return margaret.SeqEmpty, errors.Wrap(err, "error writng frame")
 	}
 
 	currSeq, err := log.seq.Value()
 	if err != nil {
-		return -1, errors.Wrap(err, "error reading current sequence number")
+		return margaret.SeqEmpty, errors.Wrap(err, "error reading current sequence number")
 	}
-	nextSeq := currSeq.(margaret.Seq) + 1
+
+	var nextSeq margaret.BaseSeq
+	nextSeq = margaret.BaseSeq(currSeq.(margaret.Seq).Seq()) + 1
+
 	return nextSeq, log.seq.Set(nextSeq)
 }
 

@@ -44,7 +44,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 				for i, v := range values {
 					seq, err := slog.Append(v)
 					r.NoError(err, "error appending to log")
-					r.Equal(margaret.Seq(i), seq, "sequence missmatch")
+					r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
 				}
 			}
 
@@ -58,7 +58,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 				err = nil
 
 				for seq, v := range results {
-					v_, err = slog.Get(margaret.Seq(seq))
+					v_, err = slog.Get(margaret.BaseSeq(seq))
 					if tc.errStr == "" {
 						if tc.seqWrap {
 							sw := v.(margaret.SeqWrapper)
@@ -88,7 +88,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 
 	tcs := []testcase{
 		{
-			tipe:  margaret.Seq(0),
+			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Live(true)},
 			live:  true,
 			values: map[librarian.Addr][]interface{}{

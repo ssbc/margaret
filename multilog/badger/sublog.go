@@ -4,10 +4,10 @@ import (
 	"encoding/binary"
 	"reflect"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 )
 
 type sublog struct {
@@ -25,7 +25,7 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 	v := reflect.New(t).Interface()
 
 	seqBs := make([]byte, 8)
-	binary.BigEndian.PutUint64(seqBs, uint64(seq))
+	binary.BigEndian.PutUint64(seqBs, uint64(seq.Seq()))
 	key := append(log.prefix, seqBs...)
 
 	err := log.mlog.db.View(func(txn *badger.Txn) error {
@@ -71,11 +71,11 @@ func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 }
 
 func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
-	var seq margaret.Seq
+	var seq margaret.BaseSeq
 
 	data, err := log.mlog.codec.Marshal(v)
 	if err != nil {
-		return -2, errors.Wrap(err, "error marshaling value")
+		return margaret.BaseSeq(-2), errors.Wrap(err, "error marshaling value")
 	}
 
 	err = log.mlog.db.Update(func(txn *badger.Txn) error {
@@ -84,7 +84,7 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 			return errors.Wrap(err, "error getting value from seq observable")
 		}
 
-		seq = seqIface.(margaret.Seq) + 1
+		seq = margaret.BaseSeq(seqIface.(margaret.Seq).Seq() + 1)
 		seqBs := make([]byte, 8)
 		binary.BigEndian.PutUint64(seqBs, uint64(seq))
 		key := append(log.prefix, seqBs...)
@@ -98,7 +98,7 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 		return nil
 	})
 	if err != nil {
-		return -2, errors.Wrap(err, "error in write transaction")
+		return margaret.BaseSeq(-2), errors.Wrap(err, "error in write transaction")
 	}
 
 	return seq, nil

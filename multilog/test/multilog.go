@@ -50,7 +50,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 				for i, v := range values {
 					seq, err := slog.Append(v)
 					r.NoError(err, "error appending to log")
-					r.Equal(margaret.Seq(i), seq, "sequence missmatch")
+					r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
 				}
 			}
 
@@ -135,7 +135,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 
 	tcs := []testcase{
 		{
-			tipe:  margaret.Seq(0),
+			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Live(true)},
 			live:  true,
 			values: map[librarian.Addr][]interface{}{
@@ -183,7 +183,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
-			tipe:  margaret.Seq(0),
+			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Limit(1)},
 			values: map[librarian.Addr][]interface{}{
 				librarian.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
@@ -230,8 +230,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
-			tipe:  margaret.Seq(0),
-			specs: []margaret.QuerySpec{margaret.Live(true), margaret.Gte(1)},
+			tipe:  margaret.BaseSeq(0),
+			specs: []margaret.QuerySpec{margaret.Live(true), margaret.Gte(margaret.BaseSeq(1))},
 			live:  true,
 			values: map[librarian.Addr][]interface{}{
 				librarian.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
@@ -278,8 +278,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
-			tipe:  margaret.Seq(0),
-			specs: []margaret.QuerySpec{margaret.Lte(3)},
+			tipe:  margaret.BaseSeq(0),
+			specs: []margaret.QuerySpec{margaret.Lte(margaret.BaseSeq(3))},
 			values: map[librarian.Addr][]interface{}{
 				librarian.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
 				librarian.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},
@@ -325,8 +325,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
-			tipe:  margaret.Seq(0),
-			specs: []margaret.QuerySpec{margaret.Lt(3)},
+			tipe:  margaret.BaseSeq(0),
+			specs: []margaret.QuerySpec{margaret.Lt(margaret.BaseSeq(3))},
 			values: map[librarian.Addr][]interface{}{
 				librarian.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
 				librarian.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},

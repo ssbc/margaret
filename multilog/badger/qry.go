@@ -5,17 +5,17 @@ import (
 	"encoding/binary"
 	"sync"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
+	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret"
 )
 
 type query struct {
 	l   sync.Mutex
 	log *sublog
 
-	nextSeq, lt margaret.Seq
+	nextSeq, lt margaret.BaseSeq
 
 	limit   int
 	live    bool
@@ -27,7 +27,7 @@ func (qry *query) Gt(s margaret.Seq) error {
 		return errors.Errorf("lower bound already set")
 	}
 
-	qry.nextSeq = s + 1
+	qry.nextSeq = margaret.BaseSeq(s.Seq() + 1)
 	return nil
 }
 
@@ -36,7 +36,7 @@ func (qry *query) Gte(s margaret.Seq) error {
 		return errors.Errorf("lower bound already set")
 	}
 
-	qry.nextSeq = s
+	qry.nextSeq = margaret.BaseSeq(s.Seq())
 	return nil
 }
 
@@ -45,7 +45,7 @@ func (qry *query) Lt(s margaret.Seq) error {
 		return errors.Errorf("upper bound already set")
 	}
 
-	qry.lt = s
+	qry.lt = margaret.BaseSeq(s.Seq())
 	return nil
 }
 
@@ -54,7 +54,7 @@ func (qry *query) Lte(s margaret.Seq) error {
 		return errors.Errorf("upper bound already set")
 	}
 
-	qry.lt = s + 1
+	qry.lt = margaret.BaseSeq(s.Seq() + 1)
 	return nil
 }
 
@@ -132,7 +132,7 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 						close(closed)
 						return nil
 					}
-					if v.(margaret.Seq) >= qry.nextSeq {
+					if v.(margaret.Seq).Seq() >= qry.nextSeq.Seq() {
 						close(wait)
 					}
 

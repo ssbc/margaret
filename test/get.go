@@ -36,11 +36,11 @@ func LogTestGet(f NewLogFunc) func(*testing.T) {
 			for i, v := range tc.values {
 				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
-				r.Equal(margaret.Seq(i), seq, "sequence missmatch")
+				r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
 			}
 
 			for i, v_ := range tc.result {
-				v, err := log.Get(margaret.Seq(i))
+				v, err := log.Get(margaret.BaseSeq(i))
 				a.NoError(err, "error getting value at position", i)
 				a.Equal(v, v_, "value mismatch at position", i)
 			}

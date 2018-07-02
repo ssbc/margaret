@@ -4,6 +4,7 @@ package margaret
 type SeqWrapper interface {
 	// Seq returns the sequence number of the item.
 	Seq() Seq
+
 	// Value returns the item itself.
 	Value() interface{}
 }

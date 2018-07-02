@@ -4,11 +4,11 @@ import (
 	"encoding/binary"
 	"sync"
 
+	"github.com/dgraph-io/badger"
+	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/multilog"
-	"github.com/dgraph-io/badger"
-	"github.com/pkg/errors"
 
 	"go.cryptoscope.co/librarian"
 )
@@ -19,9 +19,9 @@ func New(db *badger.DB, tipe interface{}, codec margaret.Codec) multilog.MultiLo
 		db:   db,
 		tipe: tipe,
 
-		sublogs:   make(map[librarian.Addr]*sublog),
-		curSeq:    -2,
-		codec:     codec,
+		sublogs: make(map[librarian.Addr]*sublog),
+		curSeq:  margaret.BaseSeq(-2),
+		codec:   codec,
 	}
 }
 
@@ -60,14 +60,14 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 		iter.Rewind()
 		iter.Seek(prefix)
 		if !iter.ValidForPrefix(prefix) {
-			seq = -1
+			seq = margaret.SeqEmpty
 		} else {
 			key := iter.Item().Key()
 			seqBs := key[len(prefix):]
 			if len(seqBs) != 8 {
 				return errors.New("invalid key length (expected len(prefix)+8)")
 			}
-			seq = margaret.Seq(binary.BigEndian.Uint64(seqBs))
+			seq = margaret.BaseSeq(binary.BigEndian.Uint64(seqBs))
 		}
 
 		return nil
