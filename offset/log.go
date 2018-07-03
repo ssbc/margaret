@@ -88,11 +88,6 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 
-	_, err = log.f.Seek(0, io.SeekEnd)
-	if err != nil {
-		return margaret.SeqEmpty, errors.Wrap(err, "error seeking to end of file")
-	}
-
 	frame, err := log.framing.EncodeFrame(data)
 	if err != nil {
 		return margaret.SeqEmpty, err

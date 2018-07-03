@@ -97,8 +97,9 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	}
 
 	seekTo := int64(qry.nextSeq) * qry.log.framing.FrameSize()
+	size := fi.Size()
 
-	if size := fi.Size(); size < seekTo+qry.log.framing.FrameSize() {
+	if size < seekTo+qry.log.framing.FrameSize() {
 		if !qry.live {
 			return nil, luigi.EOS{}
 		}
@@ -134,17 +135,14 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		}
 	}
 
-	_, err = qry.log.f.Seek(int64(qry.nextSeq)*qry.log.framing.FrameSize(), io.SeekStart)
-	if err != nil {
-		return nil, errors.Wrap(err, "seek failed")
-	}
-
 	if qry.lt != margaret.SeqEmpty && !(qry.nextSeq < qry.lt) {
 		return nil, luigi.EOS{}
 	}
 
 	frame := make([]byte, qry.log.framing.FrameSize())
-	n, err := qry.log.f.Read(frame)
+	pos := int64(qry.nextSeq) * qry.log.framing.FrameSize()
+
+	n, err := qry.log.f.ReadAt(frame, pos)
 	if err == io.EOF {
 		return nil, luigi.EOS{}
 	} else if err != nil {
