@@ -2,7 +2,6 @@ package badger
 
 import (
 	"encoding/binary"
-	"reflect"
 
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
@@ -21,8 +20,7 @@ func (log *sublog) Seq() luigi.Observable {
 }
 
 func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
-	t := reflect.TypeOf(log.mlog.tipe)
-	v := reflect.New(t).Interface()
+	var v interface{}
 
 	seqBs := make([]byte, 8)
 	binary.BigEndian.PutUint64(seqBs, uint64(seq.Seq()))

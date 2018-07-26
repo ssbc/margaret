@@ -14,10 +14,9 @@ import (
 )
 
 // New returns a new badger-backed multilog with given codec.
-func New(db *badger.DB, tipe interface{}, codec margaret.Codec) multilog.MultiLog {
+func New(db *badger.DB, codec margaret.Codec) multilog.MultiLog {
 	return &mlog{
-		db:   db,
-		tipe: tipe,
+		db: db,
 
 		sublogs: make(map[librarian.Addr]*sublog),
 		curSeq:  margaret.BaseSeq(-2),
@@ -28,8 +27,8 @@ func New(db *badger.DB, tipe interface{}, codec margaret.Codec) multilog.MultiLo
 type mlog struct {
 	l sync.Mutex
 
-	db    *badger.DB
-	tipe  interface{}
+	db *badger.DB
+
 	codec margaret.Codec
 
 	sublogs map[librarian.Addr]*sublog
