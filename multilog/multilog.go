@@ -9,4 +9,6 @@ import (
 // TODO maybe only call this log to avoid multilog.MultiLog?
 type MultiLog interface {
 	Get(librarian.Addr) (margaret.Log, error)
+	Has(librarian.Addr) bool
+	List() []librarian.Addr
 }

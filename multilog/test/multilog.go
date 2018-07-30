@@ -54,7 +54,9 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 				}
 			}
 
-			//time.Sleep(time.Second)
+			// check Has and List
+			r.True(mlog.Has(librarian.Addr([]byte{0, 0, 0, 19})), "did not find assumed sublog")
+			r.False(mlog.Has(librarian.Addr([]byte{0, 0, 0, 20})), "did find unassumed sublog")
 
 			// check if multilog entries match
 			for addr, results := range tc.results {

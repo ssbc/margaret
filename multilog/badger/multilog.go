@@ -16,19 +16,18 @@ import (
 // New returns a new badger-backed multilog with given codec.
 func New(db *badger.DB, codec margaret.Codec) multilog.MultiLog {
 	return &mlog{
-		db: db,
+		db:    db,
+		codec: codec,
 
 		sublogs: make(map[librarian.Addr]*sublog),
 		curSeq:  margaret.BaseSeq(-2),
-		codec:   codec,
 	}
 }
 
 type mlog struct {
 	l sync.Mutex
 
-	db *badger.DB
-
+	db    *badger.DB
 	codec margaret.Codec
 
 	sublogs map[librarian.Addr]*sublog
@@ -83,4 +82,33 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 
 	log.sublogs[librarian.Addr(prefix)] = slog
 	return slog, nil
+}
+
+// Has checks wether a log with that addr is in the mlog
+func (log *mlog) Has(addr librarian.Addr) bool {
+	shortPrefix := []byte(addr)
+	if len(shortPrefix) > 255 {
+		panic("supplied address than maximum prefix length 255")
+	}
+
+	prefix := append([]byte{byte(len(shortPrefix))}, shortPrefix...)
+
+	log.l.Lock()
+	defer log.l.Unlock()
+
+	_, has := log.sublogs[librarian.Addr(prefix)]
+	return has
+}
+
+func (log *mlog) List() []librarian.Addr {
+	log.l.Lock()
+	defer log.l.Unlock()
+
+	addrs := make([]librarian.Addr, len(log.sublogs))
+	i := 0
+	for prefixedAddr := range log.sublogs {
+		addrs[i] = prefixedAddr[1:]
+		i++
+	}
+	return addrs
 }

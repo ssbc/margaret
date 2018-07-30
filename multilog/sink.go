@@ -41,9 +41,18 @@ func (slog *sinkLog) Get(addr librarian.Addr) (margaret.Log, error) {
 	return roLog{log}, nil
 }
 
+// Has checks wether a log with that addr is in the mlog
+func (slog *sinkLog) Has(addr librarian.Addr) bool {
+	return slog.mlog.Has(addr)
+}
+
+// List returns all the
+func (slog *sinkLog) List() []librarian.Addr {
+	return slog.mlog.List()
+}
+
 // Pour calls the processing function to add a value to a sublog.
 func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
-	//seq := v.(ValueSeq)
 	seq := v.(margaret.SeqWrapper)
 	err := slog.f(ctx, seq.Seq(), seq.Value(), slog.mlog)
 	return errors.Wrap(err, "error in processing function")
