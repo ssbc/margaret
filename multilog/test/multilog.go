@@ -3,6 +3,7 @@ package test // import "go.cryptoscope.co/margaret/multilog/test"
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -15,6 +16,63 @@ import (
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/multilog"
 )
+
+func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
+	return func(t *testing.T) {
+		a := assert.New(t)
+		r := require.New(t)
+
+		mlog, dir, err := f(t.Name(), margaret.BaseSeq(0), "")
+		r.NoError(err)
+
+		// empty yet
+		addrs, err := mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 0)
+
+		var addr librarian.Addr = "f23"
+		sublog, err := mlog.Get(addr)
+
+		// add some vals
+		var vals = []margaret.BaseSeq{1, 2, 3}
+		for i, v := range vals {
+			_, err := sublog.Append(v)
+			r.NoError(err, "failed to append testVal %d", i)
+		}
+		curr, err := sublog.Seq().Value()
+		r.NoError(err, "failed to get sublog sequence")
+		a.NotEqual(margaret.SeqEmpty, curr)
+
+		// sublog was added
+		ok, err := multilog.Has(mlog, addr)
+		a.NoError(err)
+		a.True(ok)
+		
+		addrs, err = mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 1)
+		mlog.Close()
+
+		// reopen
+		mlog, dir, err = f(t.Name(), margaret.BaseSeq(0), dir)
+		r.NoError(err)
+
+		ok, err = multilog.Has(mlog, addr)
+		a.NoError(err)
+		a.True(ok)
+
+		addrs, err = mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 1)
+		mlog.Close()
+
+		if t.Failed() {
+			t.Log("db location:", dir)
+		} else {
+			os.RemoveAll(dir)
+		}
+	}
+}
 
 func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 	type testcase struct {
@@ -41,7 +99,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 			*/
 
 			// make multilog
-			mlog, err := f(t.Name(), tc.tipe)
+			mlog, dir, err := f(t.Name(), tc.tipe, "")
 			r.NoError(err, "error creating multilog")
 
 			// append values
@@ -153,6 +211,12 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 					cancel()
 				case waiter <- struct{}{}:
 				}
+			}
+
+			if t.Failed() {
+				t.Log("db location:", dir)
+			} else {
+				os.RemoveAll(dir)
 			}
 		}
 	}

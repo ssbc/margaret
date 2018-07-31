@@ -110,3 +110,7 @@ func (log *mlog) List() ([]librarian.Addr, error) {
 
 	return list, errors.Wrap(err, "error in List() transaction")
 }
+
+func (log *mlog) Close() error {
+	return log.db.Close()
+}

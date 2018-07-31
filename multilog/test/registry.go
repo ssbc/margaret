@@ -15,21 +15,28 @@ func Register(name string, f NewLogFunc) {
 }
 
 func RunSinkTests(t *testing.T) {
-	t.Logf("found multilogs %v", NewLogFuncs)
+	if len(NewLogFuncs) == 0 {
+		t.Fatal("found no multilogs")
+	}
 	for name, newLog := range NewLogFuncs {
 		t.Run(name, SinkTest(newLog))
 	}
 }
 
 func RunMultiLogTests(t *testing.T) {
-	t.Logf("found multilogs %v", NewLogFuncs)
+	if len(NewLogFuncs) == 0 {
+		t.Fatal("found no multilogs")
+	}
 	for name, newLog := range NewLogFuncs {
-		t.Run(name, MultiLogTest(newLog))
+		t.Run(name+"-basic", MultiLogTest(newLog))
+		t.Run(name+"-weird", MultilogTestAddLogAndListed(newLog))
 	}
 }
 
 func RunSubLogTests(t *testing.T) {
-	t.Logf("found multilogs %v", NewLogFuncs)
+	if len(NewLogFuncs) == 0 {
+		t.Fatal("found no multilogs")
+	}
 	for name, newLog := range NewLogFuncs {
 		t.Run(name, SubLogTest(newLog))
 	}

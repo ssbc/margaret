@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 
 	"go.cryptoscope.co/librarian"
-	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
 
@@ -20,8 +19,7 @@ type Func func(ctx context.Context, seq margaret.Seq, value interface{}, mlog Mu
 // Sink is both a multilog and a luigi sink. Pouring values into it will append values to the multilog, usually by calling a user-defined processing function.
 type Sink interface {
 	MultiLog
-	luigi.Sink
-
+	Pour(ctx context.Context, v interface{}) error
 	QuerySpec() margaret.QuerySpec
 }
 
@@ -71,8 +69,8 @@ func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
 	return errors.Wrap(err, "error in processing function")
 }
 
-// Close is a noop, but required for the Sink interface
-func (*sinkLog) Close() error { return nil }
+// Close closes the root-log..? seems wrong
+func (slog *sinkLog) Close() error { return nil } // slog.mlog.Close() }
 
 // QuerySpec returns the query spec that queries the next needed messages from the log
 func (slog *sinkLog) QuerySpec() margaret.QuerySpec {

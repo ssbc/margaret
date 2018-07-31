@@ -1,6 +1,8 @@
 package multilog
 
 import (
+	"io"
+
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/margaret"
 )
@@ -10,6 +12,7 @@ import (
 type MultiLog interface {
 	Get(librarian.Addr) (margaret.Log, error)
 	List() ([]librarian.Addr, error)
+	io.Closer
 }
 
 func Has(mlog MultiLog, addr librarian.Addr) (bool, error) {

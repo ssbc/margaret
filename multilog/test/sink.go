@@ -46,7 +46,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 			*/
 
 			// make multilog
-			mlog, err := f(t.Name(), tc.tipe)
+			mlog, dir, err := f(t.Name(), tc.tipe, "")
 			r.NoError(err, "error creating multilog")
 
 			// make file that tracks current sequence number
@@ -145,6 +145,12 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 					cancel()
 				case waiter <- struct{}{}:
 				}
+			}
+
+			if t.Failed() {
+				t.Log("db location:", dir)
+			} else {
+				os.RemoveAll(dir)
 			}
 		}
 	}

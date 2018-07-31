@@ -6,7 +6,7 @@ import (
 	"go.cryptoscope.co/margaret/multilog"
 )
 
-type NewLogFunc func(name string, tipe interface{}) (multilog.MultiLog, error)
+type NewLogFunc func(name string, tipe interface{}, testdir string) (multilog.MultiLog, string, error)
 
 func SinkTest(f NewLogFunc) func(*testing.T) {
 	return func(t *testing.T) {

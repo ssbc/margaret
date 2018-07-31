@@ -2,6 +2,7 @@ package test // import "go.cryptoscope.co/margaret/multilog/test"
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 			*/
 
 			// make multilog
-			mlog, err := f(t.Name(), tc.tipe)
+			mlog, dir, err := f(t.Name(), tc.tipe, "")
 			r.NoError(err, "error creating multilog")
 
 			// append values
@@ -82,6 +83,12 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 				} else if tc.errStr != "" && err.Error() != tc.errStr {
 					t.Errorf("expected error %q but got %q", tc.errStr, err)
 				}
+			}
+
+			if t.Failed() {
+				t.Log("db location:", dir)
+			} else {
+				os.RemoveAll(dir)
 			}
 		}
 	}

@@ -2,7 +2,6 @@ package test
 
 import (
 	"io/ioutil"
-	"os"
 
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
@@ -14,24 +13,25 @@ import (
 )
 
 func init() {
-	newMultiLog := func(name string, tipe interface{}) (multilog.MultiLog, error) {
-		dir, err := ioutil.TempDir("", "badger")
-		if err != nil {
-			return nil, errors.Wrap(err, "error creating tempdir")
+	newMultiLog := func(name string, tipe interface{}, testDir string) (multilog.MultiLog, string, error) {
+		if testDir == "" {
+			var err error
+			testDir, err = ioutil.TempDir("", "badger")
+			if err != nil {
+				return nil, "", errors.Wrap(err, "error creating tempdir")
+			}
 		}
 
-		defer os.RemoveAll(dir)
-
 		opts := badger.DefaultOptions
-		opts.Dir = dir
-		opts.ValueDir = dir
+		opts.Dir = testDir
+		opts.ValueDir = testDir
 
 		db, err := badger.Open(opts)
 		if err != nil {
-			return nil, errors.Wrap(err, "error opening database")
+			return nil, "", errors.Wrap(err, "error opening database")
 		}
 
-		return mlbadger.New(db, json.New(tipe)), nil
+		return mlbadger.New(db, json.New(tipe)), testDir, nil
 	}
 
 	mltest.Register("badger", newMultiLog)
