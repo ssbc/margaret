@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,9 +49,20 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 			mlog, err := f(t.Name(), tc.tipe)
 			r.NoError(err, "error creating multilog")
 
-			sink := multilog.NewSink(mlog, tc.f(t))
-			// append values
+			// make file that tracks current sequence number
+			prefix := "curSeq-" + strings.Replace(t.Name(), "/", "_", -1) + "-"
+			file, err := ioutil.TempFile(".", prefix)
+			r.NoError(err, "error creating curseq file")
+			defer func() {
+				err := os.Remove(file.Name())
+				if err != nil {
+					t.Error(err)
+				}
+			}()
 
+			sink := multilog.NewSink(file, mlog, tc.f(t))
+
+			// append values
 			for i, v := range tc.values {
 				//err := sink.Pour(ctx, multilog.WithValue(margaret.BaseSeq(i), v))
 				err := sink.Pour(ctx, margaret.WrapWithSeq(v, margaret.BaseSeq(i)))
@@ -227,3 +241,4 @@ func uniq(ints []int) []int {
 
 	return out
 }
+
