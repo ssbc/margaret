@@ -2,6 +2,7 @@ package multilog
 
 import (
 	"context"
+	"io"
 	"os"
 	"sync"
 
@@ -20,6 +21,8 @@ type Func func(ctx context.Context, seq margaret.Seq, value interface{}, mlog Mu
 type Sink interface {
 	MultiLog
 	luigi.Sink
+
+	QuerySpec() margaret.QuerySpec
 }
 
 // NewSink makes a new Sink by wrapping a MultiLog and a processing function of type Func.
@@ -84,7 +87,11 @@ func (slog *sinkLog) QuerySpec() margaret.QuerySpec {
 	var seq margaret.BaseSeq
 
 	if err := persist.Load(slog.file, &seq); err != nil {
-		return margaret.ErrorQuerySpec(err)
+		if errors.Cause(err) != io.EOF {
+			return margaret.ErrorQuerySpec(err)
+		}
+
+		seq = margaret.SeqEmpty
 	}
 
 	return margaret.MergeQuerySpec(
