@@ -2,6 +2,7 @@ package badger // import "go.cryptoscope.co/margaret/multilog/badger"
 
 import (
 	"encoding/binary"
+	"fmt"
 	"sync"
 
 	"github.com/dgraph-io/badger"
@@ -86,29 +87,39 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 
 // Has checks wether a log with that addr is in the mlog
 func (log *mlog) Has(addr librarian.Addr) bool {
-	shortPrefix := []byte(addr)
-	if len(shortPrefix) > 255 {
-		panic("supplied address than maximum prefix length 255")
+	slog, err := log.Get(addr)
+	if err != nil {
+		return false
 	}
 
-	prefix := append([]byte{byte(len(shortPrefix))}, shortPrefix...)
-
-	log.l.Lock()
-	defer log.l.Unlock()
-
-	_, has := log.sublogs[librarian.Addr(prefix)]
-	return has
+	v, err := slog.Get(margaret.BaseSeq(0))
+	fmt.Printf("Has: %x/%v/%v\n", addr, v, err)
+	return err == nil
 }
 
-func (log *mlog) List() []librarian.Addr {
-	log.l.Lock()
-	defer log.l.Unlock()
+// List returns a list of all stored sublogs
+func (log *mlog) List() ([]librarian.Addr, error) {
+	var list []librarian.Addr
 
-	addrs := make([]librarian.Addr, len(log.sublogs))
-	i := 0
-	for prefixedAddr := range log.sublogs {
-		addrs[i] = prefixedAddr[1:]
-		i++
-	}
-	return addrs
+	err := log.db.View(func(txn *badger.Txn) error {
+		iter := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer iter.Close()
+
+		var next []byte
+		for iter.Rewind(); iter.Valid(); iter.Seek(next) {
+			// extract addr from prefix
+			key := iter.Item().Key()
+			l := key[0] // prefix length
+			addr := key[1 : l+1]
+			list = append(list, librarian.Addr(addr))
+
+			// increment last byte of prefix to skip all entries with same prefix
+			next = key[:l+1]
+			next[l]++
+		}
+
+		return nil
+	})
+
+	return list, errors.Wrap(err, "error in List() transaction")
 }

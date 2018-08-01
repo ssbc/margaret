@@ -53,8 +53,8 @@ func (slog *sinkLog) Has(addr librarian.Addr) bool {
 	return slog.mlog.Has(addr)
 }
 
-// List returns all the
-func (slog *sinkLog) List() []librarian.Addr {
+// List returns the addresses of all sublogs in the multilog
+func (slog *sinkLog) List() ([]librarian.Addr, error) {
 	return slog.mlog.List()
 }
 

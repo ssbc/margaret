@@ -10,5 +10,5 @@ import (
 type MultiLog interface {
 	Get(librarian.Addr) (margaret.Log, error)
 	Has(librarian.Addr) bool
-	List() []librarian.Addr
+	List() ([]librarian.Addr, error)
 }

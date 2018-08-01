@@ -41,7 +41,9 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 		return errors.Wrap(err, "error unmarshaling data")
 	})
 
-	if err != nil && errors.Cause(err) != badger.ErrKeyNotFound {
+	if errors.Cause(err) == badger.ErrKeyNotFound {
+		return nil, luigi.EOS{}
+	} else if err != nil {
 		return nil, errors.Wrap(err, "error in badger transaction (view)")
 	}
 

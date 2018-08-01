@@ -58,7 +58,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 			r.True(mlog.Has(librarian.Addr([]byte{0, 0, 0, 19})), "did not find assumed sublog")
 			r.False(mlog.Has(librarian.Addr([]byte{0, 0, 0, 20})), "did find unassumed sublog")
 
-			knownLogs := mlog.List()
+			knownLogs, err := mlog.List()
+			r.NoError(err, "error calling List")
 			r.Len(knownLogs, 18)
 
 			// check if multilog entries match
