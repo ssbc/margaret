@@ -13,6 +13,7 @@ import (
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/multilog"
 )
 
 func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
@@ -55,8 +56,12 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 			}
 
 			// check Has and List
-			r.True(mlog.Has(librarian.Addr([]byte{0, 0, 0, 19})), "did not find assumed sublog")
-			r.False(mlog.Has(librarian.Addr([]byte{0, 0, 0, 20})), "did find unassumed sublog")
+			has, err := multilog.Has(mlog, librarian.Addr([]byte{0, 0, 0, 19}))
+			r.NoError(err)
+			r.True(has, "did not find assumed sublog")
+			has, err = multilog.Has(mlog, librarian.Addr([]byte{0, 0, 0, 20}))
+			r.NoError(err)
+			r.False(has, "did find unassumed sublog")
 
 			knownLogs, err := mlog.List()
 			r.NoError(err, "error calling List")

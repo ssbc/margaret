@@ -51,11 +51,6 @@ func (slog *sinkLog) Get(addr librarian.Addr) (margaret.Log, error) {
 	return roLog{log}, nil
 }
 
-// Has checks wether a log with that addr is in the mlog
-func (slog *sinkLog) Has(addr librarian.Addr) bool {
-	return slog.mlog.Has(addr)
-}
-
 // List returns the addresses of all sublogs in the multilog
 func (slog *sinkLog) List() ([]librarian.Addr, error) {
 	return slog.mlog.List()
