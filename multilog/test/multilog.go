@@ -67,6 +67,19 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 			r.NoError(err, "error calling List")
 			r.Len(knownLogs, 18)
 
+			hasAddr := func(addr librarian.Addr) bool {
+				for _, a := range knownLogs {
+					if a == addr {
+						return true
+					}
+				}
+				return false
+			}
+
+			for addr := range tc.values {
+				a.True(hasAddr(addr), "failed to find %s in List()", addr)
+			}
+
 			// check if multilog entries match
 			for addr, results := range tc.results {
 				slog, err := mlog.Get(addr)
