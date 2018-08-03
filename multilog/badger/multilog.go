@@ -2,7 +2,6 @@ package badger // import "go.cryptoscope.co/margaret/multilog/badger"
 
 import (
 	"encoding/binary"
-	"fmt"
 	"sync"
 
 	"github.com/dgraph-io/badger"
@@ -83,18 +82,6 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 
 	log.sublogs[librarian.Addr(prefix)] = slog
 	return slog, nil
-}
-
-// Has checks wether a log with that addr is in the mlog
-func (log *mlog) Has(addr librarian.Addr) bool {
-	slog, err := log.Get(addr)
-	if err != nil {
-		return false
-	}
-
-	v, err := slog.Get(margaret.BaseSeq(0))
-	fmt.Printf("Has: %x/%v/%v\n", addr, v, err)
-	return err == nil
 }
 
 // List returns a list of all stored sublogs
