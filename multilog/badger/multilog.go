@@ -37,7 +37,7 @@ type mlog struct {
 func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 	shortPrefix := []byte(addr)
 	if len(shortPrefix) > 255 {
-		return nil, errors.New("supplied address than maximum prefix length 255")
+		return nil, errors.New("supplied address longer than maximum prefix length 255")
 	}
 
 	prefix := append([]byte{byte(len(shortPrefix))}, shortPrefix...)
@@ -51,22 +51,34 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 	}
 
 	// find the current seq
-	var seq margaret.Seq
+	var seq margaret.Seq = margaret.SeqEmpty
 	err := log.db.View(func(txn *badger.Txn) error {
-		iter := txn.NewIterator(badger.IteratorOptions{Reverse: true})
+		iopts := badger.DefaultIteratorOptions
+		iopts.Reverse = true
+
+		iter := txn.NewIterator(iopts)
 		defer iter.Close()
+
 		iter.Rewind()
-		iter.Seek(prefix)
-		if !iter.ValidForPrefix(prefix) {
-			seq = margaret.SeqEmpty
-		} else {
-			key := iter.Item().Key()
-			seqBs := key[len(prefix):]
-			if len(seqBs) != 8 {
-				return errors.New("invalid key length (expected len(prefix)+8)")
-			}
-			seq = margaret.BaseSeq(binary.BigEndian.Uint64(seqBs))
+		if !iter.Valid() {
+			return nil
 		}
+
+		// since we're reverse seeking, we need to make sure the seek string is larger
+		// than what we look for. Since sequence numbers are actually signed, but we
+		// won't store negative ones, we can assume that the first bit is not set,
+		// so this is larger than any key that can occur for this prefix.
+		iter.Seek(append(prefix, 0x80))
+		if !iter.ValidForPrefix(prefix) {
+			return nil
+		}
+
+		key := iter.Item().Key()
+		seqBs := key[len(prefix):]
+		if len(seqBs) != 8 {
+			return errors.New("invalid key length (expected len(prefix)+8)")
+		}
+		seq = margaret.BaseSeq(binary.BigEndian.Uint64(seqBs))
 
 		return nil
 	})

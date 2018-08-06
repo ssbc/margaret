@@ -29,7 +29,7 @@ func (qry *memlogQuery) seek(ctx context.Context) error {
 			qry.cur = qry.log.head
 		}
 
-		for (qry.cur.seq+1).Seq() <= qry.gt.Seq() {
+		for (qry.cur.seq + 1).Seq() <= qry.gt.Seq() {
 			qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
 			if err != nil {
 				return err
@@ -40,7 +40,7 @@ func (qry *memlogQuery) seek(ctx context.Context) error {
 			qry.cur = qry.log.head
 		}
 
-		for (qry.cur.seq+1).Seq() < qry.gte.Seq() {
+		for (qry.cur.seq + 1).Seq() < qry.gte.Seq() {
 			qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
 			if err != nil {
 				return err

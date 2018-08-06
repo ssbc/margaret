@@ -47,10 +47,11 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		ok, err := multilog.Has(mlog, addr)
 		a.NoError(err)
 		a.True(ok)
-		
+
 		addrs, err = mlog.List()
 		r.NoError(err, "error listing mlog")
 		r.Len(addrs, 1)
+		r.Equal(addrs[0], addr)
 		mlog.Close()
 
 		// reopen
@@ -123,7 +124,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 
 			knownLogs, err := mlog.List()
 			r.NoError(err, "error calling List")
-			r.Len(knownLogs, 18)
+			r.Len(knownLogs, len(tc.values))
 
 			hasAddr := func(addr librarian.Addr) bool {
 				for _, a := range knownLogs {
