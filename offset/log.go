@@ -2,6 +2,7 @@ package offset // import "go.cryptoscope.co/margaret/offset"
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -21,6 +22,9 @@ type offsetLog struct {
 	seq     luigi.Observable
 	codec   margaret.Codec
 	framing margaret.Framing
+
+	bcast luigi.Broadcast
+	bcSink luigi.Sink
 }
 
 // New returns a new offset log.
@@ -30,6 +34,8 @@ func New(f *os.File, framing margaret.Framing, cdc margaret.Codec) (margaret.Log
 		framing: framing,
 		codec:   cdc,
 	}
+
+	log.bcSink, log.bcast = luigi.NewBroadcast()
 
 	// get current sequence by end / blocksize
 	end, err := f.Seek(0, io.SeekEnd)
@@ -46,18 +52,49 @@ func (log *offsetLog) Seq() luigi.Observable {
 	return log.seq
 }
 
-func (log *offsetLog) Get(s margaret.Seq) (interface{}, error) {
-	q, err := log.Query(margaret.Limit(1), margaret.Gte(s))
+func (log *offsetLog) Get(seq margaret.Seq) (interface{}, error) {
+	log.l.Lock()
+	defer log.l.Unlock()
+
+	return log.readFrame(seq)
+}
+
+// readFrame reads and parses a frame.
+func (log *offsetLog) readFrame(seq margaret.Seq) (interface{}, error) {
+	frame := make([]byte, log.framing.FrameSize())
+	pos := seq.Seq() * log.framing.FrameSize()
+
+	n, err := log.f.ReadAt(frame, pos)
 	if err != nil {
-		return nil, errors.Wrap(err, "error constructing single-value query")
+		return nil, errors.Wrap(err, "error reading frame")
 	}
 
-	return q.Next(context.TODO())
+	if int64(n) != log.framing.FrameSize() {
+		return nil, errors.New("short read")
+	}
+
+	data, err := log.framing.DecodeFrame(frame)
+	if err != nil {
+		return nil, errors.Wrap(err, "error decoding frame")
+	}
+
+	v, err := log.codec.Unmarshal(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling data")
+	}
+
+	fmt.Println("readFrame: read", v)
+
+	return v, nil
 }
+
 
 func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
+
+	fmt.Println("query: lock taken")
+	defer fmt.Println("query: releasing lock")
 
 	qry := &offsetQuery{
 		log:   log,
@@ -67,6 +104,7 @@ func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 		lt:      margaret.SeqEmpty,
 
 		limit: -1, //i.e. no limit
+		close: make(chan struct{}),
 	}
 
 	for _, spec := range specs {
@@ -84,9 +122,16 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	if err != nil {
 		return margaret.SeqEmpty, errors.Wrap(err, "error marshaling value")
 	}
+	
+	var nextSeq margaret.BaseSeq
 
 	log.l.Lock()
 	defer log.l.Unlock()
+
+	fmt.Println("append: got lock. appending:", v)
+	defer func()  {
+		fmt.Println("append: releasing lock. seq:", nextSeq)
+	}()
 
 	frame, err := log.framing.EncodeFrame(data)
 	if err != nil {
@@ -103,10 +148,15 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 		return margaret.SeqEmpty, errors.Wrap(err, "error reading current sequence number")
 	}
 
-	var nextSeq margaret.BaseSeq
 	nextSeq = margaret.BaseSeq(currSeq.(margaret.Seq).Seq()) + 1
 
-	return nextSeq, log.seq.Set(nextSeq)
+	err = log.bcSink.Pour(context.TODO(), margaret.WrapWithSeq(v, nextSeq))
+
+	// we need to do this, even in case of errors.
+	// but it should happen after the processing finished.
+	log.seq.Set(nextSeq)
+
+	return nextSeq, errors.Wrap(err, "error in live log queries")
 }
 
 func (log *offsetLog) FileName() string {
