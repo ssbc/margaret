@@ -21,8 +21,8 @@ type offsetQuery struct {
 	limit   int
 	live    bool
 	seqWrap bool
-	close chan struct{}
-	err error
+	close   chan struct{}
+	err     error
 }
 
 func (qry *offsetQuery) Gt(s margaret.Seq) error {
@@ -79,9 +79,6 @@ func (qry *offsetQuery) SeqWrap(wrap bool) error {
 func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.l.Lock()
 	defer qry.l.Unlock()
-
-	fmt.Println("qry.Next: lock taken")
-	defer fmt.Println("qry.Next: releasing lock")
 
 	if qry.limit == 0 {
 		return nil, luigi.EOS{}
@@ -183,22 +180,14 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 	qry.log.l.Lock()
 	defer qry.log.l.Unlock()
 
-	fmt.Println("qry.fastFwd: lock taken")
-	defer fmt.Println("qry.fastFwd: releasing lock")
-
 	if qry.nextSeq == margaret.SeqEmpty {
 		qry.nextSeq = 0
 	}
 
 	// go on
 	goon := func(seq margaret.BaseSeq) bool {
-		fmt.Println("seq:", seq)
-		fmt.Println("qry.limit:", qry.limit)
-		fmt.Println("qry.lt:", qry.lt)
-		
 		goon := qry.limit != 0 &&
 			!(qry.lt >= 0 && seq >= qry.lt)
-		fmt.Println("goon:", goon)
 		return goon
 	}
 
@@ -210,9 +199,10 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		//     and just Read that.
 		v, err := qry.log.readFrame(qry.nextSeq)
 		if err != nil {
+			// TODO dieser error verschwindet!!!1
 			break
 		}
-		
+
 		if qry.seqWrap {
 			v = margaret.WrapWithSeq(v, qry.nextSeq)
 		}
@@ -227,12 +217,12 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 
 	if !goon(qry.nextSeq) {
 		close(qry.close)
-		return func(){}, sink.Close()
+		return func() {}, sink.Close()
 	}
 
 	if !qry.live {
 		close(qry.close)
-		return func(){}, sink.Close()
+		return func() {}, sink.Close()
 	}
 
 	var cancel func()
@@ -243,7 +233,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 				return errors.New("closing closed sink")
 			}
 			closed = true
-			select{
+			select {
 			case <-qry.close:
 			default:
 				fmt.Println("closing qry.close because doClose")
@@ -254,7 +244,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 
 		sw := v.(margaret.SeqWrapper)
 		v, seq := sw.Value(), sw.Seq()
-		
+
 		if !goon(margaret.BaseSeq(seq.Seq())) {
 			close(qry.close)
 		}
@@ -262,10 +252,14 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		if qry.seqWrap {
 			v = sw
 		}
-		
+
 		return errors.Wrap(sink.Pour(ctx, v), "error pouring into sink")
 	})))
-	
+	oldCancel := cancel
+	cancel = func() {
+		oldCancel()
+	}
+
 	return func() {
 		cancel()
 	}, nil
