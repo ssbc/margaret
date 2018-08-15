@@ -13,5 +13,6 @@ func LogTest(f NewLogFunc) func(*testing.T) {
 		t.Run("Get", LogTestGet(f))
 		t.Run("Simple", LogTestSimple(f))
 		t.Run("Concurrent", LogTestConcurrent(f))
+		// t.Run("Copy", LogTestCopy(f))
 	}
 }

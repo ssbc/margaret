@@ -15,7 +15,11 @@ import (
 	mtest "go.cryptoscope.co/margaret/test"
 )
 
+var newLogFuncs map[string]mtest.NewLogFunc
+
 func init() {
+	newLogFuncs = make(map[string]mtest.NewLogFunc)
+
 	codecs := map[string]mtest.NewCodecFunc{
 		"json":    json.New,
 		"msgpack": msgpack.New,
@@ -41,6 +45,7 @@ func init() {
 	for cname, newCodec := range codecs {
 		for fname, frame := range framings {
 			mtest.Register("offset/"+fname+"/"+cname, buildNewLogFunc(frame, newCodec))
+			newLogFuncs["offset/"+fname+"/"+cname] = buildNewLogFunc(frame, newCodec)
 		}
 	}
 }

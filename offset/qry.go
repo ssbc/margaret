@@ -2,7 +2,7 @@ package offset // import "go.cryptoscope.co/margaret/offset"
 
 import (
 	"context"
-	"io"
+	"fmt"
 	"sync"
 
 	"go.cryptoscope.co/luigi"
@@ -21,6 +21,8 @@ type offsetQuery struct {
 	limit   int
 	live    bool
 	seqWrap bool
+	close chan struct{}
+	err error
 }
 
 func (qry *offsetQuery) Gt(s margaret.Seq) error {
@@ -78,6 +80,9 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.l.Lock()
 	defer qry.l.Unlock()
 
+	fmt.Println("qry.Next: lock taken")
+	defer fmt.Println("qry.Next: releasing lock")
+
 	if qry.limit == 0 {
 		return nil, luigi.EOS{}
 	}
@@ -90,16 +95,14 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.log.l.Lock()
 	defer qry.log.l.Unlock()
 
-	// only seek to eof if file not empty
+	seekTo := int64(qry.nextSeq) * qry.log.framing.FrameSize()
+
 	fi, err := qry.log.f.Stat()
 	if err != nil {
 		return nil, errors.Wrap(err, "stat error")
 	}
 
-	seekTo := int64(qry.nextSeq) * qry.log.framing.FrameSize()
-	size := fi.Size()
-
-	if size < seekTo+qry.log.framing.FrameSize() {
+	if fi.Size() < seekTo+qry.log.framing.FrameSize() {
 		if !qry.live {
 			return nil, luigi.EOS{}
 		}
@@ -139,28 +142,9 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, luigi.EOS{}
 	}
 
-	frame := make([]byte, qry.log.framing.FrameSize())
-	pos := int64(qry.nextSeq) * qry.log.framing.FrameSize()
-
-	n, err := qry.log.f.ReadAt(frame, pos)
-	if err == io.EOF {
-		return nil, luigi.EOS{}
-	} else if err != nil {
-		return nil, errors.Wrap(err, "error reading frame")
-	}
-
-	if int64(n) != qry.log.framing.FrameSize() {
-		return nil, errors.New("short read")
-	}
-
-	data, err := qry.log.framing.DecodeFrame(frame)
+	v, err := qry.log.readFrame(qry.nextSeq)
 	if err != nil {
-		return nil, errors.Wrap(err, "error decoding frame")
-	}
-
-	v, err := qry.codec.Unmarshal(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling data")
+		return nil, errors.Wrap(err, "error reading next frame")
 	}
 
 	defer func() { qry.nextSeq++ }()
@@ -170,4 +154,134 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	}
 
 	return v, nil
+}
+
+func (qry *offsetQuery) Push(ctx context.Context, sink luigi.Sink) error {
+	// first fast fwd's until we are up to date,
+	// then hooks us into the live log updater.
+	cancel, err := qry.fastFwdPush(ctx, sink)
+	if err != nil {
+		return errors.Wrap(err, "error in fast forward")
+	}
+
+	defer cancel()
+
+	// block until cancelled, then clean up and return
+	select {
+	case <-ctx.Done():
+		if qry.err != nil {
+			return qry.err
+		}
+
+		return ctx.Err()
+	case <-qry.close:
+		return qry.err
+	}
+}
+
+func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(), error) {
+	qry.log.l.Lock()
+	defer qry.log.l.Unlock()
+
+	fmt.Println("qry.fastFwd: lock taken")
+	defer fmt.Println("qry.fastFwd: releasing lock")
+
+	if qry.nextSeq == margaret.SeqEmpty {
+		qry.nextSeq = 0
+	}
+
+	// go on
+	goon := func(seq margaret.BaseSeq) bool {
+		fmt.Println("seq:", seq)
+		fmt.Println("qry.limit:", qry.limit)
+		fmt.Println("qry.lt:", qry.lt)
+		
+		goon := qry.limit != 0 &&
+			!(qry.lt >= 0 && seq >= qry.lt)
+		fmt.Println("goon:", goon)
+		return goon
+	}
+
+	for goon(qry.nextSeq) {
+		qry.limit--
+
+		// TODO: maybe don't read the frames individually but stream over them?
+		//     i.e. don't use ReadAt but have a separate fd just for this query
+		//     and just Read that.
+		v, err := qry.log.readFrame(qry.nextSeq)
+		if err != nil {
+			break
+		}
+		
+		if qry.seqWrap {
+			v = margaret.WrapWithSeq(v, qry.nextSeq)
+		}
+
+		err = sink.Pour(ctx, v)
+		if err != nil {
+			return nil, errors.Wrap(err, "error pouring read value")
+		}
+
+		qry.nextSeq++
+	}
+
+	if !goon(qry.nextSeq) {
+		close(qry.close)
+		return func(){}, sink.Close()
+	}
+
+	if !qry.live {
+		close(qry.close)
+		return func(){}, sink.Close()
+	}
+
+	var cancel func()
+	var closed bool
+	cancel = qry.log.bcast.Register(LockSink(luigi.FuncSink(func(ctx context.Context, v interface{}, doClose bool) error {
+		if doClose {
+			if closed {
+				return errors.New("closing closed sink")
+			}
+			closed = true
+			select{
+			case <-qry.close:
+			default:
+				fmt.Println("closing qry.close because doClose")
+				close(qry.close)
+			}
+			return errors.Wrap(sink.Close(), "error closing sink")
+		}
+
+		sw := v.(margaret.SeqWrapper)
+		v, seq := sw.Value(), sw.Seq()
+		
+		if !goon(margaret.BaseSeq(seq.Seq())) {
+			close(qry.close)
+		}
+
+		if qry.seqWrap {
+			v = sw
+		}
+		
+		return errors.Wrap(sink.Pour(ctx, v), "error pouring into sink")
+	})))
+	
+	return func() {
+		cancel()
+	}, nil
+}
+
+func LockSink(sink luigi.Sink) luigi.Sink {
+	var l sync.Mutex
+
+	return luigi.FuncSink(func(ctx context.Context, v interface{}, doClose bool) error {
+		l.Lock()
+		defer l.Unlock()
+
+		if doClose {
+			return sink.Close()
+		}
+
+		return sink.Pour(ctx, v)
+	})
 }
