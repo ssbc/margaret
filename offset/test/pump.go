@@ -45,19 +45,21 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			wait := make(chan struct{})
 
 			var iRes int
 			var closed bool
 			sink := luigi.FuncSink(func(ctx context.Context, v_ interface{}, doClose bool) error{
+				fmt.Printf("test sink pour doClose: %v, value: %#v(%T)\n", doClose, v_, v_)
+				defer fmt.Println("test sink returns")
+
 				if doClose {
 					fmt.Println("closing test sink")
 					if closed {
 						return errors.New("closing closed sink")
 					}
 					closed = true
-					if iRes != len(tc.result)-1  {
-						t.Errorf("early end of stream at %d instead of %d", iRes, len(tc.result)-1)
+					if iRes != len(tc.result)  {
+						t.Errorf("early end of stream at %d instead of %d", iRes, len(tc.result))
 					}
 
 
@@ -89,22 +91,10 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 
 				return nil
 			})
-			
-			
+
 			src, err := log.Query(tc.specs...)
 			r.NoError(err, "error querying log")
 
-			go func() {
-				err = luigi.Pump(ctx, sink, src)
-				if tc.live {
-					a.Equal(context.Canceled, err, "stream copy error")
-				} else {
-					a.Equal(nil, err, "stream copy error")
-				}
-				
-				close(wait)
-			}()
-					
 			for i, v := range tc.values {
 				// this only happens once!
 				if i == tc.qryTime {
@@ -118,7 +108,13 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 			if tc.live {
 				cancel()
 			}
-			<-wait
+			
+			err = luigi.Pump(ctx, sink, src)
+			if tc.live {
+				a.Equal(context.Canceled, err, "stream copy error")
+			} else {
+				a.Equal(nil, err, "stream copy error")
+			}
 		}
 	}
 
