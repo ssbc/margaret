@@ -186,9 +186,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 
 	// determines whether we should go on
 	goon := func(seq margaret.BaseSeq) bool {
-		goon := qry.limit != 0 &&
-			!(qry.lt >= 0 && seq >= qry.lt)
-		return goon
+		return qry.limit != 0 && !(qry.lt >= 0 && seq >= qry.lt)
 	}
 
 	for goon(qry.nextSeq) {
@@ -199,7 +197,6 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		//     and just Read that.
 		v, err := qry.log.readFrame(qry.nextSeq)
 		if err != nil {
-			// TODO dieser error verschwindet!!!1
 			break
 		}
 
