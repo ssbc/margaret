@@ -23,8 +23,8 @@ type offsetQuery struct {
 	limit   int
 	live    bool
 	seqWrap bool
-	close chan struct{}
-	err error
+	close   chan struct{}
+	err     error
 }
 
 func (qry *offsetQuery) Gt(s margaret.Seq) error {
@@ -192,13 +192,13 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		qry.nextSeq = 0
 	}
 
-	// go on
+	// determines whether we should go on
 	goon := func(seq margaret.BaseSeq) bool {
 		fmt.Println("goon:")
 		fmt.Println("  seq:", seq)
 		fmt.Println("  qry.limit:", qry.limit)
 		fmt.Println("  qry.lt:", qry.lt)
-		
+
 		fmt.Println("  call stack:")
 		_, file, line, ok := runtime.Caller(4)
 		fmt.Printf("    %s:%d ok:%v\n", file, line, ok)
@@ -208,7 +208,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		fmt.Printf("    %s:%d ok:%v\n", file, line, ok)
 		_, file, line, ok = runtime.Caller(1)
 		fmt.Printf("    %s:%d ok:%v\n", file, line, ok)
-	
+
 		goon := qry.limit != 0 &&
 			!(qry.lt >= 0 && seq >= qry.lt)
 		fmt.Println("  goon:", goon)
@@ -229,7 +229,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 			// TODO dieser error verschwindet!!!1
 			break
 		}
-		
+
 		if qry.seqWrap {
 			v = margaret.WrapWithSeq(v, qry.nextSeq)
 		}
@@ -242,17 +242,17 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		qry.nextSeq++
 		fmt.Println("readFram loop bottom")
 	}
-	
+
 	fmt.Println("readFram loop end")
 
 	if !goon(qry.nextSeq) {
 		close(qry.close)
-		return func(){}, sink.Close()
+		return func() {}, sink.Close()
 	}
 
 	if !qry.live {
 		close(qry.close)
-		return func(){}, sink.Close()
+		return func() {}, sink.Close()
 	}
 
 	var cancel func()
@@ -262,22 +262,24 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		defer fmt.Println("intermediate sink pour returns")
 
 		if doClose {
+			fmt.Println("closing qry.close because doClose. already closed:", closed)
 			if closed {
 				return errors.New("closing closed sink")
 			}
+
 			closed = true
-			select{
+			select {
 			case <-qry.close:
 			default:
-				fmt.Println("closing qry.close because doClose")
 				close(qry.close)
 			}
+
 			return errors.Wrap(sink.Close(), "error closing sink")
 		}
 
 		sw := v.(margaret.SeqWrapper)
 		v, seq := sw.Value(), sw.Seq()
-		
+
 		if !goon(margaret.BaseSeq(seq.Seq())) {
 			close(qry.close)
 		}
@@ -285,7 +287,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		if qry.seqWrap {
 			v = sw
 		}
-		
+
 		return errors.Wrap(sink.Pour(ctx, v), "error pouring into sink")
 	})))
 	oldCancel := cancel
@@ -295,7 +297,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		debug.PrintStack()
 		oldCancel()
 	}
-	
+
 	return func() {
 		cancel()
 	}, nil

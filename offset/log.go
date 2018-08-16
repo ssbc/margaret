@@ -23,7 +23,7 @@ type offsetLog struct {
 	codec   margaret.Codec
 	framing margaret.Framing
 
-	bcast luigi.Broadcast
+	bcast  luigi.Broadcast
 	bcSink luigi.Sink
 }
 
@@ -88,7 +88,6 @@ func (log *offsetLog) readFrame(seq margaret.Seq) (interface{}, error) {
 	return v, nil
 }
 
-
 func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
@@ -122,14 +121,14 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	if err != nil {
 		return margaret.SeqEmpty, errors.Wrap(err, "error marshaling value")
 	}
-	
+
 	var nextSeq margaret.BaseSeq
 
 	log.l.Lock()
 	defer log.l.Unlock()
 
 	fmt.Println("append: got lock. appending:", v)
-	defer func()  {
+	defer func() {
 		fmt.Println("append: releasing lock. seq:", nextSeq)
 	}()
 
