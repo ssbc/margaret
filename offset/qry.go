@@ -184,7 +184,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		qry.nextSeq = 0
 	}
 
-	// go on
+	// determines whether we should go on
 	goon := func(seq margaret.BaseSeq) bool {
 		goon := qry.limit != 0 &&
 			!(qry.lt >= 0 && seq >= qry.lt)
@@ -229,16 +229,18 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 	var closed bool
 	cancel = qry.log.bcast.Register(LockSink(luigi.FuncSink(func(ctx context.Context, v interface{}, doClose bool) error {
 		if doClose {
+			fmt.Println("closing qry.close because doClose. already closed:", closed)
 			if closed {
 				return errors.New("closing closed sink")
 			}
+
 			closed = true
 			select {
 			case <-qry.close:
 			default:
-				fmt.Println("closing qry.close because doClose")
 				close(qry.close)
 			}
+
 			return errors.Wrap(sink.Close(), "error closing sink")
 		}
 
