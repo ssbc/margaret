@@ -2,7 +2,6 @@ package offset // import "go.cryptoscope.co/margaret/offset"
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -83,17 +82,12 @@ func (log *offsetLog) readFrame(seq margaret.Seq) (interface{}, error) {
 		return nil, errors.Wrap(err, "error unmarshaling data")
 	}
 
-	fmt.Println("readFrame: read", v)
-
 	return v, nil
 }
 
 func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
-
-	fmt.Println("query: lock taken")
-	defer fmt.Println("query: releasing lock")
 
 	qry := &offsetQuery{
 		log:   log,
@@ -126,11 +120,6 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 
 	log.l.Lock()
 	defer log.l.Unlock()
-
-	fmt.Println("append: got lock. appending:", v)
-	defer func() {
-		fmt.Println("append: releasing lock. seq:", nextSeq)
-	}()
 
 	frame, err := log.framing.EncodeFrame(data)
 	if err != nil {

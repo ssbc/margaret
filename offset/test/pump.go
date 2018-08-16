@@ -50,11 +50,7 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 			var iRes int
 			var closed bool
 			sink := luigi.FuncSink(func(ctx context.Context, v_ interface{}, doClose bool) error {
-				fmt.Printf("test sink pour doClose: %v, value: %#v(%T)\n", doClose, v_, v_)
-				defer fmt.Println("test sink returns")
-
 				if doClose {
-					fmt.Println("closing test sink")
 					if closed {
 						return errors.New("closing closed sink")
 					}
@@ -228,11 +224,7 @@ func LogTestPumpLive(f mtest.NewLogFunc) func(*testing.T) {
 			var iRes int
 			var closed bool
 			sink := luigi.FuncSink(func(ctx context.Context, v_ interface{}, doClose bool) error {
-				fmt.Printf("test sink pour doClose: %v, value: %#v(%T)\n", doClose, v_, v_)
-				defer fmt.Println("test sink returns")
-
 				if doClose {
-					fmt.Println("closing test sink")
 					if closed {
 						return errors.New("closing closed sink")
 					}
