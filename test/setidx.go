@@ -72,7 +72,7 @@ func TestSetterIndexObservable(newIdx NewSetterIndexFunc) func(*testing.T) {
 		}
 
 		var cancel func()
-		cancel = obv.Register(luigi.FuncSink(func(ctx context.Context, v interface{}, doClose bool) error {
+		cancel = obv.Register(luigi.FuncSink(func(ctx context.Context, v interface{}, err error) error {
 			if i == 0 {
 				close(first)
 			}
@@ -84,7 +84,11 @@ func TestSetterIndexObservable(newIdx NewSetterIndexFunc) func(*testing.T) {
 
 			defer func() { i++ }()
 
-			if doClose {
+			if err != nil {
+				if err != (luigi.EOS{}) {
+					t.Log("sink closed with non-EOS error:", err)
+				}
+
 				if i == len(rxExp) {
 					close(closed)
 				} else {

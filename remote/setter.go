@@ -3,8 +3,8 @@ package remote
 import (
 	"context"
 
-	"go.cryptoscope.co/luigi"
 	"github.com/pkg/errors"
+	"go.cryptoscope.co/luigi"
 
 	"go.cryptoscope.co/librarian"
 )
