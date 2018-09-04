@@ -55,8 +55,12 @@ func LogTestPumpLive(f mtest.NewLogFunc) func(*testing.T) {
 
 			var iRes int
 			var closed bool
-			sink := luigi.FuncSink(func(ctx context.Context, v_ interface{}, doClose bool) error {
-				if doClose {
+			sink := luigi.FuncSink(func(ctx context.Context, v_ interface{}, err error) error {
+				if err != nil {
+					if err != (luigi.EOS{}) {
+						t.Log("sink closed with non-EOS error:", err)
+					}
+
 					if closed {
 						return errors.New("closing closed sink")
 					}

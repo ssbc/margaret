@@ -107,9 +107,9 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		wait := make(chan struct{})
 		var cancel func()
 		cancel = qry.log.seq.Register(luigi.FuncSink(
-			func(ctx context.Context, v interface{}, doClose bool) error {
-				if doClose {
-					return luigi.EOS{}
+			func(ctx context.Context, v interface{}, err error) error {
+				if err != nil {
+					return err
 				}
 				if v.(margaret.Seq).Seq() >= qry.nextSeq.Seq() {
 					close(wait)
@@ -119,7 +119,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 				return nil
 			}))
 
-		err := func() error {
+		err = func() error {
 			qry.log.l.Unlock()
 			defer qry.log.l.Lock()
 
@@ -224,9 +224,9 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 
 	var cancel func()
 	var closed bool
-	cancel = qry.log.bcast.Register(LockSink(luigi.FuncSink(func(ctx context.Context, v interface{}, doClose bool) error {
-		if doClose {
-			fmt.Println("closing qry.close because doClose. already closed:", closed)
+	cancel = qry.log.bcast.Register(LockSink(luigi.FuncSink(func(ctx context.Context, v interface{}, err error) error {
+		if err != nil {
+			fmt.Printf("closing qry.close with error %q. already closed: %v\n", err, closed)
 			if closed {
 				return errors.New("closing closed sink")
 			}
@@ -267,11 +267,20 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 func LockSink(sink luigi.Sink) luigi.Sink {
 	var l sync.Mutex
 
-	return luigi.FuncSink(func(ctx context.Context, v interface{}, doClose bool) error {
+	return luigi.FuncSink(func(ctx context.Context, v interface{}, err error) error {
 		l.Lock()
 		defer l.Unlock()
 
-		if doClose {
+		if err != nil {
+			cwe, ok := sink.(interface{ CloseWithError(error) error })
+			if ok {
+				return cwe.CloseWithError(err)
+			}
+
+			if err != (luigi.EOS{}) {
+				fmt.Printf("was closed with error %q but underlying sink can not be closed with error\n", err)
+			}
+
 			return sink.Close()
 		}
 

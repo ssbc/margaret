@@ -127,8 +127,8 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 
 			var cancel func()
 			cancel = qry.log.seq.Register(luigi.FuncSink(
-				func(ctx context.Context, v interface{}, doClose bool) error {
-					if doClose {
+				func(ctx context.Context, v interface{}, err error) error {
+					if err != nil {
 						close(closed)
 						return nil
 					}
