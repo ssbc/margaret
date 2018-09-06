@@ -96,7 +96,9 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 
 	nextSeqBs := make([]byte, 8)
 	binary.BigEndian.PutUint64(nextSeqBs, uint64(qry.nextSeq))
-	key := append(qry.log.prefix, nextSeqBs...)
+	prefix := make([]byte, len(qry.log.prefix))
+	copy(prefix, qry.log.prefix)
+	key := append(prefix, nextSeqBs...)
 
 	var v interface{}
 
