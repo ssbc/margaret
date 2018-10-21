@@ -6,11 +6,12 @@ import (
 
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/multilog"
 
 	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/luigi"
+
+	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/multilog"
 )
 
 // New returns a new badger-backed multilog with given codec.
@@ -96,6 +97,16 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 	return slog, nil
 }
 
+func increment(l int, data []byte) {
+	if data[l] == 0xff {
+		data[l] = 0
+		increment(l-1, data)
+		return
+	}
+
+	data[l]++
+}
+
 // List returns a list of all stored sublogs
 func (log *mlog) List() ([]librarian.Addr, error) {
 	var list []librarian.Addr
@@ -114,7 +125,7 @@ func (log *mlog) List() ([]librarian.Addr, error) {
 
 			// increment last byte of prefix to skip all entries with same prefix
 			next = key[:l+1]
-			next[l]++
+			increment(int(l), next)
 		}
 
 		return nil
