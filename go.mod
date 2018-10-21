@@ -11,6 +11,6 @@ require (
 	github.com/shurcooL/go-goon v0.0.0-20170922171312-37c2f522c041
 	github.com/stretchr/testify v1.2.2
 	github.com/ugorji/go v1.1.1
-	go.cryptoscope.co/librarian v1.0.0
-	go.cryptoscope.co/luigi v0.1.0
+	go.cryptoscope.co/librarian v0.1.0
+	go.cryptoscope.co/luigi v0.3.0
 )
