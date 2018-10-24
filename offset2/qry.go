@@ -136,6 +136,15 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, errors.Wrap(err, "error reading offset")
 	}
 
+	// we waited until the value is in the log - now read it again
+
+	v, err = qry.log.readFrame(qry.nextSeq)
+	if errors.Cause(err) == io.EOF {
+		return nil, io.ErrUnexpectedEOF
+	} else if err != nil {
+		return nil, errors.Wrap(err, "error reading data frame")
+	}
+
 	defer func() { qry.nextSeq++ }()
 
 	if qry.seqWrap {
