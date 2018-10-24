@@ -49,7 +49,7 @@ func LogTestPumpLive(f mtest.NewLogFunc) func(*testing.T) {
 
 			defer func() {
 				if namer, ok := log.(interface{ FileName() string }); ok {
-					r.NoError(os.Remove(namer.FileName()), "error deleting log after test")
+					r.NoError(os.RemoveAll(namer.FileName()), "error deleting log after test")
 				}
 			}()
 

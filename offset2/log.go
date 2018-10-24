@@ -299,7 +299,6 @@ func (o *offset) append(ofst int64) (margaret.Seq, error) {
 
 	err = binary.Write(o, binary.BigEndian, ofst)
 	return seq, errors.Wrap(err, "error writing offset")
-
 }
 
 type journal struct {
@@ -443,6 +442,6 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	return seq, nil
 }
 
-func (log *offsetLog) Name() string {
+func (log *offsetLog) FileName() string {
 	return log.name
 }
