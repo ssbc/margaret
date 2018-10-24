@@ -24,6 +24,15 @@ func TestReadWrite(t *testing.T) {
 	log, err := Open(name, mjson.New(&testEvent{}))
 	r.NoError(err, "error during log creation")
 
+	// cleanup
+	defer func() {
+		if t.Failed() {
+			t.Logf("log data directory at %q was not deleted due to test failure", name)
+		} else {
+			os.RemoveAll(name)
+		}
+	}()
+
 	// fill
 	tevs := []testEvent{
 		testEvent{"hello", 23},
@@ -45,13 +54,6 @@ func TestReadWrite(t *testing.T) {
 		ev, ok := v.(*testEvent)
 		r.True(ok, "failed to cast event %d. got %T", i, v)
 		r.Equal(*ev, tevs[i])
-	}
-
-	// cleanup
-	if t.Failed() {
-		t.Logf("log data directory at %q was not deleted due to test failure", name)
-	} else {
-		os.RemoveAll(name)
 	}
 }
 
