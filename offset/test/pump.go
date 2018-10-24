@@ -79,7 +79,7 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 						a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
 						a.Equal(sw.Value(), sw_.Value(), "value doesn't match")
 					} else {
-						a.Equal(v, v, "values don't match")
+						a.Equal(v, v_, "values don't match")
 					}
 				}
 
