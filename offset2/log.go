@@ -291,8 +291,8 @@ func (o *offset) readLastOffset() (int64, margaret.Seq, error) {
 }
 
 func (o *offset) append(ofst int64) (margaret.Seq, error) {
-	_, err := o.Seek(0, io.SeekEnd)
-	seq := margaret.BaseSeq(ofst / 8)
+	ofstOfst, err := o.Seek(0, io.SeekEnd)
+	seq := margaret.BaseSeq(ofstOfst / 8)
 	if err != nil {
 		return seq, errors.Wrap(err, "could not seek to end of file")
 	}
