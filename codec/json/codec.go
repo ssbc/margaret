@@ -57,19 +57,25 @@ func (*codec) NewEncoder(w io.Writer) margaret.Encoder {
 
 func (c *codec) NewDecoder(r io.Reader) margaret.Decoder {
 	return &decoder{
-		tipe: c.tipe,
-		dec:  json.NewDecoder(r),
+		tipe:  c.tipe,
+		dec:   json.NewDecoder(r),
+		asPtr: c.asPtr,
 	}
 }
 
 type decoder struct {
-	tipe reflect.Type
-	dec  *json.Decoder
+	tipe  reflect.Type
+	dec   *json.Decoder
+	asPtr bool
 }
 
 func (dec *decoder) Decode() (interface{}, error) {
 	v := reflect.New(dec.tipe).Interface()
 	err := dec.dec.Decode(v)
+
+	if !dec.asPtr {
+		v = reflect.ValueOf(v).Elem().Interface()
+	}
 
 	return v, err
 }
