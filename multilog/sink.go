@@ -70,6 +70,8 @@ func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
 }
 
 // Close closes the root-log..? seems wrong
+// rational here beeing having multiple mlogs on one root (?)
+// user needs to know this, then.
 func (slog *sinkLog) Close() error { return nil } // slog.mlog.Close() }
 
 // QuerySpec returns the query spec that queries the next needed messages from the log

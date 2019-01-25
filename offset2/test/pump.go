@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -17,6 +16,7 @@ import (
 
 func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 	type testcase struct {
+		name    string
 		tipe    interface{}
 		values  []interface{}
 		specs   []margaret.QuerySpec
@@ -95,10 +95,6 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 			r.NoError(err, "error querying log")
 
 			for i, v := range tc.values {
-				// this only happens once!
-				if i == tc.qryTime {
-				}
-
 				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
 				r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
@@ -119,12 +115,14 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 
 	tcs := []testcase{
 		{
+			name:   "simple",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 		},
 
 		{
+			name:   "gt",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
@@ -132,6 +130,7 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "gte1",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
@@ -139,6 +138,7 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "lt2",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
@@ -146,6 +146,7 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "lte1",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
@@ -153,13 +154,27 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "limit2",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
 			specs:  []margaret.QuerySpec{margaret.Limit(2)},
 		},
 
+		/* Q: how would one do this without caching the results first?...
+		 => add error that it's unsupported?
 		{
+			name:   "reverse",
+			tipe:   0,
+			values: []interface{}{5, 4, 3, 2, 1},
+			// result: []interface{}{1, 2, 3, 4, 5},
+			errStr: "fail",
+			specs:  []margaret.QuerySpec{margaret.Reverse(true)},
+		},
+		*/
+
+		{
+			name:   "live",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
@@ -168,6 +183,7 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "seqWrap",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{
@@ -181,8 +197,8 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 	}
 
 	return func(t *testing.T) {
-		for i, tc := range tcs {
-			t.Run(fmt.Sprint(i), mkTest(tc))
+		for _, tc := range tcs {
+			t.Run(tc.name, mkTest(tc))
 		}
 	}
 }

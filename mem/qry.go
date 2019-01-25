@@ -19,6 +19,7 @@ type memlogQuery struct {
 	limit   int
 	live    bool
 	seqWrap bool
+	reverse bool
 }
 
 func (qry *memlogQuery) seek(ctx context.Context) error {
@@ -97,6 +98,19 @@ func (qry *memlogQuery) Live(live bool) error {
 	return nil
 }
 
+func (qry *memlogQuery) SeqWrap(wrap bool) error {
+	qry.seqWrap = wrap
+	return nil
+}
+
+func (qry *memlogQuery) Reverse(yes bool) error {
+	qry.reverse = yes
+	if yes {
+		qry.cur = qry.log.tail
+	}
+	return nil
+}
+
 func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 	if qry.limit == 0 {
 		return nil, luigi.EOS{}
@@ -106,8 +120,23 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.log.l.Lock()
 	defer qry.log.l.Unlock()
 
+	if qry.reverse {
+		if qry.live {
+			return nil, errors.Errorf("can't do reverse & live")
+		}
+		if qry.cur == qry.log.head {
+			return qry.cur.v, luigi.EOS{}
+		}
+		v := qry.cur.v
+		qry.cur = qry.cur.prev
+		return v, nil
+	}
+
 	if qry.cur.seq.Seq() <= qry.gt.Seq() || qry.cur.seq.Seq() < qry.gt.Seq() {
-		qry.seek(ctx)
+		err := qry.seek(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// no new data yet and non-blocking
@@ -130,11 +159,5 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 	if qry.seqWrap {
 		return margaret.WrapWithSeq(qry.cur.v, qry.cur.seq), nil
 	}
-
 	return qry.cur.v, nil
-}
-
-func (qry *memlogQuery) SeqWrap(wrap bool) error {
-	qry.seqWrap = wrap
-	return nil
 }

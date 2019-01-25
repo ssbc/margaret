@@ -13,6 +13,9 @@ type Query interface {
 	// Limit makes the source return only up to n items.
 	Limit(n int) error
 
+	// Reverse makes the source return the lastest values first
+	Reverse(yes bool) error
+
 	// Live makes the source block at the end of the log and wait for new values
 	// that are being appended.
 	Live(bool) error
@@ -94,5 +97,11 @@ func Live(live bool) QuerySpec {
 func SeqWrap(wrap bool) QuerySpec {
 	return func(q Query) error {
 		return q.SeqWrap(wrap)
+	}
+}
+
+func Reverse(yes bool) QuerySpec {
+	return func(q Query) error {
+		return q.Reverse(yes)
 	}
 }

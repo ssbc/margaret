@@ -68,7 +68,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 							a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
 							a.Equal(sw.Value(), sw_.Value(), "value doesn't match")
 						} else {
-							a.Equal(v, v, "values don't match")
+							a.EqualValues(v, v_, "values don't match")
 						}
 					}
 					if err != nil {
@@ -84,6 +84,8 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 					t.Errorf("expected error %q but got %q", tc.errStr, err)
 				}
 			}
+
+			r.NoError(mlog.Close(), "failed to close testlog")
 
 			if t.Failed() {
 				t.Log("db location:", dir)

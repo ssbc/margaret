@@ -2,7 +2,6 @@ package test // import "go.cryptoscope.co/margaret/multilog/test"
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -77,6 +76,7 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 
 func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 	type testcase struct {
+		name    string
 		tipe    interface{}
 		specs   []margaret.QuerySpec
 		values  map[librarian.Addr][]interface{}
@@ -155,7 +155,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 				var v_ interface{}
 				err = nil
 
-				for _, v := range results {
+				for i, v := range results {
 					go func() {
 						select {
 						case <-time.After(20 * time.Millisecond):
@@ -172,10 +172,10 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 							sw := v.(margaret.SeqWrapper)
 							sw_ := v_.(margaret.SeqWrapper)
 
-							a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
-							a.Equal(sw.Value(), sw_.Value(), "value doesn't match")
+							a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match - result %d", i)
+							a.Equal(sw.Value(), sw_.Value(), "value doesn't match - result %d", i)
 						} else {
-							a.Equal(v, v, "values don't match")
+							a.EqualValues(v, v_, "values don't match - result %d", i)
 						}
 					}
 					if err != nil {
@@ -214,6 +214,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 				}
 			}
 
+			r.NoError(mlog.Close(), "failed to close testlog")
+
 			if t.Failed() {
 				t.Log("db location:", dir)
 			} else {
@@ -224,6 +226,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 
 	tcs := []testcase{
 		{
+			name:  "simple all",
 			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Live(true)},
 			live:  true,
@@ -272,6 +275,55 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:  "reverse",
+			tipe:  margaret.BaseSeq(0),
+			specs: []margaret.QuerySpec{margaret.Reverse(true)},
+			values: map[librarian.Addr][]interface{}{
+				librarian.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
+				librarian.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},
+				librarian.Addr([]byte{0, 0, 0, 4}):  []interface{}{4, 8, 12, 16},
+				librarian.Addr([]byte{0, 0, 0, 5}):  []interface{}{5, 10, 15},
+				librarian.Addr([]byte{0, 0, 0, 6}):  []interface{}{6, 12, 18},
+				librarian.Addr([]byte{0, 0, 0, 7}):  []interface{}{7, 14},
+				librarian.Addr([]byte{0, 0, 0, 8}):  []interface{}{8, 16},
+				librarian.Addr([]byte{0, 0, 0, 9}):  []interface{}{9, 18},
+				librarian.Addr([]byte{0, 0, 0, 10}): []interface{}{10},
+				librarian.Addr([]byte{0, 0, 0, 11}): []interface{}{11},
+				librarian.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
+				librarian.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
+				librarian.Addr([]byte{0, 0, 0, 13}): []interface{}{13},
+				librarian.Addr([]byte{0, 0, 0, 14}): []interface{}{14},
+				librarian.Addr([]byte{0, 0, 0, 15}): []interface{}{15},
+				librarian.Addr([]byte{0, 0, 0, 16}): []interface{}{16},
+				librarian.Addr([]byte{0, 0, 0, 17}): []interface{}{17},
+				librarian.Addr([]byte{0, 0, 0, 18}): []interface{}{18},
+				librarian.Addr([]byte{0, 0, 0, 19}): []interface{}{19},
+			},
+			results: map[librarian.Addr][]interface{}{
+				librarian.Addr([]byte{0, 0, 0, 2}):  []interface{}{18, 16, 14, 12, 10, 8, 6, 4, 2},
+				librarian.Addr([]byte{0, 0, 0, 3}):  []interface{}{18, 15, 12, 9, 6, 3},
+				librarian.Addr([]byte{0, 0, 0, 4}):  []interface{}{16, 12, 8, 4},
+				librarian.Addr([]byte{0, 0, 0, 5}):  []interface{}{15, 10, 5},
+				librarian.Addr([]byte{0, 0, 0, 6}):  []interface{}{18, 12, 6},
+				librarian.Addr([]byte{0, 0, 0, 7}):  []interface{}{14, 7},
+				librarian.Addr([]byte{0, 0, 0, 8}):  []interface{}{16, 8},
+				librarian.Addr([]byte{0, 0, 0, 9}):  []interface{}{18, 9},
+				librarian.Addr([]byte{0, 0, 0, 10}): []interface{}{10},
+				librarian.Addr([]byte{0, 0, 0, 11}): []interface{}{11},
+				librarian.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
+				librarian.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
+				librarian.Addr([]byte{0, 0, 0, 13}): []interface{}{13},
+				librarian.Addr([]byte{0, 0, 0, 14}): []interface{}{14},
+				librarian.Addr([]byte{0, 0, 0, 15}): []interface{}{15},
+				librarian.Addr([]byte{0, 0, 0, 16}): []interface{}{16},
+				librarian.Addr([]byte{0, 0, 0, 17}): []interface{}{17},
+				librarian.Addr([]byte{0, 0, 0, 18}): []interface{}{18},
+				librarian.Addr([]byte{0, 0, 0, 19}): []interface{}{19},
+			},
+		},
+
+		{
+			name:  "limit1",
 			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Limit(1)},
 			values: map[librarian.Addr][]interface{}{
@@ -319,6 +371,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:  "live and gte1",
 			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Live(true), margaret.Gte(margaret.BaseSeq(1))},
 			live:  true,
@@ -367,6 +420,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:  "lte3",
 			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Lte(margaret.BaseSeq(3))},
 			values: map[librarian.Addr][]interface{}{
@@ -414,6 +468,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:  "lt3",
 			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Lt(margaret.BaseSeq(3))},
 			values: map[librarian.Addr][]interface{}{
@@ -462,8 +517,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 	}
 
 	return func(t *testing.T) {
-		for i, tc := range tcs {
-			t.Run(fmt.Sprint(i), mkTest(tc))
+		for _, tc := range tcs {
+			t.Run(tc.name, mkTest(tc))
 		}
 	}
 }

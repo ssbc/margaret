@@ -13,6 +13,7 @@ type memlogElem struct {
 	v    interface{}
 	seq  margaret.BaseSeq
 	next *memlogElem
+	prev *memlogElem
 
 	wait chan struct{}
 }
@@ -124,7 +125,20 @@ func (log *memlog) Append(v interface{}) (margaret.Seq, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 
-	log.tail.next = &memlogElem{v: v, seq: log.tail.seq + 1, wait: make(chan struct{})}
+	nxt := &memlogElem{
+		v:    v,
+		seq:  log.tail.seq + 1,
+		wait: make(chan struct{}),
+	}
+
+	// scroll to prev
+	var cur = log.head
+	for cur.seq < log.tail.seq && cur.next != nil {
+		cur = cur.next
+	}
+	nxt.prev = cur
+
+	log.tail.next = nxt
 	oldtail := log.tail
 	log.tail = log.tail.next
 

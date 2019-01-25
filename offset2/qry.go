@@ -22,6 +22,7 @@ type offsetQuery struct {
 	limit   int
 	live    bool
 	seqWrap bool
+	reverse bool
 	close   chan struct{}
 	err     error
 }
@@ -77,6 +78,23 @@ func (qry *offsetQuery) SeqWrap(wrap bool) error {
 	return nil
 }
 
+func (qry *offsetQuery) Reverse(yes bool) error {
+	qry.reverse = yes
+	if yes {
+		v, err := qry.log.seq.Value()
+		if err != nil {
+			return errors.Wrap(err, "offsetQry: failed to establish current value")
+		}
+
+		currSeq, ok := v.(margaret.Seq)
+		if !ok {
+			return errors.Errorf("offsetQry: failed to establish current value")
+		}
+		qry.nextSeq = margaret.BaseSeq(currSeq.Seq())
+	}
+	return nil
+}
+
 func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.l.Lock()
 	defer qry.l.Unlock()
@@ -87,6 +105,9 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.limit--
 
 	if qry.nextSeq == margaret.SeqEmpty {
+		if qry.reverse {
+			return nil, luigi.EOS{}
+		}
 		qry.nextSeq = 0
 	}
 
@@ -145,7 +166,13 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, errors.Wrap(err, "error reading data frame")
 	}
 
-	defer func() { qry.nextSeq++ }()
+	defer func() {
+		if qry.reverse {
+			qry.nextSeq--
+		} else {
+			qry.nextSeq++
+		}
+	}()
 
 	if qry.seqWrap {
 		return margaret.WrapWithSeq(v, qry.nextSeq), nil

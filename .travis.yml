@@ -3,16 +3,13 @@ language: go
 go:
   - "1.x"
   - "1.11.x"
-  - master
+  - "1.12.x"
 
 env:
   - GO111MODULE=on
 
-matrix:
-  allow_failures:
-    - go: master
-
 go_import_path: go.cryptoscope.co/margaret
+
 
 install:
   - go get -t -v go.cryptoscope.co/margaret/...
