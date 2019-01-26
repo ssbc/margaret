@@ -48,6 +48,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 			// make multilog
 			mlog, dir, err := f(t.Name(), tc.tipe, "")
 			r.NoError(err, "error creating multilog")
+			defer mlog.Close()
 
 			// make file that tracks current sequence number
 			prefix := "curSeq-" + strings.Replace(t.Name(), "/", "_", -1) + "-"
