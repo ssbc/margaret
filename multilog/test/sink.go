@@ -48,7 +48,17 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 			// make multilog
 			mlog, dir, err := f(t.Name(), tc.tipe, "")
 			r.NoError(err, "error creating multilog")
-			defer mlog.Close()
+			defer func() {
+				err := mlog.Close()
+				if err != nil {
+					t.Error("mlog close", err)
+				}
+				if t.Failed() {
+					t.Log("db location:", dir)
+				} else {
+					os.RemoveAll(dir)
+				}
+			}()
 
 			// make file that tracks current sequence number
 			prefix := "curSeq-" + strings.Replace(t.Name(), "/", "_", -1) + "-"
@@ -57,7 +67,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 			defer func() {
 				err := os.Remove(file.Name())
 				if err != nil {
-					t.Error(err)
+					t.Error("seq file rm", err)
 				}
 			}()
 
@@ -146,12 +156,6 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 					cancel()
 				case waiter <- struct{}{}:
 				}
-			}
-
-			if t.Failed() {
-				t.Log("db location:", dir)
-			} else {
-				os.RemoveAll(dir)
 			}
 		}
 	}
