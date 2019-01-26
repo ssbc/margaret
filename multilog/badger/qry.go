@@ -150,7 +150,6 @@ func (qry *query) livequery(ctx context.Context) (interface{}, error) {
 	var cancel func()
 	cancel = qry.log.seq.Register(luigi.FuncSink(
 		func(ctx context.Context, v interface{}, err error) error {
-			cancel()
 			if err != nil {
 				close(closed)
 				return nil
