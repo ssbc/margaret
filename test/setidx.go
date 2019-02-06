@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/luigi"
 )
@@ -20,26 +21,20 @@ func TestSetterIndex(newIdx NewSetterIndexFunc) func(*testing.T) {
 func TestSetterIndexSequential(newIdx NewSetterIndexFunc) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
+		r := require.New(t)
 
 		idx, err := newIdx(t.Name(), "str")
-		if err != nil {
-			t.Error("error creating index", err)
-		}
+		r.NoError(err, "error creating index")
 
 		err = idx.Set(ctx, "test", "omg what is this")
-		if err != nil {
-			t.Error("error setting value", err)
-		}
+		r.NoError(err, "error setting value")
 
 		obv, err := idx.Get(ctx, "test")
-		if err != nil {
-			t.Error("error getting observable", err)
-		}
+		r.NoError(err, "error getting observable")
 
 		v, err := obv.Value()
-		if err != nil {
-			t.Error("error getting value", err)
-		}
+		r.NoError(err, "error getting value")
+
 		if v != "omg what is this" {
 			t.Errorf("expected %q but got %q (type: %T)", "omg what is this", v, v)
 		}
@@ -49,16 +44,13 @@ func TestSetterIndexSequential(newIdx NewSetterIndexFunc) func(*testing.T) {
 func TestSetterIndexObservable(newIdx NewSetterIndexFunc) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
+		r := require.New(t)
 
 		idx, err := newIdx(t.Name(), "str")
-		if err != nil {
-			t.Error("error creating index", err)
-		}
+		r.NoError(err, "error creating index")
 
 		obv, err := idx.Get(ctx, "test")
-		if err != nil {
-			t.Error("error getting observable", err)
-		}
+		r.NoError(err, "error getting observable")
 
 		var i int
 		first := make(chan struct{})
@@ -125,9 +117,7 @@ func TestSetterIndexObservable(newIdx NewSetterIndexFunc) func(*testing.T) {
 		}
 
 		err = idx.Delete(ctx, "test")
-		if err != nil {
-			t.Error("error deleting value", err)
-		}
+		r.NoError(err, "error deleting value")
 
 		<-closed
 	}
