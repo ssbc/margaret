@@ -150,11 +150,11 @@ func (log *offsetLog) checkJournal() error {
 		return errors.Wrap(err, "error stat'ing data file")
 	}
 
-	if ofstData+8+sz > stat.Size() {
-		return errors.New("data file is too short")
-	}
-	if ofstData+8+sz < stat.Size() {
-		return errors.New("data file is too long")
+	n := ofstData + 8 + sz
+	d := n - stat.Size()
+	if d != 0 {
+		// TODO: chop off the rest
+		return errors.Errorf("data file size difference %d", d)
 	}
 
 	if seqJrnl != seqOfst {
