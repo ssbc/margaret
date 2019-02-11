@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -55,19 +55,19 @@ func Open(name string, cdc margaret.Codec) (margaret.Log, error) {
 		return nil, errors.Wrapf(err, "error making log directory at %q", name)
 	}
 
-	pLog := path.Join(name, "data")
+	pLog := filepath.Join(name, "data")
 	fData, err := os.OpenFile(pLog, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error opening log data file at %q", pLog)
 	}
 
-	pOfst := path.Join(name, "ofst")
+	pOfst := filepath.Join(name, "ofst")
 	fOfst, err := os.OpenFile(pOfst, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error opening log offset file at %q", pOfst)
 	}
 
-	pJrnl := path.Join(name, "jrnl")
+	pJrnl := filepath.Join(name, "jrnl")
 	fJrnl, err := os.OpenFile(pJrnl, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error opening log journal file at %q", pJrnl)
