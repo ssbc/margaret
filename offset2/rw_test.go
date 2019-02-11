@@ -1,11 +1,14 @@
 package offset2
 
 import (
+	"context"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 	mjson "go.cryptoscope.co/margaret/codec/json"
 )
@@ -82,7 +85,6 @@ func TestWriteAndWriteAgain(t *testing.T) {
 
 	log, err = Open(name, mjson.New(&testEvent{}))
 	r.NoError(err, "error during log creation")
-
 	// fill again
 	for i, ev := range tevs {
 		seq, err := log.Append(ev)
@@ -91,6 +93,12 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	}
 
 	// close
+	close := log.(io.Closer)
+	r.NoError(close.Close())
+
+	_, err = log.Append(23)
+	r.NotNil(err)
+
 	log, err = Open(name, mjson.New(&testEvent{}))
 	r.NoError(err, "error during log creation")
 
@@ -108,7 +116,6 @@ func TestWriteAndWriteAgain(t *testing.T) {
 		r.Equal(*ev, tevs[i%len(tevs)])
 	}
 
-	/* qry
 	src, err := log.Query()
 	r.NoError(err, "failed to open query")
 	var (
@@ -122,11 +129,12 @@ func TestWriteAndWriteAgain(t *testing.T) {
 		} else if err != nil {
 			r.NoError(err, "error during next draining")
 		}
-
+		t.Log(v, seq)
+		seq++
 		// TODO: v has no sequence unless we put it in the values ourselvs..?
 	}
-	*/
-
+	close = log.(io.Closer)
+	r.NoError(close.Close())
 	// cleanup
 	if t.Failed() {
 		t.Log("log was written to ", name)
