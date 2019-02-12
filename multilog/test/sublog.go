@@ -5,10 +5,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
 
@@ -42,6 +44,19 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 			for addr, values := range tc.values {
 				slog, err := mlog.Get(addr)
 				r.NoError(err, "error getting sublog")
+
+				// check empty
+				sv, err := slog.Seq().Value()
+				r.NoError(err, "error getting sublog sequence")
+				seq, ok := sv.(margaret.Seq)
+				r.True(ok, "wrong type:%T", sv)
+				r.EqualValues(seq.Seq(), margaret.SeqEmpty)
+
+				ev, err := slog.Get(margaret.SeqEmpty)
+				r.Error(err)
+				r.Equal(luigi.EOS{}, errors.Cause(err))
+				r.Nil(ev)
+
 				for i, v := range values {
 					seq, err := slog.Append(v)
 					r.NoError(err, "error appending to log")
@@ -83,6 +98,18 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 				} else if tc.errStr != "" && err.Error() != tc.errStr {
 					t.Errorf("expected error %q but got %q", tc.errStr, err)
 				}
+
+				currV, err := slog.Seq().Value()
+				r.NoError(err)
+				currSeq := currV.(margaret.BaseSeq)
+				t.Log(currSeq)
+				v, err := slog.Get(currSeq)
+				r.NoError(err)
+				r.NotNil(v)
+				v, err = slog.Get(currSeq + 1)
+				r.Error(err)
+				r.Nil(v)
+				t.Log(err)
 			}
 
 			r.NoError(mlog.Close(), "failed to close testlog")
