@@ -2,6 +2,7 @@ package test // import "go.cryptoscope.co/margaret/multilog/test"
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -31,6 +32,8 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 
 		var addr librarian.Addr = "f23"
 		sublog, err := mlog.Get(addr)
+		r.NoError(err)
+		r.NotNil(sublog)
 
 		// add some vals
 		var vals = []margaret.BaseSeq{1, 2, 3}
@@ -51,9 +54,9 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		r.NoError(err, "error listing mlog")
 		r.Len(addrs, 1)
 		r.Equal(addrs[0], addr)
-		mlog.Close()
 
 		// reopen
+		r.NoError(mlog.Close())
 		mlog, dir, err = f(t.Name(), margaret.BaseSeq(0), dir)
 		r.NoError(err)
 
@@ -64,7 +67,23 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		addrs, err = mlog.List()
 		r.NoError(err, "error listing mlog")
 		r.Len(addrs, 1)
-		mlog.Close()
+
+		// empty sublogs do nothing
+
+		for i := 0; i < 10; i++ {
+			_, err := mlog.Get(librarian.Addr(fmt.Sprintf("empty%02d", i)))
+			r.NoError(err)
+		}
+
+		// reopen
+		r.NoError(mlog.Close())
+		mlog, dir, err = f(t.Name(), margaret.BaseSeq(0), dir)
+		r.NoError(err)
+
+		addrs, err = mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 1)
+		r.NoError(mlog.Close())
 
 		if t.Failed() {
 			t.Log("db location:", dir)
