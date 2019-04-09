@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"go.cryptoscope.co/margaret"
 )
 
 type data struct {
@@ -20,6 +21,10 @@ func (d *data) frameReader(ofst int64) (io.Reader, error) {
 	err := binary.Read(io.NewSectionReader(d, ofst, 8), binary.BigEndian, &sz)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading payload length")
+	}
+
+	if sz == -1 {
+		return nil, margaret.ErrNulled
 	}
 
 	return io.NewSectionReader(d, ofst+8, sz), nil

@@ -31,8 +31,9 @@ type offsetLog struct {
 }
 
 func (log *offsetLog) Close() error {
-	log.l.Lock()
-	defer log.l.Unlock()
+	// TODO: close open querys?
+	// log.l.Lock()
+	// defer log.l.Unlock()
 
 	if err := log.jrnl.Close(); err != nil {
 		return errors.Wrap(err, "journal file close failed")
@@ -42,7 +43,49 @@ func (log *offsetLog) Close() error {
 		return errors.Wrap(err, "offset file close failed")
 	}
 
-	return errors.Wrap(log.data.Close(), "data file close failed")
+	if err := log.data.Close(); err != nil {
+		return errors.Wrap(err, "data file close failed")
+	}
+
+	if err := log.bcSink.Close(); err != nil {
+		return errors.Wrap(err, "log broadcast close failed")
+	}
+
+	return nil
+}
+
+// Null overwrites the entry at seq with zeros
+// updating is kinda odd in append-only
+// but in some cases you still might want to redact entries
+func (log *offsetLog) Null(seq margaret.Seq) error {
+	log.bcSink.Close()
+
+	log.l.Lock()
+	defer log.l.Unlock()
+
+	ofst, err := log.ofst.readOffset(seq)
+	if err != nil {
+		return errors.Wrap(err, "error read offset")
+	}
+
+	sz, err := log.data.getFrameSize(ofst)
+	if err != nil {
+		return errors.Wrap(err, "get frame size failed")
+	}
+
+	minusOne := []byte{255, 255, 255, 255, 255, 255, 255, 255}
+	_, err = log.data.WriteAt(minusOne, ofst)
+	if err != nil {
+		return errors.Wrapf(err, "failed to write -1 size bytes at %d", ofst)
+	}
+
+	nulls := make([]byte, sz)
+	_, err = log.data.WriteAt(nulls, ofst+8)
+	if err != nil {
+		return errors.Wrapf(err, "failed to write %d bytes at %d", sz, ofst)
+	}
+
+	return nil
 }
 
 // Open returns a the offset log in the directory at `name`.
@@ -121,9 +164,9 @@ func (log *offsetLog) checkJournal() error {
 			return errors.New("journal empty but offset file isnt")
 		}
 
-		statData, err := log.ofst.Stat()
+		statData, err := log.data.Stat()
 		if err != nil {
-			return errors.Wrap(err, "stat failed on offset file")
+			return errors.Wrap(err, "stat failed on data file")
 		}
 
 		if statData.Size() != 0 {
@@ -141,6 +184,10 @@ func (log *offsetLog) checkJournal() error {
 	sz, err := log.data.getFrameSize(ofstData)
 	if err != nil {
 		return errors.Wrap(err, "error getting frame size from log data file")
+	}
+
+	if sz == -1 { // entry nulled
+		return errors.Errorf("TODO: use -size to indicate nulled but keep consistent")
 	}
 
 	stat, err := log.data.Stat()
