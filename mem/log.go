@@ -2,6 +2,7 @@ package mem // import "go.cryptoscope.co/margaret/mem"
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	"go.cryptoscope.co/luigi"
@@ -48,6 +49,8 @@ type memlog struct {
 
 	seq        luigi.Observable
 	head, tail *memlogElem
+
+	closed bool
 }
 
 // New returns a new in-memory log
@@ -66,6 +69,16 @@ func New() margaret.Log {
 	return log
 }
 
+func (log *memlog) Close() error {
+	log.l.Lock()
+	defer log.l.Unlock()
+	if log.closed {
+		return io.ErrClosedPipe // already closed
+	}
+	log.closed = true
+	return nil
+}
+
 func (log *memlog) Seq() luigi.Observable {
 	return log.seq
 }
@@ -73,6 +86,9 @@ func (log *memlog) Seq() luigi.Observable {
 func (log *memlog) Get(s margaret.Seq) (interface{}, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
+	if log.closed {
+		return nil, io.ErrClosedPipe // already closed
+	}
 
 	var (
 		cur = log.head
@@ -97,6 +113,9 @@ func (log *memlog) Get(s margaret.Seq) (interface{}, error) {
 func (log *memlog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
+	if log.closed {
+		return nil, io.ErrClosedPipe // already closed
+	}
 
 	qry := &memlogQuery{
 		log: log,
@@ -123,6 +142,9 @@ func (log *memlog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 func (log *memlog) Append(v interface{}) (margaret.Seq, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
+	if log.closed {
+		return nil, io.ErrClosedPipe // already closed
+	}
 
 	log.tail.next = &memlogElem{v: v, seq: log.tail.seq + 1, wait: make(chan struct{})}
 	oldtail := log.tail
