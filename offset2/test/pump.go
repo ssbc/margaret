@@ -79,7 +79,7 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 						a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
 						a.Equal(sw.Value(), sw_.Value(), "value doesn't match")
 					} else {
-						a.Equal(v, v_, "values don't match")
+						a.Equal(v, v_, "values don't match: %d", iRes)
 					}
 				}
 
@@ -87,7 +87,6 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 				if tc.live && iRes == len(tc.result) {
 					cancel()
 				}
-
 				return nil
 			})
 
@@ -161,17 +160,13 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 			specs:  []margaret.QuerySpec{margaret.Limit(2)},
 		},
 
-		/* Q: how would one do this without caching the results first?...
-		 => add error that it's unsupported?
 		{
 			name:   "reverse",
 			tipe:   0,
 			values: []interface{}{5, 4, 3, 2, 1},
-			// result: []interface{}{1, 2, 3, 4, 5},
-			errStr: "fail",
+			result: []interface{}{1, 2, 3, 4, 5},
 			specs:  []margaret.QuerySpec{margaret.Reverse(true)},
 		},
-		*/
 
 		{
 			name:   "live",
