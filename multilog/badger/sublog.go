@@ -33,13 +33,15 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 			return errors.Wrap(err, "error getting item")
 		}
 
-		data, err := item.Value()
+		err = item.Value(func(data []byte) error {
+			v, err = log.mlog.codec.Unmarshal(data)
+			return err
+		})
 		if err != nil {
 			return errors.Wrap(err, "error getting value")
 		}
 
-		v, err = log.mlog.codec.Unmarshal(data)
-		return errors.Wrap(err, "error unmarshaling data")
+		return nil
 	})
 
 	if errors.Cause(err) == badger.ErrKeyNotFound {

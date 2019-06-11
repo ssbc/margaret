@@ -108,13 +108,15 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 			return errors.Wrap(err, "error getting item")
 		}
 
-		data, err := item.Value()
+		err = item.Value(func(data []byte) error {
+			v, err = qry.log.mlog.codec.Unmarshal(data)
+			return err
+		})
 		if err != nil {
 			return errors.Wrap(err, "error getting value")
 		}
 
-		v, err = qry.log.mlog.codec.Unmarshal(data)
-		return errors.Wrap(err, "error unmarshaling data")
+		return nil
 	})
 	if err != nil {
 		if errors.Cause(err) != badger.ErrKeyNotFound {
