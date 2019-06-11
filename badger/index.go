@@ -50,25 +50,28 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 			return errors.Wrap(err, "error getting item")
 		}
 
-		data, err := item.Value()
+		err = item.Value(func(data []byte) error {
+			if um, ok := v.(librarian.Unmarshaler); ok {
+				if t.Kind() != reflect.Ptr {
+					v = reflect.ValueOf(v).Elem().Interface()
+				}
+
+				err = um.Unmarshal(data)
+				return errors.Wrap(err, "error unmarshaling using custom marshaler")
+			}
+
+			err = json.Unmarshal(data, v)
+			if err != nil {
+				return errors.Wrap(err, "error unmarshaling using json marshaler")
+			}
+
+			if t.Kind() != reflect.Ptr {
+				v = reflect.ValueOf(v).Elem().Interface()
+			}
+			return nil
+		})
 		if err != nil {
 			return errors.Wrap(err, "error getting value")
-		}
-
-		if um, ok := v.(librarian.Unmarshaler); ok {
-			if t.Kind() != reflect.Ptr {
-				v = reflect.ValueOf(v).Elem().Interface()
-			}
-
-			err = um.Unmarshal(data)
-			err = errors.Wrap(err, "error unmarshaling using custom marshaler")
-		} else {
-			err = json.Unmarshal(data, v)
-			err = errors.Wrap(err, "error unmarshaling using json marshaler")
-
-			if t.Kind() != reflect.Ptr {
-				v = reflect.ValueOf(v).Elem().Interface()
-			}
 		}
 
 		return err
@@ -195,16 +198,19 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 			return errors.Wrap(err, "error getting item")
 		}
 
-		data, err := item.Value()
+		err = item.Value(func(data []byte) error {
+
+			if l := len(data); l != 8 {
+				return errors.Errorf("expected data of length 8, got %v", l)
+			}
+
+			idx.curSeq = margaret.BaseSeq(binary.BigEndian.Uint64(data))
+
+			return nil
+		})
 		if err != nil {
 			return errors.Wrap(err, "error getting value")
 		}
-
-		if l := len(data); l != 8 {
-			return errors.Errorf("expected data of length 8, got %v", l)
-		}
-
-		idx.curSeq = margaret.BaseSeq(binary.BigEndian.Uint64(data))
 
 		return nil
 	})
