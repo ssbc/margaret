@@ -3,6 +3,7 @@ package test // import "go.cryptoscope.co/margaret/test"
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -217,5 +218,17 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		for _, tc := range tcs {
 			t.Run(tc.name, mkTest(tc))
 		}
+
+		t.Run("invalid querys", func(t *testing.T) {
+			r := require.New(t)
+
+			// "live and reverse"
+			log, err := f(t.Name(), 0)
+			r.NoError(err)
+
+			_, err = log.Query(margaret.Live(true), margaret.Reverse(true))
+			r.Error(err)
+			r.True(strings.Contains(err.Error(), ": can't do reverse and live"))
+		})
 	}
 }
