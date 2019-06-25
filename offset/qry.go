@@ -77,8 +77,7 @@ func (qry *offsetQuery) SeqWrap(wrap bool) error {
 	return nil
 }
 func (qry *offsetQuery) Reverse(yes bool) error {
-	qry.reverse = yes
-	return nil
+	return fmt.Errorf("offset1 query: reverse unsupported")
 }
 
 func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
