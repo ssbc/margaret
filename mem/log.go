@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
@@ -116,6 +117,10 @@ func (log *memlog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if qry.reverse && qry.live {
+		return nil, errors.Errorf("memlog: can't do reverse and live")
 	}
 
 	return qry, nil

@@ -448,6 +448,10 @@ func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 		}
 	}
 
+	if qry.reverse && qry.live {
+		return nil, errors.Errorf("offset2: can't do reverse and live")
+	}
+
 	return qry, nil
 }
 

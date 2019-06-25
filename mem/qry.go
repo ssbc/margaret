@@ -121,9 +121,6 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 	defer qry.log.l.Unlock()
 
 	if qry.reverse {
-		if qry.live {
-			return nil, errors.Errorf("can't do reverse & live")
-		}
 		if qry.cur == qry.log.head {
 			return qry.cur.v, luigi.EOS{}
 		}
