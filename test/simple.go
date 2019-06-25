@@ -192,6 +192,22 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "reverse and gte",
+			tipe:   0,
+			values: []interface{}{1, 2, 3, 4, 5},
+			result: []interface{}{5, 4, 3, 2},
+			specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Gte(margaret.BaseSeq(2))},
+		},
+
+		{
+			name:   "reverse and lt",
+			tipe:   0,
+			values: []interface{}{1, 2, 3, 4, 5},
+			result: []interface{}{3, 2, 1},
+			specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Lt(margaret.BaseSeq(4))},
+		},
+
+		{
 			name:   "live",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
