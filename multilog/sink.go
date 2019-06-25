@@ -69,9 +69,9 @@ func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
 	return errors.Wrap(err, "multilog/sink: error in processing function")
 }
 
-// Close closes the root-log..? seems wrong
-// rational here beeing having multiple mlogs on one root (?)
-// user needs to know this, then.
+// Close does nothing.
+// TODO: It could close it's backing multilog but that trashes other open sublogs
+// Maybe have something like a "multiple-open tracker" that tracks all the users of the multilog and closes it if all users closed it?
 func (slog *sinkLog) Close() error { return nil } // slog.mlog.Close() }
 
 // QuerySpec returns the query spec that queries the next needed messages from the log
