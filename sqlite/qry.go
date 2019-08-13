@@ -95,13 +95,16 @@ func (qry *sqliteQry) Limit(n int) error {
 }
 
 func (qry *sqliteQry) Live(live bool) error {
-	return margaret.ErrUnsupported("sqlite queries don't support live results")
+	if live {
+		return margaret.ErrUnsupported("sqlite queries don't support live results")
+	}
+	return nil
 }
 
 func (qry *sqliteQry) SeqWrap(wrap bool) error {
-	qry.seqWrap = wrap
-	if wrap {
+	if wrap && qry.seqWrap == false { // only wrap once
 		qry.builder = qry.builder.Columns("id")
+		qry.seqWrap = wrap
 	}
 	return nil
 }
