@@ -51,7 +51,11 @@ func LogTestConcurrent(f NewLogFunc) func(*testing.T) {
 				defer wg.Done()
 
 				src, err := log.Query(tc.specs...)
-				a.NoError(err, "error querying log")
+				if margaret.IsErrUnsupported(err) {
+					t.Log("warning: got unsupported error")
+					return
+				}
+				r.NoError(err, "error querying log")
 
 				for i, exp := range tc.result {
 					v, err := src.Next(ctx)

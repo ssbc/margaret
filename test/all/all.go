@@ -10,4 +10,7 @@ import (
 	// _ "go.cryptoscope.co/margaret/offset/test"
 
 	_ "go.cryptoscope.co/margaret/offset2/test"
+
+	// SQLite is work in progress (mostly unclear how to support live querys.. observables?!)
+	_ "go.cryptoscope.co/margaret/sqlite/test"
 )

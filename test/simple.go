@@ -52,7 +52,12 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			}
 
 			src, err := log.Query(tc.specs...)
-			r.NoError(err, "error querying log")
+			if margaret.IsErrUnsupported(err) {
+				t.Log("warning: got unsupported error")
+				return
+			} else {
+				a.NoError(err, "error querying log")
+			}
 
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
@@ -76,7 +81,8 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 				if tc.errStr == "" {
 					if tc.seqWrap {
 						sw := v.(margaret.SeqWrapper)
-						sw_ := v_.(margaret.SeqWrapper)
+						sw_, ok := v_.(margaret.SeqWrapper)
+						r.True(ok, "received value should be seq wrapper: %T", v_)
 
 						a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
 						a.Equal(sw.Value(), sw_.Value(), "value doesn't match")

@@ -2,7 +2,21 @@
 
 package margaret // import "go.cryptoscope.co/margaret"
 
+
+import "github.com/pkg/errors"
+
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o mock/qry.go . Query
+
+type ErrUnsupported string
+
+func (e ErrUnsupported) Error() string {
+	return string(e)
+}
+
+func IsErrUnsupported(err error) bool {
+	_, ok := errors.Cause(err).(ErrUnsupported)
+	return ok
+}
 
 // Query is the interface implemented by the concrete log implementations that collects the constraints of the query.
 type Query interface {
