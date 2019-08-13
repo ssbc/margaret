@@ -2,7 +2,6 @@ package offset2
 
 import (
 	"context"
-	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -93,8 +92,7 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	}
 
 	// close
-	close := log.(io.Closer)
-	r.NoError(close.Close())
+	r.NoError(log.Close())
 
 	_, err = log.Append(23)
 	r.NotNil(err)
@@ -133,8 +131,8 @@ func TestWriteAndWriteAgain(t *testing.T) {
 		seq++
 		// TODO: v has no sequence unless we put it in the values ourselvs..?
 	}
-	close = log.(io.Closer)
-	r.NoError(close.Close())
+
+	r.NoError(log.Close())
 	// cleanup
 	if t.Failed() {
 		t.Log("log was written to ", name)

@@ -1,9 +1,8 @@
 package test
 
 import (
-	"strings"
-
 	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/codec/cbor"
 	"go.cryptoscope.co/margaret/codec/json"
 	"go.cryptoscope.co/margaret/codec/msgpack"
 	"go.cryptoscope.co/margaret/offset2"
@@ -18,11 +17,12 @@ func init() {
 	codecs := map[string]mtest.NewCodecFunc{
 		"json":    json.New,
 		"msgpack": msgpack.New,
+		"cbor":    cbor.New,
 	}
 
 	buildNewLogFunc := func(newCodec mtest.NewCodecFunc) mtest.NewLogFunc {
 		return func(name string, tipe interface{}) (margaret.Log, error) {
-			name = strings.Replace(name, "/", "_", -1)
+			// name = strings.Replace(name, "/", "_", -1)
 			return offset2.Open(name, newCodec(tipe))
 		}
 	}

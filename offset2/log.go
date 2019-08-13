@@ -64,12 +64,20 @@ func (log *offsetLog) Close() error {
 		return errors.Wrap(err, "offset file close failed")
 	}
 
-	return errors.Wrap(log.data.Close(), "data file close failed")
+	if err := log.data.Close(); err != nil {
+		return errors.Wrap(err, "data file close failed")
+	}
+
+	if err := log.bcSink.Close(); err != nil {
+		return errors.Wrap(err, "log broadcast close failed")
+	}
+
+	return nil
 }
 
 // Open returns a the offset log in the directory at `name`.
 // If it is empty or does not exist, a new log will be created.
-func Open(name string, cdc margaret.Codec) (margaret.Log, error) {
+func Open(name string, cdc margaret.Codec) (*offsetLog, error) {
 	err := os.MkdirAll(name, 0700)
 	if err != nil {
 		return nil, errors.Wrapf(err, "offset2: error making log directory at %q", name)
