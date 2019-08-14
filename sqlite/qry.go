@@ -6,16 +6,11 @@ import (
 	"database/sql"
 
 	"github.com/Masterminds/squirrel"
-
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 
 	"go.cryptoscope.co/margaret"
 )
-
-func newQuery() {
-
-}
 
 type sqliteQry struct {
 	db   *sql.DB

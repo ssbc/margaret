@@ -1,14 +1,14 @@
+/* Package sqlite implements a very simple, single-value marget log using a sqlite table as it's backend
+ */
 package sqlite
 
 import (
 	"bytes"
 	"database/sql"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/Masterminds/squirrel"
-
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
@@ -118,11 +118,6 @@ func (sl sqliteLog) Append(val interface{}) (margaret.Seq, error) {
 }
 
 func (sl sqliteLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
-	// rows, err := sl.db.Query(`SELECT data from margaret_log`)
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "sqlite/query: failed to construct query object")
-	// }
-
 	qry := &sqliteQry{
 		builder: squirrel.Select("data").From("margaret_log"),
 		db:      sl.db,
@@ -152,6 +147,5 @@ func (sl sqliteLog) Null(s margaret.Seq) error {
 	if affected != 1 {
 		return errors.Errorf("sqlite/null: not one row affected but %d", affected)
 	}
-	fmt.Println("entry nulled:", s.Seq()+1)
 	return nil
 }
