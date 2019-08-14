@@ -1,4 +1,19 @@
-package offset2 // import "go.cryptoscope.co/margaret/offset2"
+/*Package offset2 implements a persisted sequence of data entries.
+
+it consists of three files: `data`, `ofst` and `jrnl`
+* `data` a list of length-prefixed data chunks, size is a uint64 (size++[size]byte)...
+* `ofst` a list of uint64, representing entry offsets in `data`
+* `jrnl` keeps track of the current sequence number, see checkJournal for more
+
+To read entry 5 in `data`, you follow these steps:
+* seek to 5*(sizeof(uint64)=8)=40 in `ofset` and read the uint64 representing the offset in `data`
+* seek to that offset in `data`, read the length-prefix (the uint64 for the size of the entry)
+* finally, read that amount of data, which is your entry
+
+Al the uint64's are encoded in BigEndian.
+
+*/
+package offset2
 
 import (
 	"bytes"
@@ -13,9 +28,6 @@ import (
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
-
-// DefaultFrameSize is the default frame size.
-const DefaultFrameSize = 4096
 
 type offsetLog struct {
 	l    sync.Mutex
