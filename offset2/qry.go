@@ -252,7 +252,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 			v = sw
 		}
 
-		return errors.Wrap(sink.Pour(ctx, v), "error pouring into sink")
+		return errors.Wrap(sink.Pour(ctx, v), "offset2/push qry: pour of next live value failed")
 	})))
 
 	return cancel, nil

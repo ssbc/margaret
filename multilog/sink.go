@@ -66,7 +66,7 @@ func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
 	}
 
 	err = slog.f(ctx, seq.Seq(), seq.Value(), slog.mlog)
-	return errors.Wrap(err, "error in processing function")
+	return errors.Wrap(err, "multilog/sink: error in processing function")
 }
 
 // Close closes the root-log..? seems wrong

@@ -64,25 +64,25 @@ func (log *offsetLog) Close() error {
 func Open(name string, cdc margaret.Codec) (margaret.Log, error) {
 	err := os.MkdirAll(name, 0700)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error making log directory at %q", name)
+		return nil, errors.Wrapf(err, "offset2: error making log directory at %q", name)
 	}
 
 	pLog := filepath.Join(name, "data")
 	fData, err := os.OpenFile(pLog, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error opening log data file at %q", pLog)
+		return nil, errors.Wrapf(err, "offset2: error opening log data file at %q", pLog)
 	}
 
 	pOfst := filepath.Join(name, "ofst")
 	fOfst, err := os.OpenFile(pOfst, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error opening log offset file at %q", pOfst)
+		return nil, errors.Wrapf(err, "offset2: error opening log offset file at %q", pOfst)
 	}
 
 	pJrnl := filepath.Join(name, "jrnl")
 	fJrnl, err := os.OpenFile(pJrnl, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error opening log journal file at %q", pJrnl)
+		return nil, errors.Wrapf(err, "offset2: error opening log journal file at %q", pJrnl)
 	}
 
 	log := &offsetLog{
@@ -97,7 +97,7 @@ func Open(name string, cdc margaret.Codec) (margaret.Log, error) {
 
 	err = log.checkJournal()
 	if err != nil {
-		return nil, errors.Wrap(err, "integrity error")
+		return nil, errors.Wrap(err, "offset2: integrity error")
 	}
 
 	log.bcSink, log.bcast = luigi.NewBroadcast()
@@ -105,7 +105,7 @@ func Open(name string, cdc margaret.Codec) (margaret.Log, error) {
 	// get current sequence by end / blocksize
 	end, err := fOfst.Seek(0, io.SeekEnd)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to seek to end of log-offset-file")
+		return nil, errors.Wrap(err, "offset2: failed to seek to end of log-offset-file")
 	}
 	// assumes -1 is SeqEmpty
 	log.seq = luigi.NewObservable(margaret.BaseSeq((end / 8) - 1))
@@ -180,7 +180,7 @@ func (log *offsetLog) checkJournal() error {
 func (log *offsetLog) checkConsistency() error {
 	err := log.checkJournal()
 	if err != nil {
-		return errors.Wrap(err, "journal inconsistent")
+		return errors.Wrap(err, "offset2: journal inconsistent")
 	}
 
 	var (
@@ -438,7 +438,7 @@ func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	data, err := log.codec.Marshal(v)
 	if err != nil {
-		return margaret.SeqEmpty, errors.Wrap(err, "error marshaling value")
+		return margaret.SeqEmpty, errors.Wrap(err, "offset2: error marshaling value")
 	}
 
 	log.l.Lock()
@@ -446,21 +446,21 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 
 	jrnlSeq, err := log.jrnl.bump()
 	if err != nil {
-		return margaret.SeqEmpty, errors.Wrap(err, "error bumping journal")
+		return margaret.SeqEmpty, errors.Wrap(err, "offset2: error bumping journal")
 	}
 
 	ofst, err := log.data.append(data)
 	if err != nil {
-		return margaret.SeqEmpty, errors.Wrap(err, "error appending data")
+		return margaret.SeqEmpty, errors.Wrap(err, "offset2: error appending data")
 	}
 
 	seq, err := log.ofst.append(ofst)
 	if err != nil {
-		return margaret.SeqEmpty, errors.Wrap(err, "error appending offset")
+		return margaret.SeqEmpty, errors.Wrap(err, "offset2: error appending offset")
 	}
 
 	if seq != jrnlSeq {
-		return margaret.SeqEmpty, errors.Errorf("seq mismatch: journal wants %d, offset has %d", jrnlSeq, seq)
+		return margaret.SeqEmpty, errors.Errorf("offset2: seq mismatch: journal wants %d, offset has %d", jrnlSeq, seq)
 	}
 
 	err = log.bcSink.Pour(context.TODO(), margaret.WrapWithSeq(v, jrnlSeq))
