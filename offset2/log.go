@@ -1,16 +1,24 @@
-/*Package offset2 implements a persisted sequence of data entries.
+/*Package offset2 implements a margaret log as persisted sequence of data across multiple files.
 
-it consists of three files: `data`, `ofst` and `jrnl`
-* `data` a list of length-prefixed data chunks, size is a uint64 (size++[size]byte)...
-* `ofst` a list of uint64, representing entry offsets in `data`
-* `jrnl` keeps track of the current sequence number, see checkJournal for more
+Format Defintion
+
+A log consists of three files: data, ofst and jrnl.
+
+* data: a list of length-prefixed data chunks, size is a uint64 (size++[size]byte).
+
+* ofst: a list of uint64, representing entry offsets in 'data'
+
+* jrnl keeps track of the current sequence number, see checkJournal() for more
 
 To read entry 5 in `data`, you follow these steps:
-* seek to 5*(sizeof(uint64)=8)=40 in `ofset` and read the uint64 representing the offset in `data`
-* seek to that offset in `data`, read the length-prefix (the uint64 for the size of the entry)
-* finally, read that amount of data, which is your entry
 
-Al the uint64's are encoded in BigEndian.
+1. Seek to 5*(sizeof(uint64)=8)=40 in `ofset` and read the uint64 representing the offset in `data`
+
+2. Seek to that offset in `data`, read the length-prefix (the uint64 for the size of the entry)
+
+3. Finally, read that amount of data, which is your entry
+
+All uint64's are encoded in BigEndian.
 
 */
 package offset2
