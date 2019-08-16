@@ -2,8 +2,8 @@ package test // import "go.cryptoscope.co/margaret/test"
 
 import (
 	"context"
-	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +17,7 @@ import (
 
 func LogTestSimple(f NewLogFunc) func(*testing.T) {
 	type testcase struct {
+		name    string
 		tipe    interface{}
 		values  []interface{}
 		specs   []margaret.QuerySpec
@@ -78,7 +79,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 						a.Equal(sw.Seq(), sw_.Seq(), "sequence number doesn't match")
 						a.Equal(sw.Value(), sw_.Value(), "value doesn't match")
 					} else {
-						a.Equal(v, v, "values don't match")
+						a.EqualValues(v, v_, "values don't match")
 					}
 				}
 				if err != nil {
@@ -120,12 +121,30 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 
 	tcs := []testcase{
 		{
+			name:   "simple",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
 		},
 
 		{
+			name:   "reverse",
+			tipe:   0,
+			values: []interface{}{1, 2, 3, 4, 5},
+			result: []interface{}{5, 4, 3, 2, 1},
+			specs:  []margaret.QuerySpec{margaret.Reverse(true)},
+		},
+
+		{
+			name:   "reverse-false",
+			tipe:   0,
+			values: []interface{}{1, 2, 3, 4, 5},
+			result: []interface{}{1, 2, 3, 4, 5},
+			specs:  []margaret.QuerySpec{margaret.Reverse(false)},
+		},
+
+		{
+			name:   "gt0",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
@@ -133,6 +152,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "gte1",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
@@ -140,6 +160,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "lt2",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
@@ -147,6 +168,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "lte1",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
@@ -154,6 +176,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "limit2",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
@@ -161,6 +184,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "EOS",
 			tipe:   0,
 			values: []interface{}{1, 2},
 			result: []interface{}{1, 2, 3},
@@ -168,6 +192,23 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "reverse and gte",
+			tipe:   0,
+			values: []interface{}{1, 2, 3, 4, 5},
+			result: []interface{}{5, 4, 3, 2},
+			specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Gte(margaret.BaseSeq(2))},
+		},
+
+		{
+			name:   "reverse and lt",
+			tipe:   0,
+			values: []interface{}{1, 2, 3, 4, 5},
+			result: []interface{}{3, 2, 1},
+			specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Lt(margaret.BaseSeq(4))},
+		},
+
+		{
+			name:   "live",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2, 3},
@@ -176,6 +217,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		},
 
 		{
+			name:   "seqWrap",
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{
@@ -189,8 +231,20 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 	}
 
 	return func(t *testing.T) {
-		for i, tc := range tcs {
-			t.Run(fmt.Sprint(i), mkTest(tc))
+		for _, tc := range tcs {
+			t.Run(tc.name, mkTest(tc))
 		}
+
+		t.Run("invalid querys", func(t *testing.T) {
+			r := require.New(t)
+
+			// "live and reverse"
+			log, err := f(t.Name(), 0)
+			r.NoError(err)
+
+			_, err = log.Query(margaret.Live(true), margaret.Reverse(true))
+			r.Error(err)
+			r.True(strings.Contains(err.Error(), ": can't do reverse and live"))
+		})
 	}
 }

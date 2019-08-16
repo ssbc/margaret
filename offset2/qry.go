@@ -22,6 +22,7 @@ type offsetQuery struct {
 	limit   int
 	live    bool
 	seqWrap bool
+	reverse bool
 	close   chan struct{}
 	err     error
 }
@@ -77,6 +78,29 @@ func (qry *offsetQuery) SeqWrap(wrap bool) error {
 	return nil
 }
 
+func (qry *offsetQuery) Reverse(yes bool) error {
+	qry.reverse = yes
+	if yes {
+		if err := qry.setCursorToLast(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (qry *offsetQuery) setCursorToLast() error {
+	v, err := qry.log.seq.Value()
+	if err != nil {
+		return errors.Wrap(err, "setCursorToLast: failed to establish current value")
+	}
+	currSeq, ok := v.(margaret.Seq)
+	if !ok {
+		return errors.Errorf("setCursorToLast: failed to establish current value")
+	}
+	qry.nextSeq = margaret.BaseSeq(currSeq.Seq())
+	return nil
+}
+
 func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.l.Lock()
 	defer qry.l.Unlock()
@@ -87,6 +111,9 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.limit--
 
 	if qry.nextSeq == margaret.SeqEmpty {
+		if qry.reverse {
+			return nil, luigi.EOS{}
+		}
 		qry.nextSeq = 0
 	}
 
@@ -149,7 +176,13 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, errors.Wrap(err, "error reading data frame")
 	}
 
-	defer func() { qry.nextSeq++ }()
+	defer func() {
+		if qry.reverse {
+			qry.nextSeq--
+		} else {
+			qry.nextSeq++
+		}
+	}()
 
 	if qry.seqWrap {
 		return margaret.WrapWithSeq(v, qry.nextSeq), nil
@@ -186,7 +219,14 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 	defer qry.log.l.Unlock()
 
 	if qry.nextSeq == margaret.SeqEmpty {
-		qry.nextSeq = 0
+		if qry.reverse {
+			// reset since log is updated since the query was created
+			if err := qry.setCursorToLast(); err != nil {
+				return nil, err
+			}
+		} else {
+			qry.nextSeq = 0
+		}
 	}
 
 	// determines whether we should go on
@@ -212,13 +252,16 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		if qry.seqWrap {
 			v = margaret.WrapWithSeq(v, qry.nextSeq)
 		}
-
 		err = sink.Pour(ctx, v)
 		if err != nil {
 			return nil, errors.Wrap(err, "error pouring read value")
 		}
 
-		qry.nextSeq++
+		if qry.reverse {
+			qry.nextSeq--
+		} else {
+			qry.nextSeq++
+		}
 	}
 
 	if !goon(qry.nextSeq) {

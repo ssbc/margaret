@@ -21,6 +21,7 @@ type offsetQuery struct {
 	limit   int
 	live    bool
 	seqWrap bool
+	reverse bool
 	close   chan struct{}
 	err     error
 }
@@ -74,6 +75,9 @@ func (qry *offsetQuery) Live(live bool) error {
 func (qry *offsetQuery) SeqWrap(wrap bool) error {
 	qry.seqWrap = wrap
 	return nil
+}
+func (qry *offsetQuery) Reverse(yes bool) error {
+	return fmt.Errorf("offset1 query: reverse unsupported")
 }
 
 func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {

@@ -2,6 +2,7 @@ package offset // import "go.cryptoscope.co/margaret/offset"
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -28,6 +29,7 @@ type offsetLog struct {
 
 // New returns a new offset log.
 func New(f *os.File, framing margaret.Framing, cdc margaret.Codec) (margaret.Log, error) {
+	fmt.Fprintln(os.Stderr, "margaret/offset v1: deprecation warning. please upgrade to offset2.")
 	log := &offsetLog{
 		f:       f,
 		framing: framing,

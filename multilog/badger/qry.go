@@ -18,6 +18,7 @@ type query struct {
 	nextSeq, lt margaret.BaseSeq
 
 	limit   int
+	reverse bool
 	live    bool
 	seqWrap bool
 }
@@ -58,6 +59,23 @@ func (qry *query) Lte(s margaret.Seq) error {
 	return nil
 }
 
+func (qry *query) Reverse(yes bool) error {
+	qry.reverse = yes
+	if yes {
+		v, err := qry.log.seq.Value()
+		if err != nil {
+			return errors.Wrap(err, "offsetQry: failed to establish current value")
+		}
+
+		currSeq, ok := v.(margaret.Seq)
+		if !ok {
+			return errors.Errorf("offsetQry: failed to establish current value")
+		}
+		qry.nextSeq = margaret.BaseSeq(currSeq.Seq())
+	}
+	return nil
+}
+
 func (qry *query) Limit(n int) error {
 	qry.limit = n
 	return nil
@@ -83,6 +101,9 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 	qry.limit--
 
 	if qry.nextSeq == margaret.SeqEmpty {
+		if qry.reverse {
+			return nil, luigi.EOS{}
+		}
 		qry.nextSeq = 0
 	}
 
@@ -135,7 +156,11 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 		}
 	}
 
-	defer func() { qry.nextSeq++ }()
+	if qry.reverse {
+		defer func() { qry.nextSeq-- }()
+	} else {
+		defer func() { qry.nextSeq++ }()
+	}
 
 	if qry.seqWrap {
 		return margaret.WrapWithSeq(v, qry.nextSeq), nil

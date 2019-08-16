@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
@@ -14,6 +15,7 @@ type memlogElem struct {
 	v    interface{}
 	seq  margaret.BaseSeq
 	next *memlogElem
+	prev *memlogElem
 
 	wait chan struct{}
 }
@@ -136,6 +138,10 @@ func (log *memlog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 		}
 	}
 
+	if qry.reverse && qry.live {
+		return nil, errors.Errorf("memlog: can't do reverse and live")
+	}
+
 	return qry, nil
 }
 
@@ -146,8 +152,15 @@ func (log *memlog) Append(v interface{}) (margaret.Seq, error) {
 		return nil, io.ErrClosedPipe // already closed
 	}
 
-	log.tail.next = &memlogElem{v: v, seq: log.tail.seq + 1, wait: make(chan struct{})}
+	nxt := &memlogElem{
+		v:    v,
+		seq:  log.tail.seq + 1,
+		wait: make(chan struct{}),
+	}
+
+	log.tail.next = nxt
 	oldtail := log.tail
+	nxt.prev = oldtail
 	log.tail = log.tail.next
 
 	close(oldtail.wait)
