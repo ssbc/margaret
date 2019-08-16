@@ -466,7 +466,7 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	err = log.bcSink.Pour(context.TODO(), margaret.WrapWithSeq(v, jrnlSeq))
 	log.seq.Set(jrnlSeq)
 
-	return seq, nil
+	return seq, errors.Wrap(err, "offset2: error while updating registerd broadcasts with new value")
 }
 
 func (log *offsetLog) FileName() string {
