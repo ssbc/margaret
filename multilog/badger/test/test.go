@@ -22,10 +22,7 @@ func init() {
 			}
 		}
 
-		opts := badger.DefaultOptions
-		opts.Dir = testDir
-		opts.ValueDir = testDir
-
+		opts := badger.DefaultOptions(testDir)
 		db, err := badger.Open(opts)
 		if err != nil {
 			return nil, "", errors.Wrap(err, "error opening database")

@@ -1,9 +1,8 @@
 module go.cryptoscope.co/margaret
 
 require (
-	github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927 // indirect
 	github.com/cryptix/go v1.4.0
-	github.com/dgraph-io/badger v2.0.0-rc.2.0.20190610165348-a804ffa35fb9+incompatible
+	github.com/dgraph-io/badger v2.0.0-rc2+incompatible
 	github.com/keks/persist v0.0.0-20181029214439-3af502dad70b
 	github.com/pkg/errors v0.8.1
 	github.com/shurcooL/go v0.0.0-20190330031554-6713ea532688 // indirect
@@ -15,3 +14,5 @@ require (
 	golang.org/x/net v0.0.0-20190607181551-461777fb6f67 // indirect
 	golang.org/x/sys v0.0.0-20190610200419-93c9922d18ae // indirect
 )
+
+go 1.13

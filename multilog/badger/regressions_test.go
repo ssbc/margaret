@@ -34,9 +34,7 @@ func TestIncrementRegression(t *testing.T) {
 	r.NoError(err, "error creating temp folder for database")
 	defer logOrRemoveTestData(t, name)
 
-	dbOpts := badger.DefaultOptions
-	dbOpts.Dir = name
-	dbOpts.ValueDir = name
+	dbOpts := badger.DefaultOptions(name)
 
 	db, err := badger.Open(dbOpts)
 	r.NoError(err, "error opening database")

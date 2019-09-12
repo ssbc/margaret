@@ -27,9 +27,7 @@ func main() {
 
 	dir := os.Args[1]
 
-	opts := badger.DefaultOptions
-	opts.Dir = dir
-	opts.ValueDir = dir
+	opts := badger.DefaultOptions(dir)
 
 	db, err := badger.Open(opts)
 	check(errors.Wrap(err, "error opening database"))
