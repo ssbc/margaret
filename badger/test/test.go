@@ -21,9 +21,7 @@ func init() {
 
 		defer os.RemoveAll(dir)
 
-		opts := badger.DefaultOptions
-		opts.Dir = dir
-		opts.ValueDir = dir
+		opts := badger.DefaultOptions(dir)
 
 		db, err := badger.Open(opts)
 		if err != nil {
