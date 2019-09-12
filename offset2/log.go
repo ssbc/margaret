@@ -153,7 +153,7 @@ func Open(name string, cdc margaret.Codec) (*offsetLog, error) {
 		codec: cdc,
 	}
 
-	err = log.checkJournal()
+	err = log.checkConsistency()
 	if err != nil {
 		return nil, errors.Wrap(err, "offset2: integrity error")
 	}
@@ -210,6 +210,29 @@ func (log *offsetLog) checkJournal() error {
 		return errors.Wrap(err, "error reading last entry of log offset file")
 	}
 
+	diff := seqJrnl.Seq() - seqOfst.Seq()
+	if diff != 0 {
+		if diff < 0 { // more data then entries in journal (unclear how to handle)
+			// TODO: chop of data and offset to min(journal,count(ofst))
+			return errors.Errorf("seq in journal does not match element count in log offset file - %d != %d", seqJrnl, seqOfst)
+		}
+
+		// recover by truncating setting journal to count(ofst)
+		_, err = log.jrnl.Seek(0, io.SeekStart)
+		if err != nil {
+			return errors.Wrap(err, "recover: could not seek to start of journal file")
+		}
+
+		err = binary.Write(log.jrnl, binary.BigEndian, seqOfst)
+		if err != nil {
+			return errors.Wrap(err, "recover: could not overwrite journal with offset seq")
+		}
+
+		if err := log.checkConsistency(); err != nil {
+			return errors.Wrap(err, "recover: check journal 2nd pass")
+		}
+	}
+
 	sz, err := log.data.getFrameSize(ofstData)
 	if err != nil {
 		return errors.Wrap(err, "error getting frame size from log data file")
@@ -230,10 +253,6 @@ func (log *offsetLog) checkJournal() error {
 	if d != 0 {
 		// TODO: chop off the rest
 		return errors.Errorf("data file size difference %d", d)
-	}
-
-	if seqJrnl != seqOfst {
-		return errors.Errorf("seq in journal does not match element count in log offset file - %d != %d", seqJrnl, seqOfst)
 	}
 
 	return nil
@@ -261,16 +280,23 @@ func (log *offsetLog) checkConsistency() error {
 
 		ofst = nextOfst
 
+		if sz < 0 { // TODO: nulled with user flags
+			sz = -sz
+		}
+
 		nextOfst += sz + 8 // 8 byte length prefix
 
 		expOfst, err := log.ofst.readOffset(seq)
-		if err != nil {
+		if errors.Cause(err) == io.EOF {
+			return nil
+		} else if err != nil {
 			return errors.Wrap(err, "error reading expected offset")
 		}
 
 		if ofst != expOfst {
 			return errors.Errorf("offset mismatch: offset file says %d, data file has %d", expOfst, ofst)
 		}
+		seq++
 	}
 }
 

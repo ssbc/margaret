@@ -140,3 +140,49 @@ func TestWriteAndWriteAgain(t *testing.T) {
 		os.RemoveAll(name)
 	}
 }
+
+// should be able to recover from journal in the future
+func TestRecover(t *testing.T) {
+	//setup
+	r := require.New(t)
+	name, err := ioutil.TempDir("", t.Name())
+	r.NoError(err)
+
+	log, err := Open(name, mjson.New(&testEvent{}))
+	r.NoError(err, "error during log creation")
+
+	// fill
+	tevs := []testEvent{
+		testEvent{"hello", 23},
+		testEvent{"world", 42},
+		testEvent{"world", 161},
+		testEvent{"world", 1312},
+	}
+	for i, ev := range tevs {
+		seq, err := log.Append(ev)
+		r.NoError(err, "failed to append event %d", i)
+		r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+	}
+
+	// close
+	r.NoError(log.Close())
+
+	// reopen and corrupt
+	log, err = Open(name, mjson.New(&testEvent{}))
+	r.NoError(err, "error during log open")
+
+	// assuming journal was increased only
+	seq, err := log.jrnl.bump()
+	r.NoError(err)
+	r.EqualValues(seq, len(tevs)) // +1-1
+
+	r.NoError(log.Close())
+
+	log, err = Open(name, mjson.New(&testEvent{}))
+	r.NoError(err, "error while recover")
+	r.NotNil(log)
+
+	v, err := log.Seq().Value()
+	r.NoError(err, "error while recover")
+	r.EqualValues(v, len(tevs)-1)
+}
