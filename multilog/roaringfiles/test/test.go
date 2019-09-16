@@ -6,12 +6,12 @@ import (
 	"github.com/pkg/errors"
 
 	"go.cryptoscope.co/margaret/multilog"
+	"go.cryptoscope.co/margaret/multilog/roaringfiles"
 	mltest "go.cryptoscope.co/margaret/multilog/test"
-	valbdgr "go.cryptoscope.co/margaret/multilog/roaringfiles"
 )
 
 func init() {
-	newMultiLog := func(name string, tipe interface{}, testDir string) (multilog.MultiLog, string, error) {
+	mltest.Register("roaring_files", func(name string, tipe interface{}, testDir string) (multilog.MultiLog, string, error) {
 		if testDir == "" {
 			var err error
 			testDir, err = ioutil.TempDir("", "roarlog")
@@ -20,8 +20,6 @@ func init() {
 			}
 		}
 
-		return valbdgr.New(testDir), testDir, nil
-	}
-
-	mltest.Register("value_badger", newMultiLog)
+		return roaringfiles.New(testDir), testDir, nil
+	})
 }
