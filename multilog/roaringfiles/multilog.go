@@ -26,6 +26,10 @@ func NewFS(base string) multilog.MultiLog {
 	return newAbstract(fs.New(base))
 }
 
+func NewSQLite(base string) multilog.MultiLog {
+	return newAbstract(fs.New(base))
+}
+
 func newAbstract(store persist.Saver) multilog.MultiLog {
 	return &mlog{
 		store:   store,

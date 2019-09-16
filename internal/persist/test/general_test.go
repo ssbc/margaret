@@ -8,6 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/margaret/internal/persist"
 	"go.cryptoscope.co/margaret/internal/persist/fs"
+	"go.cryptoscope.co/margaret/internal/persist/sqlite"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func SimpleSaver(p persist.Saver) func(*testing.T) {
@@ -43,10 +46,21 @@ func SimpleSaver(p persist.Saver) func(*testing.T) {
 
 func TestSaver(t *testing.T) {
 	t.Run("Simple", SimpleSaver(makeFS(t)))
+	t.Run("sqlite", SimpleSaver(makeSqlite(t)))
 }
 
 func makeFS(t *testing.T) persist.Saver {
 	base := filepath.Join("testrun", t.Name())
 	os.RemoveAll(base)
 	return fs.New(base)
+}
+
+func makeSqlite(t *testing.T) persist.Saver {
+	base := filepath.Join("testrun", t.Name())
+	os.RemoveAll(base)
+	s, err := sqlite.New(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
 }
