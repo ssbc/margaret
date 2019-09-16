@@ -162,7 +162,8 @@ func (log *mlog) List() ([]librarian.Addr, error) {
 func (log *mlog) Close() error {
 	for key, slog := range log.sublogs {
 		r := slog.bmap
-		if r.GetCardinality() > 0 && !r.HasRunCompression() {
+		n := r.GetCardinality()
+		if n > 0 && !r.HasRunCompression() {
 			old := r.GetSerializedSizeInBytes()
 			r.RunOptimize()
 
@@ -176,7 +177,7 @@ func (log *mlog) Close() error {
 				return errors.Wrap(err, "roaringfiles: write update failed")
 			}
 			if old > uint64(len(compressed)) {
-				fmt.Printf("roadingfiles: compressed roaring file %x from %d to %d\n", key, old, len(compressed))
+				fmt.Printf("roadingfiles: compressed roaring file %x from %d to %d (%d entries)\n", key, old, len(compressed), n)
 			}
 		}
 	}
