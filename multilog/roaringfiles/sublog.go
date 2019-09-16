@@ -2,13 +2,12 @@ package roaringfiles
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/internal/persist"
 )
 
 type sublog struct {
@@ -34,7 +33,7 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 	if log.bmap == nil {
 		log.bmap, err = log.mlog.loadBitmap(log.key)
 	}
-	if os.IsNotExist(errors.Cause(err)) {
+	if errors.Cause(err) == persist.ErrNotFound {
 		return nil, luigi.EOS{}
 	} else if err != nil {
 		return nil, errors.Wrap(err, "roaringfiles: error loading bitmap")
@@ -93,31 +92,35 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 	if log.debounce {
 		log.notify <- count
 	} else {
-		log.update(count)
+
+		if err := log.update(); err != nil {
+			return nil, err
+		}
 	}
 	cnt := margaret.BaseSeq(count)
 	log.seq.Set(cnt)
 	return cnt, nil
 }
 
-func (log *sublog) update(sz uint64) {
+func (log *sublog) update() error {
 	data, err := log.bmap.MarshalBinary()
 	if err != nil {
-		panic(errors.Wrap(err, "roaringfiles: failed to encode bitmap"))
+		return errors.Wrap(err, "roaringfiles: failed to encode bitmap")
 	}
 
-	err = ioutil.WriteFile(log.mlog.fnameForKey(log.key), data, 0700)
+	err = log.mlog.store.Put(log.key, data)
 	if err != nil {
-		panic(errors.Wrap(err, "roaringfiles: file write failed"))
+		return errors.Wrap(err, "roaringfiles: file write failed")
 	}
 
 	err = log.seq.Set(margaret.BaseSeq(log.bmap.GetCardinality() - 1))
 	if err != nil {
 		err = errors.Wrap(err, "roaringfiles: failed to update sequence")
-		panic(err)
+		return err
 	}
 
 	if log.debounce {
 		fmt.Println("roaringfiles: delayed store update")
 	}
+	return nil
 }

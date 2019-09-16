@@ -20,6 +20,6 @@ func init() {
 			}
 		}
 
-		return roaringfiles.New(testDir), testDir, nil
+		return roaringfiles.NewFS(testDir), testDir, nil
 	})
 }

@@ -1,14 +1,12 @@
 package roaringfiles
 
 import (
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
+
+	"go.cryptoscope.co/margaret/internal/persist/fs"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
@@ -16,22 +14,28 @@ import (
 	"go.cryptoscope.co/luigi"
 
 	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/internal/persist"
 	"go.cryptoscope.co/margaret/multilog"
 )
 
 // New returns a new multilog that is only good to store sequences
 // It uses files to store roaring bitmaps directly.
 // for this it turns the librarian.Addrs into a hex string.
-func New(base string) multilog.MultiLog {
+
+func NewFS(base string) multilog.MultiLog {
+	return newAbstract(fs.New(base))
+}
+
+func newAbstract(store persist.Saver) multilog.MultiLog {
 	return &mlog{
-		base:    base,
+		store:   store,
 		sublogs: make(map[librarian.Addr]*sublog),
 		curSeq:  margaret.BaseSeq(-2),
 	}
 }
 
 type mlog struct {
-	base string
+	store persist.Saver
 
 	curSeq margaret.Seq
 
@@ -52,7 +56,7 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 
 	var seq margaret.Seq
 	r, err := log.loadBitmap(key)
-	if os.IsNotExist(errors.Cause(err)) {
+	if errors.Cause(err) == persist.ErrNotFound {
 		seq = margaret.SeqEmpty
 		r = roaring.New()
 	} else if err != nil {
@@ -82,14 +86,16 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 	return slog, nil
 }
 
-func debounce(interval time.Duration, notify chan uint64, cb func(uint64)) {
+func debounce(interval time.Duration, notify chan uint64, cb func() error) {
 	timer := time.NewTimer(interval)
 	for {
 		select {
 		case _ = <-notify:
 			timer.Reset(interval)
 		case <-timer.C:
-			cb(0)
+			if err := cb(); err != nil {
+				panic(err)
+			}
 		}
 	}
 }
@@ -97,9 +103,9 @@ func debounce(interval time.Duration, notify chan uint64, cb func(uint64)) {
 func (log *mlog) loadBitmap(key []byte) (*roaring.Bitmap, error) {
 	var r *roaring.Bitmap
 
-	data, err := ioutil.ReadFile(log.fnameForKey(key))
+	data, err := log.store.Get(key)
 	if err != nil {
-		return nil, errors.Wrap(err, "roaringfiles/get: error in read transaction")
+		return nil, errors.Wrap(err, "roaringfiles: invalid stored bitfield")
 	}
 
 	r = roaring.New()
@@ -111,51 +117,25 @@ func (log *mlog) loadBitmap(key []byte) (*roaring.Bitmap, error) {
 	return r, nil
 }
 
-func (log *mlog) fnameForKey(k []byte) string {
-	var fname string
-	hexKey := hex.EncodeToString(k)
-	if len(hexKey) > 10 {
-		fname = filepath.Join(log.base, hexKey[:5], hexKey[5:])
-		os.MkdirAll(filepath.Dir(fname), 0700)
-	} else {
-		fname = filepath.Join(log.base, hexKey)
-	}
-	return fname
-}
-
 // List returns a list of all stored sublogs
 func (log *mlog) List() ([]librarian.Addr, error) {
 	var list []librarian.Addr
 
-	err := filepath.Walk(log.base, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			return nil
-		}
-
-		name := strings.TrimPrefix(path, log.base+"/")
-		if name[5] == '/' {
-			var b = []byte(name)
-			b = append(b[:5], b[6:]...)
-			name = string(b)
-		}
-		bk, err := hex.DecodeString(name)
-		if err != nil {
-			return errors.Wrap(err, "roaringfiles: invalid path")
-		}
-
+	keys, err := log.store.List()
+	if err != nil {
+		return nil, errors.Wrap(err, "roaringfiles: store iteration failed")
+	}
+	for _, bk := range keys {
 		bmap, err := log.loadBitmap(bk)
 		if err != nil {
-			return errors.Wrapf(err, "roaringfiles: broken bitmap file (%q)", path)
+			return nil, errors.Wrapf(err, "roaringfiles: broken bitmap file (%x)", bk)
 		}
 
 		if bmap.GetCardinality() == 0 {
-			return nil
+			continue
 		}
-
 		list = append(list, librarian.Addr(bk))
-		return nil
-	})
-
+	}
 	return list, errors.Wrap(err, "roaringfiles: error in List() iteration")
 }
 
@@ -172,7 +152,7 @@ func (log *mlog) Close() error {
 				return errors.Wrap(err, "roaringfiles: marshal failed")
 			}
 
-			err = ioutil.WriteFile(log.fnameForKey([]byte(key)), compressed, 0700)
+			err = log.store.Put(persist.Key(key), compressed)
 			if err != nil {
 				return errors.Wrap(err, "roaringfiles: write update failed")
 			}

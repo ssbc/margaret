@@ -17,20 +17,27 @@ func SimpleSaver(p persist.Saver) func(*testing.T) {
 
 		l, err := p.List()
 		r.NoError(err)
-		r.Len(l, 0)
+		r.Len(l, 0, "%v", l)
 
 		k := persist.Key{0, 0, 0, 1}
 		d, err := p.Get(k)
 		r.EqualError(err, persist.ErrNotFound.Error())
 		r.Nil(d)
 
-		err = p.Put(k, []byte("fooo"))
+		testData := []byte("fooo")
+
+		err = p.Put(k, testData)
 		r.NoError(err)
 
 		l, err = p.List()
 		r.NoError(err)
-		r.Len(l, 0)
+		r.Len(l, 1)
 		r.Equal(k, l[0])
+
+		d, err = p.Get(k)
+		r.NoError(err)
+		r.Equal(d, testData)
+
 	}
 }
 
