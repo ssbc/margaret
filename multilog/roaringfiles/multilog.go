@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"go.cryptoscope.co/margaret/internal/persist/fs"
-
 	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/librarian"
@@ -15,6 +13,9 @@ import (
 
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/internal/persist"
+	"go.cryptoscope.co/margaret/internal/persist/fs"
+	"go.cryptoscope.co/margaret/internal/persist/mkv"
+	"go.cryptoscope.co/margaret/internal/persist/sqlite"
 	"go.cryptoscope.co/margaret/multilog"
 )
 
@@ -26,8 +27,20 @@ func NewFS(base string) multilog.MultiLog {
 	return newAbstract(fs.New(base))
 }
 
-func NewSQLite(base string) multilog.MultiLog {
-	return newAbstract(fs.New(base))
+func NewSQLite(base string) (multilog.MultiLog, error) {
+	s, err := sqlite.New(base)
+	if err != nil {
+		return nil, err
+	}
+	return newAbstract(s), nil
+}
+
+func NewMKV(base string) (multilog.MultiLog, error) {
+	s, err := mkv.New(base)
+	if err != nil {
+		return nil, err
+	}
+	return newAbstract(s), nil
 }
 
 func newAbstract(store persist.Saver) multilog.MultiLog {

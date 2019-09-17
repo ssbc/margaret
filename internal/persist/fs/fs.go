@@ -22,6 +22,8 @@ func New(base string) *Saver {
 	return &Saver{base: base}
 }
 
+func (s Saver) Close() error { return nil }
+
 func (s Saver) fnameForKey(k []byte) string {
 	var fname string
 	hexKey := hex.EncodeToString(k)

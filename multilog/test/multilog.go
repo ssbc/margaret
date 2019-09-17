@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,7 +143,6 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 
 			knownLogs, err := mlog.List()
 			r.NoError(err, "error calling List")
-			spew.Dump(knownLogs)
 			r.Len(knownLogs, len(tc.values))
 
 			hasAddr := func(addr librarian.Addr) bool {
