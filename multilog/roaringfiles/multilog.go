@@ -136,6 +136,9 @@ func (log *mlog) loadBitmap(key []byte) (*roaring.Bitmap, error) {
 
 // List returns a list of all stored sublogs
 func (log *mlog) List() ([]librarian.Addr, error) {
+	log.l.Lock()
+	defer log.l.Unlock()
+
 	var list []librarian.Addr
 
 	keys, err := log.store.List()
@@ -178,5 +181,5 @@ func (log *mlog) Close() error {
 			}
 		}
 	}
-	return nil
+	return log.store.Close()
 }

@@ -62,6 +62,13 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 					r.NoError(err, "error appending to log")
 					r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
 				}
+
+				// check full
+				sv, err = slog.Seq().Value()
+				r.NoError(err, "error getting sublog sequence")
+				seq, ok = sv.(margaret.Seq)
+				r.True(ok, "wrong type:%T", sv)
+				r.EqualValues(len(values)-1, seq.Seq())
 			}
 
 			// check if multilog entries match
@@ -102,14 +109,13 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 				currV, err := slog.Seq().Value()
 				r.NoError(err)
 				currSeq := currV.(margaret.BaseSeq)
-				t.Log(currSeq)
 				v, err := slog.Get(currSeq)
 				r.NoError(err)
 				r.NotNil(v)
 				v, err = slog.Get(currSeq + 1)
 				r.Error(err)
+				r.Equal(luigi.EOS{}, err)
 				r.Nil(v)
-				t.Log(err)
 			}
 
 			r.NoError(mlog.Close(), "failed to close testlog")

@@ -32,11 +32,11 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 	var err error
 	if log.bmap == nil {
 		log.bmap, err = log.mlog.loadBitmap(log.key)
-	}
-	if errors.Cause(err) == persist.ErrNotFound {
-		return nil, luigi.EOS{}
-	} else if err != nil {
-		return nil, errors.Wrap(err, "roaringfiles: error loading bitmap")
+		if errors.Cause(err) == persist.ErrNotFound {
+			return nil, luigi.EOS{}
+		} else if err != nil {
+			return nil, errors.Wrap(err, "roaringfiles: error loading bitmap")
+		}
 	}
 
 	v, err := log.bmap.Select(uint32(seq.Seq()))
@@ -92,7 +92,6 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 	if log.debounce {
 		log.notify <- count
 	} else {
-
 		if err := log.update(); err != nil {
 			return nil, err
 		}
