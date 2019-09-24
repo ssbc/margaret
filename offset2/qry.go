@@ -134,16 +134,17 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		var cancel func()
 		cancel = qry.log.seq.Register(luigi.FuncSink(
 			func(ctx context.Context, v interface{}, err error) error {
+				defer cancel()
 				if err != nil {
 					return err
 				}
 				if v.(margaret.Seq).Seq() >= qry.nextSeq.Seq() {
 					close(wait)
-					cancel()
 				}
 
 				return nil
 			}))
+		defer cancel()
 
 		err = func() error {
 			qry.log.l.Unlock()

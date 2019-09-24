@@ -130,16 +130,17 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 }
 
 func (qry *query) livequery(ctx context.Context) (interface{}, error) {
-	wait := make(chan interface{})
+	wait := make(chan interface{}, 1)
 	closed := make(chan struct{})
 
 	// register waiter for new message
 	var cancel func()
 	cancel = qry.log.seq.Register(luigi.FuncSink(
 		func(ctx context.Context, v interface{}, err error) error {
+			// fmt.Println("live sub query boradcast triggere", v, err)
 			if err != nil {
 				close(closed)
-				return nil
+				return err
 			}
 
 			// TODO: maybe only accept == and throw error on >?
