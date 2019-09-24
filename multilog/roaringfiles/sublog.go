@@ -2,15 +2,16 @@ package roaringfiles
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/internal/persist"
 )
 
 type sublog struct {
+	sync.Mutex
 	mlog *mlog
 	key  []byte
 	seq  luigi.Observable
@@ -26,17 +27,10 @@ func (log *sublog) Seq() luigi.Observable {
 }
 
 func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
+	log.Mutex.Lock()
+	defer log.Mutex.Unlock()
 	if seq.Seq() < 0 {
 		return nil, luigi.EOS{}
-	}
-	var err error
-	if log.bmap == nil {
-		log.bmap, err = log.mlog.loadBitmap(log.key)
-		if errors.Cause(err) == persist.ErrNotFound {
-			return nil, luigi.EOS{}
-		} else if err != nil {
-			return nil, errors.Wrap(err, "roaringfiles: error loading bitmap")
-		}
 	}
 
 	v, err := log.bmap.Select(uint32(seq.Seq()))
@@ -48,7 +42,8 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 }
 
 func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
-
+	log.Mutex.Lock()
+	defer log.Mutex.Unlock()
 	qry := &query{
 		log:  log,
 		bmap: log.bmap.Clone(),
@@ -70,6 +65,8 @@ func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 }
 
 func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
+	log.Mutex.Lock()
+	defer log.Mutex.Unlock()
 	val, ok := v.(margaret.BaseSeq)
 	if !ok {
 		switch tv := v.(type) {

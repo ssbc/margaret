@@ -83,9 +83,9 @@ func (qry *query) Reverse(rev bool) error {
 
 func (qry *query) Next(ctx context.Context) (interface{}, error) {
 	qry.l.Lock()
-	defer qry.l.Unlock()
 
 	if qry.limit == 0 {
+		qry.l.Unlock()
 		return nil, luigi.EOS{}
 	}
 	qry.limit--
@@ -96,6 +96,7 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 
 	if qry.lt != margaret.SeqEmpty {
 		if qry.nextSeq >= qry.lt {
+			qry.l.Unlock()
 			return nil, luigi.EOS{}
 		}
 	}
@@ -103,6 +104,7 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 	var v interface{}
 	seqVal, err := qry.bmap.Select(uint32(qry.nextSeq.Seq()))
 	v = margaret.BaseSeq(seqVal)
+	qry.l.Unlock()
 	if err != nil {
 		if !strings.Contains(err.Error(), "th integer in a bitmap with only ") {
 			return nil, errors.Wrapf(err, "roaringfiles/qry: error in read transaction (%T)", err)
@@ -120,7 +122,11 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 		}
 	}
 
-	defer func() { qry.nextSeq++ }()
+	qry.l.Lock()
+	defer func() {
+		qry.nextSeq++
+		qry.l.Unlock()
+	}()
 
 	if qry.seqWrap {
 		return margaret.WrapWithSeq(v, qry.nextSeq), nil
@@ -137,6 +143,8 @@ func (qry *query) livequery(ctx context.Context) (interface{}, error) {
 	var cancel func()
 	cancel = qry.log.seq.Register(luigi.FuncSink(
 		func(ctx context.Context, v interface{}, err error) error {
+			qry.l.Lock()
+			defer qry.l.Unlock()
 			// fmt.Println("live sub query boradcast triggere", v, err)
 			if err != nil {
 				close(closed)
@@ -151,10 +159,6 @@ func (qry *query) livequery(ctx context.Context) (interface{}, error) {
 			return nil
 		}))
 	defer cancel()
-
-	// release the lock so we don't block, but re-acquire it to increment nextSeq
-	qry.l.Unlock()
-	defer qry.l.Lock()
 
 	var (
 		v   interface{}
