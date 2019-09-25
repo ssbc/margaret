@@ -160,27 +160,26 @@ func (log *mlog) List() ([]librarian.Addr, error) {
 }
 
 func (log *mlog) Close() error {
-	// https://github.com/RoaringBitmap/roaring/pull/235
-	// for key, slog := range log.sublogs {
-	// 	r := slog.bmap
-	// 	n := r.GetCardinality()
-	// 	if n > 0 && !r.HasRunCompression() {
-	// 		old := r.GetSerializedSizeInBytes()
-	// 		r.RunOptimize()
+	for key, slog := range log.sublogs {
+		r := slog.bmap
+		n := r.GetCardinality()
+		if n > 0 && !r.HasRunCompression() {
+			old := r.GetSerializedSizeInBytes()
+			r.RunOptimize()
 
-	// 		compressed, err := r.MarshalBinary()
-	// 		if err != nil {
-	// 			return errors.Wrap(err, "roaringfiles: marshal failed")
-	// 		}
+			compressed, err := r.MarshalBinary()
+			if err != nil {
+				return errors.Wrap(err, "roaringfiles: marshal failed")
+			}
 
-	// 		err = log.store.Put(persist.Key(key), compressed)
-	// 		if err != nil {
-	// 			return errors.Wrap(err, "roaringfiles: write update failed")
-	// 		}
-	// 		if old > uint64(len(compressed)) {
-	// 			fmt.Printf("roadingfiles: compressed roaring file %x from %d to %d (%d entries)\n", key, old, len(compressed), n)
-	// 		}
-	// 	}
-	// }
+			err = log.store.Put(persist.Key(key), compressed)
+			if err != nil {
+				return errors.Wrap(err, "roaringfiles: write update failed")
+			}
+			if old > uint64(len(compressed)) {
+				fmt.Printf("roadingfiles: compressed roaring file %x from %d to %d (%d entries)\n", key, old, len(compressed), n)
+			}
+		}
+	}
 	return log.store.Close()
 }

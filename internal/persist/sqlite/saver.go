@@ -26,7 +26,7 @@ func (s SqliteSaver) Get(key persist.Key) ([]byte, error) {
 		if err == sql.ErrNoRows {
 			return nil, persist.ErrNotFound
 		}
-		return nil, errors.Wrapf(err, "persist/sqlite/get(%d): failed to execute query")
+		return nil, errors.Wrapf(err, "persist/sqlite/get(%s): failed to execute query", hexKey[:5])
 	}
 	return data, nil
 }
