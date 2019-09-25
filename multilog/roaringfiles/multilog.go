@@ -146,7 +146,7 @@ func (log *mlog) tryCompress(key persist.Key, r *roaring.Bitmap) (bool, error) {
 		r.RunOptimize()
 		newSize := r.GetSerializedSizeInBytes()
 
-		if diff := currSize - newSize; diff > 512 {
+		if currSize > newSize {
 			compressed, err := r.MarshalBinary()
 			if err != nil {
 				return false, errors.Wrap(err, "roaringfiles: compress marshal failed")
@@ -155,7 +155,7 @@ func (log *mlog) tryCompress(key persist.Key, r *roaring.Bitmap) (bool, error) {
 			if err != nil {
 				return false, errors.Wrap(err, "roaringfiles: write compressed failed")
 			}
-			stdlog.Printf("roaringfiles/compress(%x): reduced by %d (%d entries)\n", key, diff, n)
+			stdlog.Printf("roaringfiles/compress(%x): reduced to %d (%d entries)\n", key, newSize, n)
 			return true, nil
 		}
 	}
