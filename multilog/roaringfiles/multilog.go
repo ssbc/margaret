@@ -2,6 +2,7 @@ package roaringfiles
 
 import (
 	"fmt"
+	stdlog "log"
 	"os"
 	"sync"
 	"time"
@@ -122,16 +123,43 @@ func (log *mlog) loadBitmap(key []byte) (*roaring.Bitmap, error) {
 
 	data, err := log.store.Get(key)
 	if err != nil {
-		return nil, errors.Wrap(err, "roaringfiles: invalid stored bitfield")
+		return nil, errors.Wrapf(err, "roaringfiles: invalid stored bitfield %x", key)
 	}
 
 	r = roaring.New()
 	err = r.UnmarshalBinary(data)
 	if err != nil {
-		return nil, errors.Wrap(err, "roaringfiles: invalid stored bitfield")
+		return nil, errors.Wrapf(err, "roaringfiles: unpack of %x failed", key)
+	}
+
+	if _, err := log.tryCompress(persist.Key(key), r); err != nil {
+		return nil, errors.Wrapf(err, "roaringfiles: loadCompress failed for %x", key)
 	}
 
 	return r, nil
+}
+
+func (log *mlog) tryCompress(key persist.Key, r *roaring.Bitmap) (bool, error) {
+	n := r.GetSizeInBytes()
+	if n > 4*1024 {
+		currSize := r.GetSerializedSizeInBytes()
+		r.RunOptimize()
+		newSize := r.GetSerializedSizeInBytes()
+
+		if diff := newSize - currSize; diff > 512 {
+			compressed, err := r.MarshalBinary()
+			if err != nil {
+				return false, errors.Wrap(err, "roaringfiles: compress marshal failed")
+			}
+			err = log.store.Put(key, compressed)
+			if err != nil {
+				return false, errors.Wrap(err, "roaringfiles: write compressed failed")
+			}
+			stdlog.Printf("roaringfiles/compress(%x): reduced by %d (%d entries)\n", key, diff, n)
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // List returns a list of all stored sublogs
@@ -160,26 +188,5 @@ func (log *mlog) List() ([]librarian.Addr, error) {
 }
 
 func (log *mlog) Close() error {
-	for key, slog := range log.sublogs {
-		r := slog.bmap
-		n := r.GetCardinality()
-		if n > 0 && !r.HasRunCompression() {
-			old := r.GetSerializedSizeInBytes()
-			r.RunOptimize()
-
-			compressed, err := r.MarshalBinary()
-			if err != nil {
-				return errors.Wrap(err, "roaringfiles: marshal failed")
-			}
-
-			err = log.store.Put(persist.Key(key), compressed)
-			if err != nil {
-				return errors.Wrap(err, "roaringfiles: write update failed")
-			}
-			if old > uint64(len(compressed)) {
-				fmt.Printf("roadingfiles: compressed roaring file %x from %d to %d (%d entries)\n", key, old, len(compressed), n)
-			}
-		}
-	}
 	return log.store.Close()
 }

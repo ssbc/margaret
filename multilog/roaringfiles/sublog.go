@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/internal/persist"
 )
 
 type sublog struct {
@@ -99,14 +100,20 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 }
 
 func (log *sublog) update() error {
-	data, err := log.bmap.MarshalBinary()
+	did, err := log.mlog.tryCompress(persist.Key(log.key), log.bmap)
 	if err != nil {
-		return errors.Wrap(err, "roaringfiles: failed to encode bitmap")
+		return errors.Wrapf(err, "roaringfiles: loadCompress failed for %x", log.key)
 	}
+	if !did {
+		data, err := log.bmap.MarshalBinary()
+		if err != nil {
+			return errors.Wrap(err, "roaringfiles: failed to encode bitmap")
+		}
 
-	err = log.mlog.store.Put(log.key, data)
-	if err != nil {
-		return errors.Wrap(err, "roaringfiles: file write failed")
+		err = log.mlog.store.Put(log.key, data)
+		if err != nil {
+			return errors.Wrap(err, "roaringfiles: file write failed")
+		}
 	}
 
 	err = log.seq.Set(margaret.BaseSeq(log.bmap.GetCardinality() - 1))
