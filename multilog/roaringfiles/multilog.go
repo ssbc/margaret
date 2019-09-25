@@ -146,7 +146,7 @@ func (log *mlog) tryCompress(key persist.Key, r *roaring.Bitmap) (bool, error) {
 		r.RunOptimize()
 		newSize := r.GetSerializedSizeInBytes()
 
-		if diff := newSize - currSize; diff > 512 {
+		if diff := currSize - newSize; diff > 512 {
 			compressed, err := r.MarshalBinary()
 			if err != nil {
 				return false, errors.Wrap(err, "roaringfiles: compress marshal failed")
