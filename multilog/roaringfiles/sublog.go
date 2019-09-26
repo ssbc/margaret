@@ -1,7 +1,6 @@
 package roaringfiles
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/RoaringBitmap/roaring"
@@ -12,14 +11,15 @@ import (
 )
 
 type sublog struct {
+	mlog *MultiLog
+
 	sync.Mutex
-	mlog *mlog
-	key  []byte
+	key  persist.Key
 	seq  luigi.Observable
 	bmap *roaring.Bitmap
 
-	debounce bool
-	notify   chan uint64
+	lastCompress margaret.BaseSeq
+
 	lastSave uint64
 }
 
@@ -87,33 +87,40 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 
 	log.bmap.Add(uint32(val.Seq()))
 	count := log.bmap.GetCardinality() - 1
-	if log.debounce {
-		log.notify <- count
+
+	cnt := margaret.BaseSeq(count)
+
+	if diff := cnt - log.lastCompress; diff > 1000 { // reduce compressions
+		did, err := log.mlog.compress(persist.Key(log.key), log.bmap)
+		if err != nil {
+			return nil, errors.Wrapf(err, "roaringfiles: loadCompress failed for %x", log.key)
+		}
+		if !did {
+			if err := log.update(); err != nil {
+				return nil, err
+			}
+		}
+		log.lastCompress = cnt
 	} else {
 		if err := log.update(); err != nil {
 			return nil, err
 		}
 	}
-	cnt := margaret.BaseSeq(count)
+
 	log.seq.Set(cnt)
 	return cnt, nil
 }
 
 func (log *sublog) update() error {
-	did, err := log.mlog.tryCompress(persist.Key(log.key), log.bmap)
+	// TODO: make store a bitmapStore, then we can also skip uncesessary unmarshals
+	data, err := log.bmap.MarshalBinary()
 	if err != nil {
-		return errors.Wrapf(err, "roaringfiles: loadCompress failed for %x", log.key)
+		return errors.Wrap(err, "roaringfiles: failed to encode bitmap")
 	}
-	if !did {
-		data, err := log.bmap.MarshalBinary()
-		if err != nil {
-			return errors.Wrap(err, "roaringfiles: failed to encode bitmap")
-		}
 
-		err = log.mlog.store.Put(log.key, data)
-		if err != nil {
-			return errors.Wrap(err, "roaringfiles: file write failed")
-		}
+	err = log.mlog.store.Put(log.key, data)
+	if err != nil {
+		return errors.Wrap(err, "roaringfiles: file write failed")
 	}
 
 	err = log.seq.Set(margaret.BaseSeq(log.bmap.GetCardinality() - 1))
@@ -122,8 +129,5 @@ func (log *sublog) update() error {
 		return err
 	}
 
-	if log.debounce {
-		fmt.Println("roaringfiles: delayed store update")
-	}
 	return nil
 }

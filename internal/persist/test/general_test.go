@@ -1,6 +1,9 @@
 package test
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -44,15 +47,57 @@ func SimpleSaver(mk func(*testing.T) persist.Saver) func(*testing.T) {
 		r.NoError(err)
 		r.Equal(d, testData)
 
+		// mkvs limit is 64k
+		n := 160 * 1024
+		bigKey, big := makeRandData(r, n)
+		err = p.Put(bigKey, big)
+		r.NoError(err)
+
+		l, err = p.List()
+		r.NoError(err)
+		r.Len(l, 2)
+		r.Equal(k, l[0])
+		r.Equal(bigKey, l[1])
+
+		bigdata, err := p.Get(bigKey)
+		r.NoError(err)
+		r.Equal(n, len(bigdata))
+		r.Equal(big, bigdata)
+
+		//make something smaller to check dealloc of pages
+		_, smaller := makeRandData(r, 75*1024)
+		err = p.Put(bigKey, smaller)
+		r.NoError(err)
+
+		l, err = p.List()
+		r.NoError(err)
+		r.Len(l, 2)
+		r.Equal(k, l[0])
+		r.Equal(bigKey, l[1])
+
+		getSmaller, err := p.Get(bigKey)
+		r.NoError(err)
+		r.Equal(len(smaller), len(getSmaller))
+		r.Equal(smaller, getSmaller)
+
 		r.NoError(p.Close())
 	}
+}
+
+func makeRandData(r *require.Assertions, n int) (persist.Key, []byte) {
+	big := make([]byte, n)
+	h := sha256.New()
+	tr := io.TeeReader(rand.Reader, h)
+	got, err := tr.Read(big)
+	r.NoError(err)
+	r.Equal(n, got)
+	return persist.Key(h.Sum(nil)), big
 }
 
 func TestSaver(t *testing.T) {
 	t.Run("fs", SimpleSaver(makeFS))
 	t.Run("sqlite", SimpleSaver(makeSqlite))
-	t.Run("kv", SimpleSaver(makeSqlite))
-
+	t.Run("kv", SimpleSaver(makeMKV))
 }
 
 func makeFS(t *testing.T) persist.Saver {
