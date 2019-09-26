@@ -2,10 +2,15 @@ package persist
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
 type Key []byte
+
+func (k Key) String() string {
+	return fmt.Sprintf("key:%x", []byte(k))
+}
 
 var ErrNotFound = errors.New("persist: item not found")
 

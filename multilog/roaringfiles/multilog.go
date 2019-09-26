@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/librarian"
@@ -132,7 +134,7 @@ func (log *MultiLog) compress(key persist.Key, r *roaring.Bitmap) (bool, error) 
 	if err != nil {
 		return false, errors.Wrap(err, "roaringfiles: write compressed failed")
 	}
-	fmt.Printf("roaringfiles/compress(%x): reduced to %d (%d entries)\n", key, newSize, n)
+	fmt.Printf("roaringfiles/compress(%s): reduced to %s (%d entries)\n", key, humanize.Bytes(newSize), n)
 	return true, nil
 }
 
@@ -195,7 +197,7 @@ func (log *MultiLog) loadAll() error {
 	for _, bk := range keys {
 		_, err := log.openSublog(librarian.Addr(bk))
 		if err != nil {
-			return errors.Wrapf(err, "roaringfiles: broken bitmap file (%x)", bk)
+			return errors.Wrapf(err, "roaringfiles: broken bitmap file (%s)", bk)
 		}
 	}
 	return nil
