@@ -305,9 +305,6 @@ func (log *offsetLog) Seq() luigi.Observable {
 }
 
 func (log *offsetLog) Get(seq margaret.Seq) (interface{}, error) {
-	log.l.Lock()
-	defer log.l.Unlock()
-
 	v, err := log.readFrame(seq)
 	if errors.Cause(err) == io.EOF {
 		return v, luigi.EOS{}
