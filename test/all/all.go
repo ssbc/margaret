@@ -6,4 +6,5 @@ import (
 
 	_ "go.cryptoscope.co/librarian/badger/test"
 	_ "go.cryptoscope.co/librarian/mapidx/test"
+	_ "go.cryptoscope.co/librarian/mkv/test"
 )
