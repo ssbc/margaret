@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package mem // import "go.cryptoscope.co/margaret/mem"
 
 import (

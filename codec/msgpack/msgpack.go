@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package msgpack // import "go.cryptoscope.co/margaret/codec/msgpack"
 
 import (

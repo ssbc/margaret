@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package margaret // import "go.cryptoscope.co/margaret"
 
 const (

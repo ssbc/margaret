@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package badger // import "go.cryptoscope.co/margaret/multilog/badger"
 
 import (

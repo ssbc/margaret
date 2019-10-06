@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package margaret // import "go.cryptoscope.co/margaret"
 
 // Query is the interface implemented by the concrete log implementations that collects the constraints of the query.

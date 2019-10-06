@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package offset2 // import "go.cryptoscope.co/margaret/offset2"
 
 import (

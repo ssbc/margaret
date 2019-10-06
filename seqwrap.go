@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package margaret
 
 // SeqWrapper wraps a value to attach a sequence number to it.

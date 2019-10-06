@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package basic // import "go.cryptoscope.co/margaret/framing/basic"
 
 import (

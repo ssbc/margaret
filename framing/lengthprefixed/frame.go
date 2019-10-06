@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package lengthprefixed // import "go.cryptoscope.co/margaret/framing/lengthprefixed"
 
 import (
