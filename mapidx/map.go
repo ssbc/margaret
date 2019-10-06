@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package mapidx // import "go.cryptoscope.co/librarian/mapidx"
 
 import (
