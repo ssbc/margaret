@@ -20,8 +20,6 @@ type sublog struct {
 	seq  luigi.Observable
 	bmap *roaring.Bitmap
 
-	lastCompress margaret.BaseSeq
-
 	lastSave uint64
 }
 
@@ -91,22 +89,8 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 	count := log.bmap.GetCardinality() - 1
 
 	cnt := margaret.BaseSeq(count)
-
-	if diff := cnt - log.lastCompress; diff > 1000 { // reduce compressions
-		did, err := log.mlog.compress(persist.Key(log.key), log.bmap)
-		if err != nil {
-			return nil, errors.Wrapf(err, "roaringfiles: loadCompress failed for %x", log.key)
-		}
-		if !did {
-			if err := log.update(); err != nil {
-				return nil, err
-			}
-		}
-		log.lastCompress = cnt
-	} else {
-		if err := log.update(); err != nil {
-			return nil, err
-		}
+	if err := log.update(); err != nil {
+		return nil, err
 	}
 
 	log.seq.Set(cnt)
