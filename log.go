@@ -39,6 +39,8 @@ func IsOutOfBounds(err error) bool {
 
 type Alterer interface {
 	Null(Seq) error
+
+	Replace(Seq, []byte) error
 }
 
 type errNulled bool

@@ -84,36 +84,67 @@ var _ margaret.Alterer = (*offsetLog)(nil)
 // updating is kinda odd in append-only
 // but in some cases you still might want to redact entries
 func (log *offsetLog) Null(seq margaret.Seq) error {
-	log.bcSink.Close()
 
 	log.l.Lock()
 	defer log.l.Unlock()
 
 	ofst, err := log.ofst.readOffset(seq)
 	if err != nil {
-		return errors.Wrap(err, "error read offset")
+		return errors.Wrap(err, "null: error read offset")
 	}
 
 	sz, err := log.data.getFrameSize(ofst)
 	if err != nil {
-		return errors.Wrap(err, "get frame size failed")
+		return errors.Wrap(err, "null: get frame size failed")
 	}
 
 	var minusSz bytes.Buffer
 	err = binary.Write(&minusSz, binary.BigEndian, -sz)
 	if err != nil {
-		return errors.Wrapf(err, "failed to encode neg size: %d", -sz)
+		return errors.Wrapf(err, "null: failed to encode neg size: %d", -sz)
 	}
 
 	_, err = log.data.WriteAt(minusSz.Bytes(), ofst)
 	if err != nil {
-		return errors.Wrapf(err, "failed to write -1 size bytes at %d", ofst)
+		return errors.Wrapf(err, "null: failed to write -1 size bytes at %d", ofst)
 	}
 
 	nulls := make([]byte, sz)
 	_, err = log.data.WriteAt(nulls, ofst+8)
 	if err != nil {
-		return errors.Wrapf(err, "failed to write %d bytes at %d", sz, ofst)
+		return errors.Wrapf(err, "null: failed to write %d bytes at %d", sz, ofst)
+	}
+
+	return nil
+}
+
+// Replace overwrites the seq entry with data.
+// data has to be smaller then the current entry.
+func (log *offsetLog) Replace(seq margaret.Seq, data []byte) error {
+	log.l.Lock()
+	defer log.l.Unlock()
+
+	ofst, err := log.ofst.readOffset(seq)
+	if err != nil {
+		return errors.Wrap(err, "offset2/replace: error read offset")
+	}
+
+	sz, err := log.data.getFrameSize(ofst)
+	if err != nil {
+		return errors.Wrap(err, "offset2/replace: get frame size failed")
+	}
+
+	newSz := int64(len(data))
+	if sz < newSz {
+		return errors.Errorf("offset2/replace: can't overwrite entry with larger data (diff:%d)", newSz-sz)
+	}
+
+	nulls := make([]byte, sz)
+	copy(nulls[:], data)
+
+	_, err = log.data.WriteAt(nulls, ofst+8)
+	if err != nil {
+		return errors.Wrapf(err, "offset2/replace: null: failed to write %d bytes at %d", sz, ofst)
 	}
 
 	return nil

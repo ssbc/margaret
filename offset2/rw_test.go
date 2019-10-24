@@ -15,8 +15,8 @@ import (
 )
 
 type testEvent struct {
-	Foo string
-	Bar int
+	Foo string `json:",omitempty"`
+	Bar int    `json:",omitempty"`
 }
 
 func TestReadWrite(t *testing.T) {
