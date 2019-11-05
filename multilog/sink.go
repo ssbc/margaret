@@ -55,6 +55,10 @@ func (slog *sinkLog) List() ([]librarian.Addr, error) {
 	return slog.mlog.List()
 }
 
+func (slog *sinkLog) Delete(addr librarian.Addr) error {
+	return slog.mlog.Delete(addr)
+}
+
 // Pour calls the processing function to add a value to a sublog.
 func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
 	slog.l.Lock()

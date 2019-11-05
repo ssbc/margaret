@@ -85,13 +85,41 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		addrs, err = mlog.List()
 		r.NoError(err, "error listing mlog")
 		r.Len(addrs, 1)
-		r.NoError(mlog.Close())
 
-		if t.Failed() {
-			t.Log("db location:", dir)
-		} else {
-			os.RemoveAll(dir)
+		// add a log and then delete it
+		var delAddr librarian.Addr = "deleteme"
+		sublog, err = mlog.Get(delAddr)
+		r.NoError(err)
+		r.NotNil(sublog)
+		vals = []margaret.BaseSeq{99, 101, 101}
+		for i, v := range vals {
+			_, err := sublog.Append(v)
+			r.NoError(err, "failed to append testVal %d for deletion", i)
 		}
+
+		//  should have the new one
+		addrs, err = mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 2)
+
+		// remove it
+		err = mlog.Delete(delAddr)
+		r.NoError(err)
+
+		// check that it is empty
+		sublog, err = mlog.Get(delAddr)
+		r.NoError(err)
+		r.NotNil(sublog)
+		curr, err = sublog.Seq().Value()
+		r.NoError(err, "failed to get sublog sequence of deleted sublog")
+		a.NotEqual(margaret.SeqEmpty, curr)
+
+		// one left
+		addrs, err = mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 1)
+
+		r.NoError(mlog.Close())
 	}
 }
 

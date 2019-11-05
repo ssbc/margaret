@@ -15,6 +15,9 @@ type MultiLog interface {
 	Get(librarian.Addr) (margaret.Log, error)
 	List() ([]librarian.Addr, error)
 	io.Closer
+
+	// Delete removes all entries related to that log
+	Delete(librarian.Addr) error
 }
 
 func Has(mlog MultiLog, addr librarian.Addr) (bool, error) {
