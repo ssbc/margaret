@@ -133,7 +133,45 @@ func (log *mlog) List() ([]librarian.Addr, error) {
 		return nil
 	})
 
-	return list, errors.Wrap(err, "error in List() transaction")
+	return list, errors.Wrap(err, "badger: error in List() transaction")
+}
+
+func (log *mlog) Delete(addr librarian.Addr) error {
+	shortPrefix := []byte(addr)
+	if len(shortPrefix) > 255 {
+		return errors.New("supplied address longer than maximum prefix length 255")
+	}
+
+	prefix := append([]byte{byte(len(shortPrefix))}, shortPrefix...)
+
+	log.l.Lock()
+	defer log.l.Unlock()
+
+	if _, ok := log.sublogs[addr]; ok {
+		// TODO: close open querys?!
+		delete(log.sublogs, addr)
+	}
+
+	err := log.db.Update(func(txn *badger.Txn) error {
+		iter := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer iter.Close()
+
+		iter.Rewind()
+		if !iter.Valid() {
+			return nil
+		}
+
+		for iter.Seek(prefix); iter.ValidForPrefix(prefix); iter.Next() {
+			key := iter.Item().Key()
+			if err := txn.Delete(key); err != nil {
+				return errors.Wrapf(err, "failed to delete entry %x", key)
+			}
+		}
+
+		return nil
+	})
+
+	return errors.Wrap(err, "badger: error in Delete() transaction")
 }
 
 func (log *mlog) Close() error {
