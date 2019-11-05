@@ -56,3 +56,12 @@ func (s SqliteSaver) List() ([]persist.Key, error) {
 
 	return keys, rows.Err()
 }
+
+func (s SqliteSaver) Delete(k persist.Key) error {
+	hexKey := hex.EncodeToString(k)
+	_, err := s.db.Exec(`DELETE FROM persisted_roaring WHERE key = ?`, hexKey)
+	if err != nil {
+		return errors.Wrapf(err, "sqlite/delete: failed run delete key %q", hexKey)
+	}
+	return nil
+}

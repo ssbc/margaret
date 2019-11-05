@@ -91,7 +91,7 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		sublog, err = mlog.Get(delAddr)
 		r.NoError(err)
 		r.NotNil(sublog)
-		vals = []margaret.BaseSeq{99, 101, 101}
+		vals = []margaret.BaseSeq{99, 101, 101, 102}
 		for i, v := range vals {
 			_, err := sublog.Append(v)
 			r.NoError(err, "failed to append testVal %d for deletion", i)
@@ -112,7 +112,7 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		r.NotNil(sublog)
 		curr, err = sublog.Seq().Value()
 		r.NoError(err, "failed to get sublog sequence of deleted sublog")
-		a.NotEqual(margaret.SeqEmpty, curr)
+		a.Equal(margaret.SeqEmpty, curr)
 
 		// one left
 		addrs, err = mlog.List()

@@ -22,4 +22,6 @@ type Saver interface {
 	Get(Key) ([]byte, error)
 
 	List() ([]Key, error)
+
+	Delete(Key) error
 }

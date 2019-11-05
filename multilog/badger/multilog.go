@@ -3,6 +3,7 @@
 package badger // import "go.cryptoscope.co/margaret/multilog/badger"
 
 import (
+	"bytes"
 	"encoding/binary"
 	"sync"
 
@@ -147,8 +148,11 @@ func (log *mlog) Delete(addr librarian.Addr) error {
 	log.l.Lock()
 	defer log.l.Unlock()
 
-	if _, ok := log.sublogs[addr]; ok {
-		// TODO: close open querys?!
+	if sl, ok := log.sublogs[librarian.Addr(prefix)]; ok {
+		// make sure, if writes happen that they go nowhere
+		// TODO: close open querys
+		sl.prefix = bytes.Repeat([]byte{0xff}, 512)
+		sl.seq.Set(margaret.SeqEmpty)
 		delete(log.sublogs, addr)
 	}
 

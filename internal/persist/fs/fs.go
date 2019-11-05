@@ -87,3 +87,8 @@ func (s Saver) List() ([]persist.Key, error) {
 	}
 	return list, nil
 }
+
+func (s Saver) Delete(k persist.Key) error {
+	fname := s.fnameForKey(k)
+	return os.Remove(fname)
+}

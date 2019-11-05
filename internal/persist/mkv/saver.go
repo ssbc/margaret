@@ -113,3 +113,29 @@ func (s ModernSaver) List() ([]persist.Key, error) {
 	}
 	return keys, nil
 }
+
+func (s ModernSaver) Delete(rm persist.Key) error {
+	enum, _, err := s.db.Seek(rm)
+	if err != nil {
+		return err
+	}
+	for {
+		k, _, err := enum.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		if !bytes.HasPrefix(k, rm) {
+			break
+		}
+
+		if err := s.db.Delete(k); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}

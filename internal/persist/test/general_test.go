@@ -71,6 +71,7 @@ func SimpleSaver(mk func(*testing.T) persist.Saver) func(*testing.T) {
 		err = p.Put(bigKey, smaller)
 		r.NoError(err)
 
+		// test listing
 		l, err = p.List()
 		r.NoError(err)
 		r.Len(l, 2)
@@ -81,6 +82,13 @@ func SimpleSaver(mk func(*testing.T) persist.Saver) func(*testing.T) {
 		r.NoError(err)
 		r.Equal(len(smaller), len(getSmaller))
 		r.Equal(smaller, getSmaller)
+
+		err = p.Delete(k)
+		r.NoError(err)
+
+		l, err = p.List()
+		r.NoError(err)
+		r.Len(l, 1)
 
 		r.NoError(p.Close())
 	}

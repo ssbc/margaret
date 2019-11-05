@@ -167,6 +167,18 @@ func (log *MultiLog) CompressAll() error {
 	return nil
 }
 
+func (log *MultiLog) Delete(addr librarian.Addr) error {
+	log.l.Lock()
+	defer log.l.Unlock()
+
+	if sl, ok := log.sublogs[addr]; ok {
+		sl.Lock() // TODO: close sublog (for now just break it so that it can be used to create further querys)
+		delete(log.sublogs, addr)
+	}
+
+	return log.store.Delete(persist.Key(addr))
+}
+
 // List returns a list of all stored sublogs
 func (log *MultiLog) List() ([]librarian.Addr, error) {
 	log.l.Lock()
