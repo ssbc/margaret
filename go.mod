@@ -1,6 +1,7 @@
 module go.cryptoscope.co/margaret
 
 require (
+	github.com/Masterminds/squirrel v1.1.0
 	github.com/RoaringBitmap/roaring v0.4.21-0.20190925020156-96f2302555b6
 	github.com/cryptix/go v1.4.0
 	github.com/davecgh/go-spew v1.1.1
