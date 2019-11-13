@@ -2,6 +2,8 @@
 
 package margaret // import "go.cryptoscope.co/margaret"
 
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o mock/qry.go . Query
+
 // Query is the interface implemented by the concrete log implementations that collects the constraints of the query.
 type Query interface {
 	// Gt makes the source return only items with sequence numbers > seq.
