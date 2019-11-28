@@ -31,7 +31,7 @@ func RunMultiLogTests(t *testing.T) {
 	}
 	for name, newLog := range NewLogFuncs {
 		t.Run(name+"-basic", MultiLogTest(newLog))
-		t.Run(name+"-weird", MultilogTestAddLogAndListed(newLog))
+		t.Run(name+"-handwoven", MultilogTestAddLogAndListed(newLog))
 	}
 }
 
