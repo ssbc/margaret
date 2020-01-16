@@ -98,6 +98,10 @@ func (log *offsetLog) Null(seq margaret.Seq) error {
 		return errors.Wrap(err, "null: get frame size failed")
 	}
 
+	if sz < 0 { // entry already nulled
+		return nil
+	}
+
 	var minusSz bytes.Buffer
 	err = binary.Write(&minusSz, binary.BigEndian, -sz)
 	if err != nil {

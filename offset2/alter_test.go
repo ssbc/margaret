@@ -64,10 +64,14 @@ func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 		r.Equal(margaret.BaseSeq(len(tevs)-1), seq, "sequence missmatch")
 
 		err = log.Null(nullSeq)
-		r.NoError(err, "failed get current value")
-		r.NoError(log.Close())
+		r.NoError(err, "failed null")
+
+		// make sure we can null twice without an error
+		err = log.Null(nullSeq)
+		r.NoError(err, "failed null (again)")
 
 		// reopen after null
+		r.NoError(log.Close())
 		log, err = Open(name, mjson.New(&testEvent{}))
 		r.NoError(err, "error reopening log #2")
 
