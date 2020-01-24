@@ -4,7 +4,6 @@ package roaringfiles
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -148,7 +147,7 @@ func (qry *query) livequery(ctx context.Context) (interface{}, error) {
 		func(ctx context.Context, v interface{}, err error) error {
 			qry.l.Lock()
 			defer qry.l.Unlock()
-			fmt.Println("live sub query boradcast triggered", v, err)
+			// fmt.Println("live sub query boradcast triggered", v, err)
 			if err != nil {
 				close(closed)
 				return err

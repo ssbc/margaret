@@ -99,12 +99,12 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 			return errors.Wrap(err, "errors setting value")
 		}
 
-		log.seq.Set(seq)
 		return nil
 	})
 	if err != nil {
 		return margaret.BaseSeq(-2), errors.Wrap(err, "error in write transaction")
 	}
 
+	log.seq.Set(seq)
 	return seq, nil
 }

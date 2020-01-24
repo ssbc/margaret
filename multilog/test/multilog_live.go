@@ -53,47 +53,56 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 		logOfFaa, err := mlog.Get(librarian.Addr("faa"))
 		r.NoError(err)
 
-		seqSrc, err := logOfFaa.Query(
-			margaret.Gt(margaret.BaseSeq(2)),
-			margaret.Live(true),
-		)
-		r.NoError(err)
-
 		// produce new values in the background
 		go func() {
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Second / 10)
 			slog, err := mlog.Get(librarian.Addr("faa"))
 			if err != nil {
 				panic(err)
 			}
-			for tv := 400; tv < 1000; tv += 100 {
-				seq, err := slog.Append(tv)
+			for tv := 400; tv < 2000; tv += 100 {
+				appendedSeq, err := slog.Append(tv)
 				if err != nil {
 					panic(err)
 				}
-				t.Log(tv, " inserted as:", seq)
-				// !!!!!
-				time.Sleep(time.Second / 10)
-				// !!!!!
+				t.Log(tv, " inserted as:", appendedSeq)
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Second / 3)
 			cancel()
 		}()
 
+		seqSrc, err := logOfFaa.Query(
+			margaret.Gt(margaret.BaseSeq(2)),
+			margaret.Live(true),
+			margaret.SeqWrap(true),
+		)
+		r.NoError(err)
+
 		var expSeq = 3
+		var expVal = 400
 		for {
-			seqV, err := seqSrc.Next(ctx)
+			swv, err := seqSrc.Next(ctx)
 			if err != nil {
 				if luigi.IsEOS(err) || errors.Cause(err) == context.Canceled {
-					t.Log("canceled")
-					a.Equal(expSeq, 9)
+					t.Log("canceled", err, swv)
+					a.Equal(expSeq, 19)
 					break
 				}
 				r.NoError(err)
 			}
-			seq := seqV.(margaret.Seq)
+			sw := swv.(margaret.SeqWrapper)
+
+			gotVal := sw.Value().(margaret.BaseSeq)
+
+			a.EqualValues(expVal, gotVal, "wrong actual val")
+			expVal += 100
+			seq := sw.Seq().(margaret.Seq)
+
 			a.EqualValues(expSeq, seq.Seq(), "wrong seq value from query")
+			t.Log(expSeq, seq.Seq())
 			expSeq++
 		}
+
+		r.NoError(mlog.Close())
 	}
 }

@@ -152,50 +152,52 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 			return nil, luigi.EOS{}
 		}
 
-		v, err = qry.livequery(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if qry.reverse {
-		defer func() { qry.nextSeq-- }()
-	} else {
-		defer func() { qry.nextSeq++ }()
+		return qry.livequery(ctx)
 	}
 
 	if qry.seqWrap {
-		return margaret.WrapWithSeq(v, qry.nextSeq), nil
+		v = margaret.WrapWithSeq(v, qry.nextSeq)
+		if qry.reverse {
+			qry.nextSeq--
+		} else {
+			qry.nextSeq++
+		}
+		return v, nil
 	}
 
+	if qry.reverse {
+		qry.nextSeq--
+	} else {
+		qry.nextSeq++
+	}
 	return v, nil
 }
 
 func (qry *query) livequery(ctx context.Context) (interface{}, error) {
-	wait := make(chan interface{})
+	wait := make(chan margaret.Seq)
 	closed := make(chan struct{})
 
-	// register waiter for new message
-	var cancel func()
-	cancel = qry.log.seq.Register(luigi.FuncSink(
+	currNextSeq := qry.nextSeq.Seq()
+
+	// register waiter for new messages
+	cancel := qry.log.seq.Register(luigi.FuncSink(
 		func(ctx context.Context, v interface{}, err error) error {
 			if err != nil {
 				close(closed)
 				return nil
 			}
 
-			// TODO: maybe only accept == and throw error on >?
-			if v.(margaret.Seq).Seq() >= qry.nextSeq.Seq() {
-				wait <- v
+			seqV, ok := v.(margaret.Seq)
+			if !ok {
+				return errors.Errorf("lievquery: expected sequence value from observable")
+			}
+
+			if seqV.Seq() == currNextSeq {
+				wait <- seqV
 			}
 
 			return nil
 		}))
-	defer cancel()
-
-	// release the lock so we don't block, but re-acquire it to increment nextSeq
-	qry.l.Unlock()
-	defer qry.l.Lock()
 
 	var (
 		v   interface{}
@@ -203,13 +205,28 @@ func (qry *query) livequery(ctx context.Context) (interface{}, error) {
 	)
 
 	select {
-	case w := <-wait:
-		v = w
+	case newSeq := <-wait:
+		v, err = qry.log.Get(newSeq)
+		if !qry.seqWrap { // simpler to have two +1's here then a defer
+			qry.nextSeq++
+		}
 	case <-closed:
 		err = errors.New("seq observable closed")
 	case <-ctx.Done():
 		err = errors.Wrap(ctx.Err(), "cancelled while waiting for value to be written")
 	}
 
-	return v, err
+	cancel()
+
+	if err != nil {
+		return nil, errors.Wrap(err, "livequery failed to retreive value")
+	}
+
+	if qry.seqWrap {
+		v = margaret.WrapWithSeq(v, qry.nextSeq)
+		qry.nextSeq++
+		return v, nil
+	}
+
+	return v, nil
 }
