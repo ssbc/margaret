@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package test // import "go.cryptoscope.co/margaret/multilog/test"
+package test
 
 import (
 	"context"

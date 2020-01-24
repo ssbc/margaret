@@ -19,6 +19,7 @@ func SinkTest(f NewLogFunc) func(*testing.T) {
 func MultiLogTest(f NewLogFunc) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Run("MultiSimple", MultiLogTestSimple(f))
+		t.Run("Live", MultilogLiveQueryCheck(f))
 	}
 }
 
