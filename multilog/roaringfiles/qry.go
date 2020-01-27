@@ -4,20 +4,15 @@ package roaringfiles
 
 import (
 	"context"
-	"fmt"
 	"strings"
-	"sync"
 
-	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
 
 type query struct {
-	l    sync.Mutex
-	log  *sublog
-	bmap *roaring.Bitmap
+	log *sublog
 
 	nextSeq, lt margaret.BaseSeq
 
@@ -85,10 +80,10 @@ func (qry *query) Reverse(rev bool) error {
 }
 
 func (qry *query) Next(ctx context.Context) (interface{}, error) {
-	qry.l.Lock()
+	qry.log.Lock()
 
 	if qry.limit == 0 {
-		qry.l.Unlock()
+		qry.log.Unlock()
 		return nil, luigi.EOS{}
 	}
 	qry.limit--
@@ -99,24 +94,24 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 
 	if qry.lt != margaret.SeqEmpty {
 		if qry.nextSeq >= qry.lt {
-			qry.l.Unlock()
+			qry.log.Unlock()
 			return nil, luigi.EOS{}
 		}
 	}
 
 	var v interface{}
-	seqVal, err := qry.bmap.Select(uint32(qry.nextSeq.Seq()))
+	seqVal, err := qry.log.bmap.Select(uint32(qry.nextSeq.Seq()))
 	v = margaret.BaseSeq(seqVal)
 	if err != nil {
 		if !strings.Contains(err.Error(), "th integer in a bitmap with only ") {
-			qry.l.Unlock()
+			qry.log.Unlock()
 			return nil, errors.Wrapf(err, "roaringfiles/qry: error in read transaction (%T)", err)
 		}
 
 		// key not found, so we reached the end
 		// abort if not a live query, else wait until it's written
 		if !qry.live {
-			qry.l.Unlock()
+			qry.log.Unlock()
 			return nil, luigi.EOS{}
 		}
 
@@ -126,42 +121,18 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 	if qry.seqWrap {
 		v = margaret.WrapWithSeq(v, qry.nextSeq)
 		qry.nextSeq++
-		qry.l.Unlock()
+		qry.log.Unlock()
 		return v, nil
 	}
 
 	qry.nextSeq++
-	qry.l.Unlock()
+	qry.log.Unlock()
 	return v, nil
 }
 
 func (qry *query) livequery(ctx context.Context) (interface{}, error) {
-	wait := make(chan margaret.Seq)
-	closed := make(chan struct{})
-
-	currNextSeq := qry.nextSeq.Seq()
-
-	// register waiter for new message
-	cancel := qry.log.seq.Register(luigi.FuncSink(
-		func(ctx context.Context, v interface{}, err error) error {
-			fmt.Println("live sub query boradcast triggered", currNextSeq, v, err)
-			if err != nil {
-				close(closed)
-				return nil
-			}
-
-			seqV, ok := v.(margaret.Seq)
-			if !ok {
-				return errors.Errorf("lievquery: expected sequence value from observable")
-			}
-
-			if seqV.Seq() == currNextSeq {
-				wait <- seqV
-			}
-
-			return nil
-		}))
-	qry.l.Unlock()
+	thisNextSeq := qry.nextSeq
+	qry.log.Unlock()
 
 	var (
 		v   interface{}
@@ -169,18 +140,14 @@ func (qry *query) livequery(ctx context.Context) (interface{}, error) {
 	)
 
 	select {
-	case seqV := <-wait:
-		v, err = qry.log.get(seqV)
+	case <-qry.log.seq.WaitFor(uint64(thisNextSeq)):
+		v, err = qry.log.get(thisNextSeq)
 		if !qry.seqWrap { // simpler to have two +1's here then a defer
 			qry.nextSeq++
 		}
-	case <-closed:
-		err = errors.New("seq observable closed")
 	case <-ctx.Done():
 		err = errors.Wrap(ctx.Err(), "cancelled while waiting for value to be written")
 	}
-
-	cancel()
 
 	if err != nil {
 		return nil, errors.Wrap(err, "livequery failed to retreive value")

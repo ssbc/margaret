@@ -18,6 +18,7 @@ import (
 	"go.cryptoscope.co/margaret/internal/persist/fs"
 	"go.cryptoscope.co/margaret/internal/persist/mkv"
 	"go.cryptoscope.co/margaret/internal/persist/sqlite"
+	"go.cryptoscope.co/margaret/internal/seqobsv"
 )
 
 // New returns a new multilog that is only good to store sequences
@@ -75,7 +76,9 @@ func (log *MultiLog) openSublog(addr librarian.Addr) (*sublog, error) {
 	}
 
 	pk := persist.Key(addr)
-	var seq margaret.Seq
+
+	var seq margaret.BaseSeq
+
 	r, err := log.loadBitmap(pk)
 	if errors.Cause(err) == persist.ErrNotFound {
 		seq = margaret.SeqEmpty
@@ -86,11 +89,17 @@ func (log *MultiLog) openSublog(addr librarian.Addr) (*sublog, error) {
 		seq = margaret.BaseSeq(r.GetCardinality() - 1)
 	}
 
+	var obsV uint64
+	if seq > 0 {
+		obsV = uint64(seq)
+	}
+
 	slog = &sublog{
-		mlog: log,
-		key:  pk,
-		seq:  luigi.NewObservable(seq),
-		bmap: r,
+		mlog:      log,
+		key:       pk,
+		seq:       seqobsv.New(obsV),
+		luigiObsv: luigi.NewObservable(seq),
+		bmap:      r,
 	}
 	// the better idea is to have a store that can collece puts
 	log.sublogs[addr] = slog

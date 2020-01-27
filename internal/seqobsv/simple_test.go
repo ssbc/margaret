@@ -1,14 +1,30 @@
 package seqobsv_test
 
 import (
+	"fmt"
 	"testing"
 
 	"go.cryptoscope.co/margaret/internal/seqobsv"
 )
 
+func ExampleInc() {
+	sobs := seqobsv.New(0)
+	fmt.Println(sobs.Value())
+
+	newV := sobs.Inc()
+	fmt.Println(newV)
+
+	fmt.Println(sobs.Inc())
+
+	// Output:
+	// 0
+	// 1
+	// 2
+}
+
 func TestWaitSimple(t *testing.T) {
 
-	sobs := seqobsv.New()
+	sobs := seqobsv.New(0)
 
 	if sobs.Value() != 0 {
 		t.Fatal("start should be 0")
@@ -30,7 +46,7 @@ func TestWaitSimple(t *testing.T) {
 
 func TestWaitMultipleRead(t *testing.T) {
 
-	sobs := seqobsv.New()
+	sobs := seqobsv.New(0)
 
 	if sobs.Value() != 0 {
 		t.Fatal("start should be 0")

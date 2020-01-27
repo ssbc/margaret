@@ -8,23 +8,26 @@ import (
 	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
+
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/internal/persist"
+	"go.cryptoscope.co/margaret/internal/seqobsv"
 )
 
 type sublog struct {
 	mlog *MultiLog
 
 	sync.Mutex
-	key  persist.Key
-	seq  luigi.Observable
-	bmap *roaring.Bitmap
+	key       persist.Key
+	seq       *seqobsv.Observable
+	luigiObsv luigi.Observable
+	bmap      *roaring.Bitmap
 
 	lastSave uint64
 }
 
 func (log *sublog) Seq() luigi.Observable {
-	return log.seq
+	return log.luigiObsv
 }
 
 func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
@@ -49,8 +52,7 @@ func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	log.Mutex.Lock()
 	defer log.Mutex.Unlock()
 	qry := &query{
-		log:  log,
-		bmap: log.bmap.Clone(),
+		log: log,
 
 		lt:      margaret.SeqEmpty,
 		nextSeq: margaret.SeqEmpty,
@@ -110,8 +112,12 @@ func (log *sublog) update() (margaret.BaseSeq, error) {
 		return -2, errors.Wrap(err, "roaringfiles: file write failed")
 	}
 
-	newSeq := margaret.BaseSeq(log.bmap.GetCardinality() - 1)
-	err = log.seq.Set(newSeq)
+	count := log.bmap.GetCardinality() - 1
+
+	log.seq.Inc()
+
+	newSeq := margaret.BaseSeq(count)
+	err = log.luigiObsv.Set(newSeq)
 	if err != nil {
 		err = errors.Wrap(err, "roaringfiles: failed to update sequence")
 		return -2, err
