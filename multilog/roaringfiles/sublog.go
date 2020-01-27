@@ -30,6 +30,10 @@ func (log *sublog) Seq() luigi.Observable {
 func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 	log.Mutex.Lock()
 	defer log.Mutex.Unlock()
+	return log.get(seq)
+}
+
+func (log *sublog) get(seq margaret.Seq) (interface{}, error) {
 	if seq.Seq() < 0 {
 		return nil, luigi.EOS{}
 	}
@@ -37,7 +41,6 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 	v, err := log.bmap.Select(uint32(seq.Seq()))
 	if err != nil {
 		return nil, luigi.EOS{}
-		// return nil, errors.Wrapf(luigi.EOS{}, "roaringfiles: bitmap access err (%s)", err)
 	}
 	return margaret.BaseSeq(v), err
 }
@@ -86,34 +89,33 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 	}
 
 	log.bmap.Add(uint32(val.Seq()))
-	count := log.bmap.GetCardinality() - 1
 
-	cnt := margaret.BaseSeq(count)
-	if err := log.update(); err != nil {
+	newSeq, err := log.update()
+	if err != nil {
 		return nil, err
 	}
 
-	log.seq.Set(cnt)
-	return cnt, nil
+	return newSeq, nil
 }
 
-func (log *sublog) update() error {
+func (log *sublog) update() (margaret.BaseSeq, error) {
 	// TODO: make store a bitmapStore, then we can also skip uncesessary unmarshals
 	data, err := log.bmap.MarshalBinary()
 	if err != nil {
-		return errors.Wrap(err, "roaringfiles: failed to encode bitmap")
+		return -2, errors.Wrap(err, "roaringfiles: failed to encode bitmap")
 	}
 
 	err = log.mlog.store.Put(log.key, data)
 	if err != nil {
-		return errors.Wrap(err, "roaringfiles: file write failed")
+		return -2, errors.Wrap(err, "roaringfiles: file write failed")
 	}
 
-	err = log.seq.Set(margaret.BaseSeq(log.bmap.GetCardinality() - 1))
+	newSeq := margaret.BaseSeq(log.bmap.GetCardinality() - 1)
+	err = log.seq.Set(newSeq)
 	if err != nil {
 		err = errors.Wrap(err, "roaringfiles: failed to update sequence")
-		return err
+		return -2, err
 	}
 
-	return nil
+	return newSeq, nil
 }

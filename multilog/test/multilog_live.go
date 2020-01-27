@@ -66,8 +66,11 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 					panic(err)
 				}
 				t.Log(tv, " inserted as:", appendedSeq)
+				// !!!! handbrake to reduce chan send shedule madness
+				time.Sleep(time.Second / 10)
+				// !!!!!
 			}
-			time.Sleep(time.Second / 3)
+			time.Sleep(time.Second / 2)
 			cancel()
 		}()
 

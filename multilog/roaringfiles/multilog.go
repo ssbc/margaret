@@ -146,7 +146,7 @@ func (log *MultiLog) CompressAll() error {
 
 	// save open ones
 	for addr, sublog := range log.sublogs {
-		err := sublog.update()
+		_, err := sublog.update()
 		if err != nil {
 			return errors.Wrapf(err, "failed to update open sublog %x", addr)
 		}
