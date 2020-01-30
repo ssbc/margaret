@@ -17,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/ugorji/go/codec v1.1.5-pre
 	go.cryptoscope.co/librarian v0.1.2
-	go.cryptoscope.co/luigi v0.3.3
+	go.cryptoscope.co/luigi v0.3.5
 	modernc.org/fileutil v1.0.0 // indirect
 	modernc.org/internal v1.0.0 // indirect
 	modernc.org/kv v1.0.0
