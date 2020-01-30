@@ -1,0 +1,9 @@
+image: alpine/latest
+packages:
+  - go
+sources:
+  - https://git.sr.ht/~cryptix/go-margaret
+tasks:
+  - test: |
+      cd go-margaret
+      go test ./...
