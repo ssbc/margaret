@@ -18,6 +18,7 @@ type query struct {
 
 	limit   int
 	live    bool
+	reverse bool
 	seqWrap bool
 }
 
@@ -73,10 +74,11 @@ func (qry *query) SeqWrap(wrap bool) error {
 }
 
 func (qry *query) Reverse(rev bool) error {
-	if rev == false {
-		return nil
+	qry.reverse = rev
+	if rev {
+		qry.nextSeq = qry.log.seq.Seq().(margaret.BaseSeq) - 1
 	}
-	return errors.Errorf("TODO:reverse")
+	return nil
 }
 
 func (qry *query) Next(ctx context.Context) (interface{}, error) {
@@ -89,6 +91,10 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 	qry.limit--
 
 	if qry.nextSeq == margaret.SeqEmpty {
+		if qry.reverse {
+			qry.log.Unlock()
+			return nil, luigi.EOS{}
+		}
 		qry.nextSeq = 0
 	}
 
@@ -120,12 +126,20 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 
 	if qry.seqWrap {
 		v = margaret.WrapWithSeq(v, qry.nextSeq)
-		qry.nextSeq++
+		if qry.reverse {
+			qry.nextSeq--
+		} else {
+			qry.nextSeq++
+		}
 		qry.log.Unlock()
 		return v, nil
 	}
 
-	qry.nextSeq++
+	if qry.reverse {
+		qry.nextSeq--
+	} else {
+		qry.nextSeq++
+	}
 	qry.log.Unlock()
 	return v, nil
 }
