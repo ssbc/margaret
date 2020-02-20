@@ -155,7 +155,7 @@ func (qry *query) livequery(ctx context.Context) (interface{}, error) {
 
 	select {
 	case <-qry.log.seq.WaitFor(uint64(thisNextSeq)):
-		v, err = qry.log.get(thisNextSeq)
+		v, err = qry.log.Get(thisNextSeq)
 		if !qry.seqWrap { // simpler to have two +1's here then a defer
 			qry.nextSeq++
 		}
