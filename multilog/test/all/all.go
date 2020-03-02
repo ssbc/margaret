@@ -8,5 +8,5 @@ import (
 	_ "go.cryptoscope.co/margaret/offset2/test"
 
 	_ "go.cryptoscope.co/margaret/multilog/badger/test"
-	_ "go.cryptoscope.co/margaret/multilog/roaringfiles/test"
+	_ "go.cryptoscope.co/margaret/multilog/roaring/test"
 )

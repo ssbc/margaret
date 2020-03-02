@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-package roaringfiles
+package roaring
 
 import (
-	"fmt"
 	"sync"
-
-	"github.com/dustin/go-humanize"
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
@@ -15,38 +12,14 @@ import (
 
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/internal/persist"
-	"go.cryptoscope.co/margaret/internal/persist/fs"
-	"go.cryptoscope.co/margaret/internal/persist/mkv"
-	"go.cryptoscope.co/margaret/internal/persist/sqlite"
 	"go.cryptoscope.co/margaret/internal/seqobsv"
 	"go.cryptoscope.co/margaret/multilog"
 )
 
-// New returns a new multilog that is only good to store sequences
+// NewStore returns a new multilog that is only good to store sequences
 // It uses files to store roaring bitmaps directly.
 // for this it turns the librarian.Addrs into a hex string.
-
-func NewFS(base string) *MultiLog {
-	return newAbstract(fs.New(base))
-}
-
-func NewSQLite(base string) (*MultiLog, error) {
-	s, err := sqlite.New(base)
-	if err != nil {
-		return nil, err
-	}
-	return newAbstract(s), nil
-}
-
-func NewMKV(base string) (*MultiLog, error) {
-	s, err := mkv.New(base)
-	if err != nil {
-		return nil, err
-	}
-	return newAbstract(s), nil
-}
-
-func newAbstract(store persist.Saver) *MultiLog {
+func NewStore(store persist.Saver) *MultiLog {
 	return &MultiLog{
 		store:   store,
 		sublogs: make(map[librarian.Addr]*sublog),
@@ -146,7 +119,7 @@ func (log *MultiLog) compress(key persist.Key, r *roaring.Bitmap) (bool, error) 
 	if err != nil {
 		return false, errors.Wrap(err, "roaringfiles: write compressed failed")
 	}
-	fmt.Printf("roaringfiles/compress(%s): reduced to %s (%d entries)\n", key, humanize.Bytes(newSize), n)
+
 	return true, nil
 }
 

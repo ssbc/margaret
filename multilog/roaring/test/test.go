@@ -7,12 +7,14 @@ import (
 	"os"
 	"path/filepath"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 
-	_ "github.com/mattn/go-sqlite3"
-
+	"go.cryptoscope.co/margaret/internal/persist/fs"
 	"go.cryptoscope.co/margaret/multilog"
-	"go.cryptoscope.co/margaret/multilog/roaringfiles"
+	"go.cryptoscope.co/margaret/multilog/roaring"
+	"go.cryptoscope.co/margaret/multilog/roaring/mkv"
+	"go.cryptoscope.co/margaret/multilog/roaring/sqlite"
 	mltest "go.cryptoscope.co/margaret/multilog/test"
 )
 
@@ -26,7 +28,7 @@ func init() {
 			}
 		}
 
-		return roaringfiles.NewFS(testDir), testDir, nil
+		return roaring.NewStore(fs.New(testDir)), testDir, nil
 	})
 
 	mltest.Register("roaring_sqlite", func(name string, tipe interface{}, testDir string) (multilog.MultiLog, string, error) {
@@ -37,7 +39,7 @@ func init() {
 				return nil, "", errors.Wrap(err, "error creating tempdir")
 			}
 		}
-		r, err := roaringfiles.NewSQLite(testDir)
+		r, err := sqlite.NewMultiLog(testDir)
 		return r, testDir, err
 	})
 
@@ -50,7 +52,7 @@ func init() {
 			}
 			os.MkdirAll(testDir, 0700)
 		}
-		r, err := roaringfiles.NewMKV(filepath.Join(testDir, "mkv.roar"))
+		r, err := mkv.NewMultiLog(filepath.Join(testDir, "mkv.roar"))
 		return r, testDir, err
 	})
 }
