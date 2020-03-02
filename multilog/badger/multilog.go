@@ -3,13 +3,11 @@
 package badger // import "go.cryptoscope.co/margaret/multilog/badger"
 
 import (
-	"bytes"
 	"encoding/binary"
 	"sync"
 
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
-
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/luigi"
 
@@ -49,9 +47,15 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 
-	slog := log.sublogs[librarian.Addr(prefix)]
+	slogAddr := librarian.Addr(prefix)
+	slog := log.sublogs[slogAddr]
 	if slog != nil {
-		return slog, nil
+		if !slog.deleted {
+			// sv, _ := slog.Seq().Value()
+			// fmt.Fprintf(os.Stderr, "\treturning open and NOT DELETED log. seq %x:\t%v\n", slog.prefix, sv)
+			return slog, nil
+		}
+		// delete(log.sublogs, slogAddr)
 	}
 
 	// find the current seq
@@ -89,6 +93,7 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error in read transaction")
 	}
+	// fmt.Fprintf(os.Stderr, "\t\tcurrent seq %x:\t%d\n", prefix, seq.Seq())
 
 	slog = &sublog{
 		mlog:   log,
@@ -96,7 +101,7 @@ func (log *mlog) Get(addr librarian.Addr) (margaret.Log, error) {
 		seq:    luigi.NewObservable(seq),
 	}
 
-	log.sublogs[librarian.Addr(prefix)] = slog
+	log.sublogs[slogAddr] = slog
 	return slog, nil
 }
 
@@ -149,11 +154,10 @@ func (log *mlog) Delete(addr librarian.Addr) error {
 	defer log.l.Unlock()
 
 	if sl, ok := log.sublogs[librarian.Addr(prefix)]; ok {
-		// make sure, if writes happen that they go nowhere
-		// TODO: close open querys
-		sl.prefix = bytes.Repeat([]byte{0xff}, 512)
-		sl.seq.Set(margaret.SeqEmpty)
-		delete(log.sublogs, addr)
+		sl.deleted = true
+		sl.seq.Set(multilog.ErrSublogDeleted)
+		delete(log.sublogs, librarian.Addr(prefix))
+		// fmt.Fprintf(os.Stderr, "deleting sublog %x\n ", addr)
 	}
 
 	err := log.db.Update(func(txn *badger.Txn) error {
@@ -166,7 +170,9 @@ func (log *mlog) Delete(addr librarian.Addr) error {
 		}
 
 		for iter.Seek(prefix); iter.ValidForPrefix(prefix); iter.Next() {
-			key := iter.Item().Key()
+			it := iter.Item()
+			key := it.Key()
+			// fmt.Fprintf(os.Stderr, "deleting entry %x\n ", key)
 			if err := txn.Delete(key); err != nil {
 				return errors.Wrapf(err, "failed to delete entry %x", key)
 			}

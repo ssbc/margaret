@@ -12,6 +12,7 @@ import (
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/internal/persist"
 	"go.cryptoscope.co/margaret/internal/seqobsv"
+	"go.cryptoscope.co/margaret/multilog"
 )
 
 type sublog struct {
@@ -24,6 +25,8 @@ type sublog struct {
 	bmap      *roaring.Bitmap
 
 	lastSave uint64
+
+	deleted bool
 }
 
 func (log *sublog) Seq() luigi.Observable {
@@ -37,6 +40,10 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 }
 
 func (log *sublog) get(seq margaret.Seq) (interface{}, error) {
+	if log.deleted {
+		return nil, multilog.ErrSublogDeleted
+	}
+
 	if seq.Seq() < 0 {
 		return nil, luigi.EOS{}
 	}
@@ -51,6 +58,9 @@ func (log *sublog) get(seq margaret.Seq) (interface{}, error) {
 func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	log.Mutex.Lock()
 	defer log.Mutex.Unlock()
+	if log.deleted {
+		return nil, multilog.ErrSublogDeleted
+	}
 	qry := &query{
 		log: log,
 
@@ -73,6 +83,9 @@ func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 	log.Mutex.Lock()
 	defer log.Mutex.Unlock()
+	if log.deleted {
+		return nil, multilog.ErrSublogDeleted
+	}
 	val, ok := v.(margaret.BaseSeq)
 	if !ok {
 		switch tv := v.(type) {

@@ -5,9 +5,12 @@ package multilog
 import (
 	"io"
 
+	"github.com/pkg/errors"
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/margaret"
 )
+
+var ErrSublogDeleted = errors.Errorf("multilog: stored sublog was deleted. please re-open")
 
 // MultiLog is a collection of logs, keyed by a librarian.Addr
 // TODO maybe only call this log to avoid multilog.MultiLog?

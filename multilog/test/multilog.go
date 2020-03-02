@@ -106,7 +106,25 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		err = mlog.Delete(delAddr)
 		r.NoError(err)
 
-		// check that it is empty
+		// cant use previous handle
+		sv, err := sublog.Seq().Value()
+		r.NoError(err, "should get a value")
+		r.NotNil(sv, "should not return value for deleted sequence")
+		r.EqualValues(multilog.ErrSublogDeleted, sv.(error))
+
+		v, err := sublog.Get(margaret.BaseSeq(0))
+		r.Error(err, "get shouldn't work")
+		r.Nil(v, "should not return value for deleted sequence")
+
+		seq, err := sublog.Append(666)
+		r.Error(err, "append shouldn't work")
+		r.Nil(seq, "should not return new sequence")
+
+		src, err := sublog.Query()
+		r.Error(err, "query shouldn't work")
+		r.Nil(src, "should not return a source")
+
+		// getting fresh, check that it is empty
 		sublog, err = mlog.Get(delAddr)
 		r.NoError(err)
 		r.NotNil(sublog)

@@ -19,6 +19,7 @@ import (
 	"go.cryptoscope.co/margaret/internal/persist/mkv"
 	"go.cryptoscope.co/margaret/internal/persist/sqlite"
 	"go.cryptoscope.co/margaret/internal/seqobsv"
+	"go.cryptoscope.co/margaret/multilog"
 )
 
 // New returns a new multilog that is only good to store sequences
@@ -181,7 +182,8 @@ func (log *MultiLog) Delete(addr librarian.Addr) error {
 	defer log.l.Unlock()
 
 	if sl, ok := log.sublogs[addr]; ok {
-		sl.Lock() // TODO: close sublog (for now just break it so that it can be used to create further querys)
+		sl.deleted = true
+		sl.luigiObsv.Set(multilog.ErrSublogDeleted)
 		delete(log.sublogs, addr)
 	}
 

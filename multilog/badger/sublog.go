@@ -9,19 +9,33 @@ import (
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/multilog"
 )
 
 type sublog struct {
 	mlog   *mlog
 	prefix []byte
 	seq    luigi.Observable
+
+	deleted bool
 }
 
 func (log *sublog) Seq() luigi.Observable {
+	log.mlog.l.Lock()
+	defer log.mlog.l.Unlock()
+	if log.deleted {
+		log.seq.Set(multilog.ErrSublogDeleted)
+		// return luigi.NewObservable(multilog.ErrSublogDeleted)
+	}
 	return log.seq
 }
 
 func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
+	log.mlog.l.Lock()
+	defer log.mlog.l.Unlock()
+	if log.deleted {
+		return nil, multilog.ErrSublogDeleted
+	}
 	var v interface{}
 
 	npref := len(log.prefix)
@@ -56,6 +70,11 @@ func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
 }
 
 func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
+	log.mlog.l.Lock()
+	defer log.mlog.l.Unlock()
+	if log.deleted {
+		return nil, multilog.ErrSublogDeleted
+	}
 	qry := &query{
 		log: log,
 
@@ -76,6 +95,12 @@ func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 }
 
 func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
+	log.mlog.l.Lock()
+	defer log.mlog.l.Unlock()
+	if log.deleted {
+		return nil, multilog.ErrSublogDeleted
+	}
+
 	var seq margaret.BaseSeq
 
 	data, err := log.mlog.codec.Marshal(v)
