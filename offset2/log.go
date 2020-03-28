@@ -370,7 +370,6 @@ func (log *offsetLog) readFrame(seq margaret.Seq) (interface{}, error) {
 	if errors.Cause(err) == io.EOF {
 		return v, luigi.EOS{}
 	}
-
 	return v, err
 }
 

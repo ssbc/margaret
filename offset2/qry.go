@@ -247,7 +247,10 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 			// TODO: if qry.skipNulls
 			v = margaret.ErrNulled
 		} else if err != nil {
-
+			if errors.Cause(err) != io.EOF {
+				sink.Close()
+				return func() {}, err
+			}
 			break
 		}
 
