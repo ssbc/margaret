@@ -235,11 +235,11 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 	}
 
 	// determines whether we should go on
-	goon := func(seq margaret.BaseSeq) bool {
+	hasNext := func(seq margaret.BaseSeq) bool {
 		return qry.limit != 0 && !(qry.lt >= 0 && seq >= qry.lt)
 	}
 
-	for goon(qry.nextSeq) {
+	for hasNext(qry.nextSeq) {
 		qry.limit--
 
 		// TODO: maybe don't read the frames individually but stream over them?
@@ -280,7 +280,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		}
 	}
 
-	if !goon(qry.nextSeq) {
+	if !hasNext(qry.nextSeq) {
 		close(qry.close)
 		return func() {}, sink.Close()
 	}
@@ -311,7 +311,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		sw := v.(margaret.SeqWrapper)
 		v, seq := sw.Value(), sw.Seq()
 
-		if !goon(margaret.BaseSeq(seq.Seq())) {
+		if !hasNext(margaret.BaseSeq(seq.Seq())) {
 			close(qry.close)
 		}
 
