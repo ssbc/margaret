@@ -166,7 +166,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		qry.nextSeq++
 		return margaret.ErrNulled, nil
 	} else if err != nil {
-		return nil, errors.Wrap(err, "error reading offset")
+		return nil, err
 	}
 
 	// we waited until the value is in the log - now read it again
@@ -175,7 +175,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	if errors.Cause(err) == io.EOF {
 		return nil, io.ErrUnexpectedEOF
 	} else if err != nil {
-		return nil, errors.Wrap(err, "error reading data frame")
+		return nil, err
 	}
 
 	defer func() {
@@ -259,7 +259,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		}
 		err = sink.Pour(ctx, v)
 		if err != nil {
-			return nil, errors.Wrap(err, "error pouring read value")
+			return nil, errors.Wrapf(err, "error pouring read value of seq:%d", qry.nextSeq)
 		}
 
 		if qry.reverse {
