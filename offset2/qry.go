@@ -4,9 +4,12 @@ package offset2 // import "go.cryptoscope.co/margaret/offset2"
 
 import (
 	"context"
+	stderrs "errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
+	"syscall"
 
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
@@ -247,7 +250,15 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 			// TODO: if qry.skipNulls
 			v = margaret.ErrNulled
 		} else if err != nil {
-			if errors.Cause(err) != io.EOF {
+			cerr := errors.Cause(err)
+			if cerr != io.EOF {
+				var perr *os.PathError
+				if stderrs.As(cerr, &perr) {
+					if perr.Op == "seek" && (stderrs.Is(perr.Err, syscall.EINVAL) || stderrs.Is(perr.Err, os.ErrInvalid)) {
+						// seeked passed the end == EOF
+						break
+					}
+				}
 				sink.Close()
 				return func() {}, err
 			}
