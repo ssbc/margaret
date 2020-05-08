@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
@@ -15,23 +16,117 @@ import (
 	"go.cryptoscope.co/margaret"
 
 	"go.cryptoscope.co/librarian"
+	"log"
 )
 
 func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
-	return &index{
-		db:     db,
-		tipe:   tipe,
-		obvs:   make(map[librarian.Addr]luigi.Observable),
-		curSeq: margaret.BaseSeq(-2),
+	ctx, cancel := context.WithCancel(context.TODO())
+	idx := &index{
+		stop:    cancel,
+		running: ctx,
+
+		l: &sync.Mutex{},
+
+		batchLimit: 4096,
+		batches:    make([]setOp, 0),
+		db:         db,
+		tipe:       tipe,
+		obvs:       make(map[librarian.Addr]luigi.Observable),
+		curSeq:     margaret.BaseSeq(-2),
+	}
+	go idx.writeBatches()
+	return idx
+}
+
+func (idx *index) Close() error {
+	idx.stop()
+	log.Println("closing!! DIRTY HACK so that writeBatches returns")
+	idx.flushBatches()
+	return nil
+}
+
+func (idx *index) flushBatches() {
+	start := time.Now()
+	var raw = make([]byte, 8)
+	err := idx.db.Update(func(txn *badger.Txn) error {
+		useq := uint64(idx.curSeq)
+		binary.BigEndian.PutUint64(raw, useq)
+
+		err := txn.Set([]byte("__current_observable"), raw)
+		if err != nil {
+			return errors.Wrap(err, "error setting seq")
+		}
+
+		for bi, op := range idx.batches {
+			err := txn.Set(op.addr, op.val)
+			if err != nil {
+				return errors.Wrapf(err, "error setting batch #%d", bi)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Println(errors.Wrapf(err, "error in badger transaction (update) %d", len(idx.batches)))
+		return
+	}
+	log.Println("curr seq:", idx.curSeq.Seq(), "writing batch:", len(idx.batches), "took", time.Since(start))
+
+}
+
+func (idx *index) writeBatches() {
+	for {
+		select {
+		case <-time.After(45 * time.Second):
+			idx.l.Lock()
+			n := uint(len(idx.batches))
+			if n == 0 {
+				idx.l.Unlock()
+				continue
+			}
+
+		case <-time.After(7000 * time.Millisecond):
+			idx.l.Lock()
+			n := uint(len(idx.batches))
+			if n < idx.batchLimit {
+				log.Println("batch too small:", n)
+				idx.l.Unlock()
+				continue
+			}
+
+		case <-idx.running.Done():
+			log.Println("index done", idx.running.Err())
+			return
+		}
+
+		idx.flushBatches()
+
+		idx.batches = []setOp{}
+		idx.l.Unlock()
+
 	}
 }
 
+type setOp struct {
+	addr []byte
+	val  []byte
+}
+
 type index struct {
-	l      sync.Mutex
-	db     *badger.DB
+	stop    context.CancelFunc
+	running context.Context
+
+	l *sync.Mutex
+
+	waitForFlush <-chan struct{}
+
+	batchLimit uint
+	batches    []setOp
+
+	db *badger.DB
+
 	obvs   map[librarian.Addr]luigi.Observable
 	tipe   interface{}
-	curSeq margaret.Seq
+	curSeq margaret.BaseSeq
 }
 
 func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observable, error) {
@@ -118,16 +213,15 @@ func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) e
 		}
 	}
 
-	err = idx.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set([]byte(addr), raw)
-		return errors.Wrap(err, "error setting item")
-	})
-	if err != nil {
-		return errors.Wrap(err, "error in badger transaction (update)")
-	}
-
 	idx.l.Lock()
 	defer idx.l.Unlock()
+	idx.batches = append(idx.batches, setOp{addr: []byte(addr), val: raw})
+
+	if n := len(idx.batches); n%5 == 0 {
+		log.Println("batched set", n)
+		//debug.PrintStack()
+		//panic("WAT")
+	}
 
 	obv, ok := idx.obvs[addr]
 	if ok {
@@ -160,27 +254,10 @@ func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
 }
 
 func (idx *index) SetSeq(seq margaret.Seq) error {
-	var (
-		raw  = make([]byte, 8)
-		err  error
-		addr librarian.Addr = "__current_observable"
-	)
-
-	binary.BigEndian.PutUint64(raw, uint64(seq.Seq()))
-
-	err = idx.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set([]byte(addr), raw)
-		return errors.Wrap(err, "error setting item")
-	})
-	if err != nil {
-		return errors.Wrap(err, "error in badger transaction (update)")
-	}
-
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
-	idx.curSeq = seq
-
+	idx.curSeq = margaret.BaseSeq(seq.Seq())
 	return nil
 }
 
@@ -220,9 +297,8 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 	if err != nil {
 		if errors.Cause(err) == badger.ErrKeyNotFound {
 			return margaret.SeqEmpty, nil
-		} else {
-			return margaret.BaseSeq(0), errors.Wrap(err, "error in badger transaction (view)")
 		}
+		return margaret.BaseSeq(0), errors.Wrap(err, "error in badger transaction (view)")
 	}
 
 	return idx.curSeq, nil
