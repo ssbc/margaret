@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"log"
 	"reflect"
 	"sync"
 	"time"
@@ -16,8 +17,30 @@ import (
 	"go.cryptoscope.co/margaret"
 
 	"go.cryptoscope.co/librarian"
-	"log"
 )
+
+type setOp struct {
+	addr []byte
+	val  []byte
+}
+
+type index struct {
+	stop    context.CancelFunc
+	running context.Context
+
+	l *sync.Mutex
+
+	tickPersistAll, tickIfFull *time.Ticker
+
+	batchLimit uint
+	batches    []setOp
+
+	db *badger.DB
+
+	obvs   map[librarian.Addr]luigi.Observable
+	tipe   interface{}
+	curSeq margaret.BaseSeq
+}
 
 func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
 	ctx, cancel := context.WithCancel(context.TODO())
@@ -27,12 +50,16 @@ func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
 
 		l: &sync.Mutex{},
 
+		tickPersistAll: time.NewTicker(10 * time.Second),
+		tickIfFull:     time.NewTicker(3 * time.Second),
+
 		batchLimit: 4096,
 		batches:    make([]setOp, 0),
-		db:         db,
-		tipe:       tipe,
-		obvs:       make(map[librarian.Addr]luigi.Observable),
-		curSeq:     margaret.BaseSeq(-2),
+
+		db:     db,
+		tipe:   tipe,
+		obvs:   make(map[librarian.Addr]luigi.Observable),
+		curSeq: margaret.BaseSeq(-2),
 	}
 	go idx.writeBatches()
 	return idx
@@ -40,6 +67,8 @@ func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
 
 func (idx *index) Close() error {
 	idx.stop()
+	idx.tickIfFull.Stop()
+	idx.tickPersistAll.Stop()
 	log.Println("closing!! DIRTY HACK so that writeBatches returns")
 	idx.flushBatches()
 	return nil
@@ -74,59 +103,44 @@ func (idx *index) flushBatches() {
 }
 
 func (idx *index) writeBatches() {
-	for {
-		select {
-		case <-time.After(45 * time.Second):
-			idx.l.Lock()
-			n := uint(len(idx.batches))
-			if n == 0 {
-				idx.l.Unlock()
-				continue
-			}
 
-		case <-time.After(7000 * time.Millisecond):
-			idx.l.Lock()
-			n := uint(len(idx.batches))
-			if n < idx.batchLimit {
-				log.Println("batch too small:", n)
-				idx.l.Unlock()
-				continue
-			}
+	for {
+		var writeAll = false
+		select {
+		case <-idx.tickPersistAll.C:
+			writeAll = true
+		default:
+		}
+
+		select {
+		case <-idx.tickIfFull.C:
 
 		case <-idx.running.Done():
 			log.Println("index done", idx.running.Err())
 			return
 		}
+		idx.l.Lock()
+		n := uint(len(idx.batches))
+
+		if !writeAll {
+			if n < idx.batchLimit {
+				if n > 0 {
+					log.Println("batch too small:", n)
+				}
+				idx.l.Unlock()
+				continue
+			}
+		}
+		if n == 0 {
+			idx.l.Unlock()
+			continue
+		}
 
 		idx.flushBatches()
-
 		idx.batches = []setOp{}
 		idx.l.Unlock()
 
 	}
-}
-
-type setOp struct {
-	addr []byte
-	val  []byte
-}
-
-type index struct {
-	stop    context.CancelFunc
-	running context.Context
-
-	l *sync.Mutex
-
-	waitForFlush <-chan struct{}
-
-	batchLimit uint
-	batches    []setOp
-
-	db *badger.DB
-
-	obvs   map[librarian.Addr]luigi.Observable
-	tipe   interface{}
-	curSeq margaret.BaseSeq
 }
 
 func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observable, error) {
@@ -217,12 +231,6 @@ func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) e
 	defer idx.l.Unlock()
 	idx.batches = append(idx.batches, setOp{addr: []byte(addr), val: raw})
 
-	if n := len(idx.batches); n%5 == 0 {
-		log.Println("batched set", n)
-		//debug.PrintStack()
-		//panic("WAT")
-	}
-
 	obv, ok := idx.obvs[addr]
 	if ok {
 		err = obv.Set(v)
@@ -246,7 +254,7 @@ func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
 
 	obv, ok := idx.obvs[addr]
 	if ok {
-		err = obv.Set(librarian.UnsetValue{addr})
+		err = obv.Set(librarian.UnsetValue{Addr: addr})
 		err = errors.Wrap(err, "error setting value in observable")
 	}
 
