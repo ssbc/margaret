@@ -10,7 +10,7 @@ import (
 
 	"github.com/keks/persist"
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
 
@@ -19,8 +19,7 @@ type Func func(ctx context.Context, seq margaret.Seq, value interface{}, mlog Mu
 
 // Sink is both a multilog and a luigi sink. Pouring values into it will append values to the multilog, usually by calling a user-defined processing function.
 type Sink interface {
-	MultiLog
-	Pour(ctx context.Context, v interface{}) error
+	luigi.Sink
 	QuerySpec() margaret.QuerySpec
 }
 
@@ -30,6 +29,7 @@ func NewSink(file *os.File, mlog MultiLog, f Func) Sink {
 		mlog: mlog,
 		f:    f,
 		file: file,
+		l:    &sync.Mutex{},
 	}
 }
 
@@ -37,26 +37,7 @@ type sinkLog struct {
 	mlog MultiLog
 	f    Func
 	file *os.File
-	l    sync.Mutex
-}
-
-// Get gets the sublog with the given address.
-func (slog *sinkLog) Get(addr librarian.Addr) (margaret.Log, error) {
-	log, err := slog.mlog.Get(addr)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting log from multilog")
-	}
-
-	return roLog{log}, nil
-}
-
-// List returns the addresses of all sublogs in the multilog
-func (slog *sinkLog) List() ([]librarian.Addr, error) {
-	return slog.mlog.List()
-}
-
-func (slog *sinkLog) Delete(addr librarian.Addr) error {
-	return slog.mlog.Delete(addr)
+	l    *sync.Mutex
 }
 
 // Pour calls the processing function to add a value to a sublog.
@@ -75,9 +56,7 @@ func (slog *sinkLog) Pour(ctx context.Context, v interface{}) error {
 }
 
 // Close does nothing.
-// TODO: It could close it's backing multilog but that trashes other open sublogs
-// Maybe have something like a "multiple-open tracker" that tracks all the users of the multilog and closes it if all users closed it?
-func (slog *sinkLog) Close() error { return nil } // slog.mlog.Close() }
+func (slog *sinkLog) Close() error { return nil }
 
 // QuerySpec returns the query spec that queries the next needed messages from the log
 func (slog *sinkLog) QuerySpec() margaret.QuerySpec {
