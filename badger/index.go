@@ -30,10 +30,13 @@ type index struct {
 
 	l *sync.Mutex
 
+	// these control periodic persistence
 	tickPersistAll, tickIfFull *time.Ticker
 
-	batchLimit uint
-	batches    []setOp
+	batchLowerLimit uint // only write if there are more batches then this
+	batchFullLimit  uint // more than this cause an problem in badger
+
+	nextbatch []setOp
 
 	db *badger.DB
 
@@ -50,11 +53,12 @@ func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
 
 		l: &sync.Mutex{},
 
-		tickPersistAll: time.NewTicker(10 * time.Second),
-		tickIfFull:     time.NewTicker(3 * time.Second),
+		tickPersistAll: time.NewTicker(17 * time.Second),
+		tickIfFull:     time.NewTicker(5 * time.Second),
 
-		batchLimit: 4096,
-		batches:    make([]setOp, 0),
+		batchLowerLimit: 8192,
+		batchFullLimit:  75000,
+		nextbatch:       make([]setOp, 0),
 
 		db:     db,
 		tipe:   tipe,
@@ -65,16 +69,28 @@ func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
 	return idx
 }
 
-func (idx *index) Close() error {
-	idx.stop()
-	idx.tickIfFull.Stop()
-	idx.tickPersistAll.Stop()
-	log.Println("closing!! DIRTY HACK so that writeBatches returns")
-	idx.flushBatches()
+func (idx *index) Flush() error {
+	idx.l.Lock()
+	defer idx.l.Unlock()
+
+	if err := idx.flushBatch(); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (idx *index) flushBatches() {
+func (idx *index) Close() error {
+	idx.l.Lock()
+
+	idx.stop()
+	idx.tickIfFull.Stop()
+	idx.tickPersistAll.Stop()
+	// TODO: revamp closing, the backing db might already be closed.... :-/
+	//	return idx.flushBatches()
+	return nil
+}
+
+func (idx *index) flushBatch() error {
 	start := time.Now()
 	var raw = make([]byte, 8)
 	err := idx.db.Update(func(txn *badger.Txn) error {
@@ -86,7 +102,7 @@ func (idx *index) flushBatches() {
 			return errors.Wrap(err, "error setting seq")
 		}
 
-		for bi, op := range idx.batches {
+		for bi, op := range idx.nextbatch {
 			err := txn.Set(op.addr, op.val)
 			if err != nil {
 				return errors.Wrapf(err, "error setting batch #%d", bi)
@@ -95,17 +111,21 @@ func (idx *index) flushBatches() {
 		return nil
 	})
 	if err != nil {
-		log.Println(errors.Wrapf(err, "error in badger transaction (update) %d", len(idx.batches)))
-		return
-	}
-	log.Println("curr seq:", idx.curSeq.Seq(), "writing batch:", len(idx.batches), "took", time.Since(start))
+		return errors.Wrapf(err, "error in badger transaction (update) %d", len(idx.nextbatch))
 
+	}
+	log.Println("curr seq:", idx.curSeq.Seq(), "writing batch:", len(idx.nextbatch), "took", time.Since(start))
+	idx.nextbatch = []setOp{}
+	return nil
 }
 
 func (idx *index) writeBatches() {
 
 	for {
 		var writeAll = false
+
+		// if this was in the same select with the ticker below,
+		// the ticker with the smaller durration would always overrule the longer one
 		select {
 		case <-idx.tickPersistAll.C:
 			writeAll = true
@@ -116,17 +136,13 @@ func (idx *index) writeBatches() {
 		case <-idx.tickIfFull.C:
 
 		case <-idx.running.Done():
-			log.Println("index done", idx.running.Err())
 			return
 		}
 		idx.l.Lock()
-		n := uint(len(idx.batches))
+		n := uint(len(idx.nextbatch))
 
 		if !writeAll {
-			if n < idx.batchLimit {
-				if n > 0 {
-					log.Println("batch too small:", n)
-				}
+			if n < idx.batchLowerLimit {
 				idx.l.Unlock()
 				continue
 			}
@@ -136,10 +152,12 @@ func (idx *index) writeBatches() {
 			continue
 		}
 
-		idx.flushBatches()
-		idx.batches = []setOp{}
+		err := idx.flushBatch()
+		if err != nil {
+			// TODO: maybe set error and stop further writes?
+			log.Println("librarian: flushing failed", err)
+		}
 		idx.l.Unlock()
-
 	}
 }
 
@@ -193,7 +211,7 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 	}
 
 	if errors.Cause(err) == badger.ErrKeyNotFound {
-		obv = librarian.NewObservable(librarian.UnsetValue{addr}, idx.deleter(addr))
+		obv = librarian.NewObservable(librarian.UnsetValue{Addr: addr}, idx.deleter(addr))
 	} else {
 		obv = librarian.NewObservable(v, idx.deleter(addr))
 	}
@@ -229,7 +247,18 @@ func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) e
 
 	idx.l.Lock()
 	defer idx.l.Unlock()
-	idx.batches = append(idx.batches, setOp{addr: []byte(addr), val: raw})
+	batchedOp := setOp{
+		addr: []byte(addr),
+		val:  raw,
+	}
+	idx.nextbatch = append(idx.nextbatch, batchedOp)
+
+	if n := uint(len(idx.nextbatch)); n > idx.batchFullLimit {
+		err = idx.flushBatch()
+		if err != nil {
+			return errors.Wrapf(err, "failed to write big batch (%d)", n)
+		}
+	}
 
 	obv, ok := idx.obvs[addr]
 	if ok {
