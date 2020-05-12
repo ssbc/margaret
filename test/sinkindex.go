@@ -81,7 +81,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		a.NoError(luigi.Pump(ctx, idx, src), "error pumping from queried src to SinkIndex")
 
 		// check "interesting"
-		obv, err := idx.Get(ctx, "interesting")
+		obv, err := seqSetIdx.Get(ctx, "interesting")
 		r.NoError(err, "error getting interesting index")
 		r.NotNil(obv, "returned no error but got nil observable")
 
@@ -90,7 +90,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		a.Equal("mildly interesting string", v)
 
 		// check "boring"
-		obv, err = idx.Get(ctx, "boring")
+		obv, err = seqSetIdx.Get(ctx, "boring")
 		a.NoError(err, "error getting boring index")
 		r.NotNil(obv, "returned no error but got nil observable")
 
@@ -110,7 +110,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		a.NoError(luigi.Pump(ctx, idx, src), "error pumping from queried src to SinkIndex")
 
 		// check "interesting"
-		obv, err = idx.Get(ctx, "interesting")
+		obv, err = seqSetIdx.Get(ctx, "interesting")
 		a.NoError(err, "error getting interesting index")
 		r.NotNil(obv, "returned no error but got nil observable")
 
@@ -119,7 +119,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		a.Equal("highly interesting string", v)
 
 		// check "interesting"
-		obv, err = idx.Get(ctx, "boring")
+		obv, err = seqSetIdx.Get(ctx, "boring")
 		a.NoError(err, "error getting boring index")
 		r.NotNil(obv, "returned no error but got nil observable")
 

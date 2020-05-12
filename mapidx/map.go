@@ -26,6 +26,9 @@ type mapSetterIndex struct {
 	l      sync.Mutex
 }
 
+func (idx *mapSetterIndex) Flush() error { return nil }
+func (idx *mapSetterIndex) Close() error { return nil }
+
 func (idx *mapSetterIndex) Get(_ context.Context, addr librarian.Addr) (luigi.Observable, error) {
 	idx.l.Lock()
 	defer idx.l.Unlock()
