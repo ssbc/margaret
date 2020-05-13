@@ -81,13 +81,18 @@ func (idx *index) Flush() error {
 
 func (idx *index) Close() error {
 	idx.l.Lock()
+	defer idx.l.Unlock()
 
 	idx.stop()
 	idx.tickIfFull.Stop()
 	idx.tickPersistAll.Stop()
-	// TODO: revamp closing, the backing db might already be closed.... :-/
-	//	return idx.flushBatches()
-	return nil
+
+	err := idx.flushBatch()
+	if err != nil {
+		return errors.Wrap(err, "librarian/badger: failed to flush remaining batched operations")
+	}
+	err = errors.Wrap(idx.db.Close(), "librarian/badger: failed to close backing store")
+	return err
 }
 
 func (idx *index) flushBatch() error {
