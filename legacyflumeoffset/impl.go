@@ -16,6 +16,7 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -32,6 +33,8 @@ type Log struct {
 }
 
 func Open(path string, codec margaret.Codec) (*Log, error) {
+	os.MkdirAll(filepath.Dir(path), 0700)
+
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0700)
 	if err != nil {
 		return nil, err
@@ -90,7 +93,8 @@ func (log *Log) dataReader(ofst margaret.Seq) (io.Reader, uint32, error) {
 
 // Get returns the entry with sequence number seq
 func (l *Log) Get(ofst margaret.Seq) (interface{}, error) {
-	panic("not implemented") // TODO: Implement
+	v, _, err := l.readOffset(ofst)
+	return v, err
 }
 
 // Query returns a stream that is constrained by the passed query specification
@@ -124,6 +128,38 @@ func (log *Log) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 }
 
 // Append appends a new entry to the log
-func (l *Log) Append(_ interface{}) (margaret.Seq, error) {
-	panic("not implemented") // TODO: Implement
+func (l *Log) Append(v interface{}) (margaret.Seq, error) {
+	where, err := l.f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := l.codec.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	var sz = uint32(len(b))
+	err = binary.Write(l.f, binary.BigEndian, sz)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = l.f.Write(b)
+	if err != nil {
+		return nil, err
+	}
+
+	err = binary.Write(l.f, binary.BigEndian, sz)
+	if err != nil {
+		return nil, err
+	}
+
+	next := uint32(where) + 2*4 + sz
+	err = binary.Write(l.f, binary.BigEndian, next)
+	if err != nil {
+		return nil, err
+	}
+
+	return margaret.BaseSeq(where), nil
 }

@@ -3,6 +3,9 @@
 package test
 
 import (
+	"os"
+	"path/filepath"
+
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/codec/cbor"
 	"go.cryptoscope.co/margaret/codec/json"
@@ -24,13 +27,13 @@ func init() {
 
 	buildNewLogFunc := func(newCodec mtest.NewCodecFunc) mtest.NewLogFunc {
 		return func(name string, tipe interface{}) (margaret.Log, error) {
-			// name = strings.Replace(name, "/", "_", -1)
-			return lfo.Open(name, newCodec(tipe))
+			path := filepath.Join("testrun", name)
+			os.RemoveAll(path)
+			return lfo.Open(path, newCodec(tipe))
 		}
 	}
 
 	for cname, newCodec := range codecs {
-		mtest.Register("lfo/"+cname, buildNewLogFunc(newCodec))
 		newLogFuncs["lfo/"+cname] = buildNewLogFunc(newCodec)
 	}
 }

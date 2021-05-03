@@ -7,6 +7,4 @@ import (
 	_ "go.cryptoscope.co/margaret/mem/test"
 
 	_ "go.cryptoscope.co/margaret/offset2/test"
-
-	_ "go.cryptoscope.co/margaret/legacyflumeoffset"
 )
