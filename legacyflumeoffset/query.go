@@ -31,6 +31,7 @@ func (qry *lfoQuery) Gt(s margaret.Seq) error {
 		return errors.Errorf("lower bound already set")
 	}
 
+	// TODO: seek to the next entry correctly
 	qry.nextOfst = margaret.BaseSeq(s.Seq() + 1)
 	return nil
 }
@@ -58,6 +59,7 @@ func (qry *lfoQuery) Lte(s margaret.Seq) error {
 		return errors.Errorf("upper bound already set")
 	}
 
+	// TODO: seek to the previous entry correctly
 	qry.lt = margaret.BaseSeq(s.Seq() + 1)
 	return nil
 }
@@ -138,15 +140,6 @@ func (qry *lfoQuery) Next(ctx context.Context) (interface{}, error) {
 	} else if err != nil {
 		return nil, err
 	}
-
-	// we waited until the value is in the log - now read it again
-
-	// v, err = qry.log.readOffset(qry.nextOfst)
-	// if errors.Cause(err) == io.EOF {
-	// 	return nil, io.ErrUnexpectedEOF
-	// } else if err != nil {
-	// 	return nil, err
-	// }
 
 	defer func() {
 		if qry.reverse {
