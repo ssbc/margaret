@@ -3,8 +3,6 @@
 package roaring
 
 import (
-	"sync"
-
 	"github.com/RoaringBitmap/roaring"
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
@@ -18,13 +16,12 @@ import (
 type sublog struct {
 	mlog *MultiLog
 
-	sync.Mutex
 	key       persist.Key
 	seq       *seqobsv.Observable
 	luigiObsv luigi.Observable
 	bmap      *roaring.Bitmap
 
-	lastSave uint64
+	dirty bool
 
 	deleted bool
 }
@@ -34,8 +31,8 @@ func (log *sublog) Seq() luigi.Observable {
 }
 
 func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
-	log.Mutex.Lock()
-	defer log.Mutex.Unlock()
+	log.mlog.l.Lock()
+	defer log.mlog.l.Unlock()
 	return log.get(seq)
 }
 
@@ -56,8 +53,8 @@ func (log *sublog) get(seq margaret.Seq) (interface{}, error) {
 }
 
 func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
-	log.Mutex.Lock()
-	defer log.Mutex.Unlock()
+	log.mlog.l.Lock()
+	defer log.mlog.l.Unlock()
 	if log.deleted {
 		return nil, multilog.ErrSublogDeleted
 	}
@@ -81,8 +78,8 @@ func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 }
 
 func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
-	log.Mutex.Lock()
-	defer log.Mutex.Unlock()
+	log.mlog.l.Lock()
+	defer log.mlog.l.Unlock()
 	if log.deleted {
 		return nil, multilog.ErrSublogDeleted
 	}
@@ -105,36 +102,29 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 
 	log.bmap.Add(uint32(val.Seq()))
 
-	newSeq, err := log.update()
-	if err != nil {
-		return nil, err
-	}
+	log.dirty = true
+	log.seq.Inc()
 
+	count := log.bmap.GetCardinality() - 1
+	newSeq := margaret.BaseSeq(count)
+
+	err := log.luigiObsv.Set(newSeq)
+	if err != nil {
+		err = errors.Wrap(err, "roaringfiles: failed to update sequence")
+		return margaret.BaseSeq(-2), err
+	}
 	return newSeq, nil
 }
 
-func (log *sublog) update() (margaret.BaseSeq, error) {
-	// TODO: make store a bitmapStore, then we can also skip uncesessary unmarshals
+func (log *sublog) store() error {
 	data, err := log.bmap.MarshalBinary()
 	if err != nil {
-		return -2, errors.Wrap(err, "roaringfiles: failed to encode bitmap")
+		return errors.Wrap(err, "roaringfiles: failed to encode bitmap")
 	}
 
 	err = log.mlog.store.Put(log.key, data)
 	if err != nil {
-		return -2, errors.Wrap(err, "roaringfiles: file write failed")
+		return errors.Wrap(err, "roaringfiles: file write failed")
 	}
-
-	count := log.bmap.GetCardinality() - 1
-
-	log.seq.Inc()
-
-	newSeq := margaret.BaseSeq(count)
-	err = log.luigiObsv.Set(newSeq)
-	if err != nil {
-		err = errors.Wrap(err, "roaringfiles: failed to update sequence")
-		return -2, err
-	}
-
-	return newSeq, nil
+	return nil
 }
