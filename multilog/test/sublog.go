@@ -3,11 +3,11 @@
 package test // import "go.cryptoscope.co/margaret/multilog/test"
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -56,7 +56,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 
 				ev, err := slog.Get(margaret.SeqEmpty)
 				r.Error(err)
-				r.Equal(luigi.EOS{}, errors.Cause(err))
+				r.True(errors.Is(err, luigi.EOS{}), "unexpected error: %s", err)
 				r.Nil(ev)
 
 				for i, v := range values {

@@ -149,7 +149,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 				v, err := src.Next(ctx)
 				if !tc.live && !luigi.IsEOS(err) {
 					t.Errorf("expected end-of-stream but got %+v", err)
-				} else if tc.live && errors.Cause(err) != context.Canceled {
+				} else if tc.live && !errors.Is(err, context.Canceled) {
 					t.Errorf("expected context canceled but got %v, %+v", v, err)
 				}
 

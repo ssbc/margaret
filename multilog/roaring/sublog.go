@@ -3,8 +3,9 @@
 package roaring
 
 import (
+	"fmt"
+
 	"github.com/RoaringBitmap/roaring"
-	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 
 	"go.cryptoscope.co/margaret"
@@ -93,11 +94,11 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 		case uint32:
 			val = margaret.BaseSeq(tv)
 		default:
-			return margaret.BaseSeq(-2), errors.Errorf("roaringfiles: not a sequence (%T)", v)
+			return margaret.BaseSeq(-2), fmt.Errorf("roaringfiles: not a sequence (%T)", v)
 		}
 	}
 	if val.Seq() < 0 {
-		return nil, errors.Errorf("roaringfiles can only store positive numbers")
+		return nil, fmt.Errorf("roaringfiles can only store positive numbers")
 	}
 
 	log.bmap.Add(uint32(val.Seq()))
@@ -110,7 +111,7 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 
 	err := log.luigiObsv.Set(newSeq)
 	if err != nil {
-		err = errors.Wrap(err, "roaringfiles: failed to update sequence")
+		err = fmt.Errorf("roaringfiles: failed to update sequence: %w", err)
 		return margaret.BaseSeq(-2), err
 	}
 	return newSeq, nil
@@ -119,12 +120,12 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 func (log *sublog) store() error {
 	data, err := log.bmap.MarshalBinary()
 	if err != nil {
-		return errors.Wrap(err, "roaringfiles: failed to encode bitmap")
+		return fmt.Errorf("roaringfiles: failed to encode bitmap: %w", err)
 	}
 
 	err = log.mlog.store.Put(log.key, data)
 	if err != nil {
-		return errors.Wrap(err, "roaringfiles: file write failed")
+		return fmt.Errorf("roaringfiles: file write failed: %w", err)
 	}
 	return nil
 }

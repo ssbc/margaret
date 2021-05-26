@@ -86,7 +86,7 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 		for {
 			swv, err := seqSrc.Next(ctx)
 			if err != nil {
-				if luigi.IsEOS(err) || errors.Cause(err) == context.Canceled {
+				if luigi.IsEOS(err) || errors.Is(err, context.Canceled) {
 					t.Log("canceled", err, swv)
 					a.Equal(expSeq, 19)
 					break

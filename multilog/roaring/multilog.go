@@ -4,12 +4,13 @@ package roaring
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	stdlog "log"
 	"sync"
 	"time"
 
 	"github.com/RoaringBitmap/roaring"
-	"github.com/pkg/errors"
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/luigi"
 
@@ -65,7 +66,7 @@ func (log *MultiLog) flushAllSublogs() error {
 		if sublog.dirty {
 			err := sublog.store()
 			if err != nil {
-				return errors.Wrapf(err, "roaringfiles: sublog(%x) store failed", addr)
+				return fmt.Errorf("roaringfiles: sublog(%x) store failed: %w", addr, err)
 			}
 			sublog.dirty = false
 		}
@@ -105,7 +106,7 @@ func (log *MultiLog) openSublog(addr librarian.Addr) (*sublog, error) {
 	var seq margaret.BaseSeq
 
 	r, err := log.loadBitmap(pk)
-	if errors.Cause(err) == persist.ErrNotFound {
+	if errors.Is(err, persist.ErrNotFound) {
 		seq = margaret.SeqEmpty
 		r = roaring.New()
 	} else if err != nil {
@@ -144,13 +145,13 @@ func (log *MultiLog) loadBitmap(key []byte) (*roaring.Bitmap, error) {
 
 	data, err := log.store.Get(key)
 	if err != nil {
-		return nil, errors.Wrapf(err, "roaringfiles: invalid stored bitfield %x", key)
+		return nil, fmt.Errorf("roaringfiles: invalid stored bitfield %x: %w", key, err)
 	}
 
 	r = roaring.New()
 	err = r.UnmarshalBinary(data)
 	if err != nil {
-		return nil, errors.Wrapf(err, "roaringfiles: unpack of %x failed", key)
+		return nil, fmt.Errorf("roaringfiles: unpack of %x failed: %w", key, err)
 	}
 
 	return r, nil
@@ -172,11 +173,11 @@ func (log *MultiLog) compress(key persist.Key, r *roaring.Bitmap) (bool, error) 
 
 	compressed, err := r.MarshalBinary()
 	if err != nil {
-		return false, errors.Wrap(err, "roaringfiles: compress marshal failed")
+		return false, fmt.Errorf("roaringfiles: compress marshal failed: %w", err)
 	}
 	err = log.store.Put(key, compressed)
 	if err != nil {
-		return false, errors.Wrap(err, "roaringfiles: write compressed failed")
+		return false, fmt.Errorf("roaringfiles: write compressed failed: %w", err)
 	}
 
 	return true, nil
@@ -190,20 +191,20 @@ func (log *MultiLog) CompressAll() error {
 	for addr, sublog := range log.sublogs {
 		err := sublog.store()
 		if err != nil {
-			return errors.Wrapf(err, "failed to update open sublog %x", addr)
+			return fmt.Errorf("failed to update open sublog %x: %w", addr, err)
 		}
 	}
 	// load idle ones
 	err := log.loadAll()
 	if err != nil {
-		return errors.Wrap(err, "failed to load all sublogs")
+		return fmt.Errorf("failed to load all sublogs: %w", err)
 	}
 
 	// compress all
 	for addr, sublog := range log.sublogs {
 		_, err := log.compress(persist.Key(addr), sublog.bmap)
 		if err != nil {
-			return errors.Wrapf(err, "failed to update open sublog %x", addr)
+			return fmt.Errorf("failed to update open sublog %x: %w", addr, err)
 		}
 	}
 	return nil
@@ -249,12 +250,12 @@ func (log *MultiLog) List() ([]librarian.Addr, error) {
 func (log *MultiLog) loadAll() error {
 	keys, err := log.store.List()
 	if err != nil {
-		return errors.Wrap(err, "roaringfiles: store iteration failed")
+		return fmt.Errorf("roaringfiles: store iteration failed: %w", err)
 	}
 	for _, bk := range keys {
 		_, err := log.openSublog(librarian.Addr(bk))
 		if err != nil {
-			return errors.Wrapf(err, "roaringfiles: broken bitmap file (%s)", bk)
+			return fmt.Errorf("roaringfiles: broken bitmap file (%s): %w", bk, err)
 		}
 	}
 	return nil
@@ -266,7 +267,7 @@ func (log *MultiLog) Close() error {
 	<-log.writerClosed
 
 	if err := log.Flush(); err != nil {
-		return errors.Wrap(err, "roaringfiles: close failed to flush")
+		return fmt.Errorf("roaringfiles: close failed to flush: %w", err)
 	}
 
 	return log.store.Close()
