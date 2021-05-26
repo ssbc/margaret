@@ -4,8 +4,8 @@ package librarian
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
@@ -40,10 +40,13 @@ func (idx *sinkIndex) Pour(ctx context.Context, v interface{}) error {
 	case margaret.SeqWrapper:
 		err := idx.f(ctx, tv.Seq(), tv.Value(), idx.idx)
 		if err != nil {
-			return errors.Wrap(err, "error calling setter func")
+			return fmt.Errorf("error calling setter func: %w", err)
 		}
 		err = idx.idx.SetSeq(tv.Seq())
-		return errors.Wrap(err, "error setting sequence number")
+		if err != nil {
+			return fmt.Errorf("error setting sequence number: %w", err)
+		}
+		return nil
 	case error:
 		if margaret.IsErrNulled(tv) {
 			return nil
@@ -51,7 +54,7 @@ func (idx *sinkIndex) Pour(ctx context.Context, v interface{}) error {
 		return tv
 
 	default:
-		return errors.Errorf("expecting seqwrapped value (%T)", v)
+		return fmt.Errorf("expecting seqwrapped value (%T)", v)
 	}
 
 }

@@ -4,12 +4,14 @@ package mkv
 
 import (
 	"context"
+	"encoding"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 
-	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 	"modernc.org/kv"
@@ -57,21 +59,21 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 		return roObv{obv}, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "error loading data from store")
+		return nil, fmt.Errorf("error loading data from store:%w", err)
 	}
 
-	if um, ok := v.(librarian.Unmarshaler); ok {
+	if um, ok := v.(encoding.BinaryUnmarshaler); ok {
 		if t.Kind() != reflect.Ptr {
 			v = reflect.ValueOf(v).Elem().Interface()
 		}
 
-		err = um.Unmarshal(data)
-		return nil, errors.Wrap(err, "error unmarshaling using custom marshaler")
+		err = um.UnmarshalBinary(data)
+		return nil, fmt.Errorf("error unmarshaling using custom marshaler:%w", err)
 	}
 
 	err = json.Unmarshal(data, v)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling using json marshaler")
+		return nil, fmt.Errorf("error unmarshaling using json marshaler:%w", err)
 	}
 
 	if t.Kind() != reflect.Ptr {
@@ -95,21 +97,21 @@ func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) e
 		err error
 	)
 
-	if m, ok := v.(librarian.Marshaler); ok {
-		raw, err = m.Marshal()
+	if m, ok := v.(encoding.BinaryMarshaler); ok {
+		raw, err = m.MarshalBinary()
 		if err != nil {
-			return errors.Wrap(err, "error marshaling value using custom marshaler")
+			return fmt.Errorf("error marshaling value using custom marshaler:%w", err)
 		}
 	} else {
 		raw, err = json.Marshal(v)
 		if err != nil {
-			return errors.Wrap(err, "error marshaling value using json marshaler")
+			return fmt.Errorf("error marshaling value using json marshaler:%w", err)
 		}
 	}
 
 	err = idx.db.Set([]byte(addr), raw)
 	if err != nil {
-		return errors.Wrap(err, "error in store")
+		return fmt.Errorf("error in store:%w", err)
 	}
 
 	idx.l.Lock()
@@ -118,16 +120,18 @@ func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) e
 	obv, ok := idx.obvs[addr]
 	if ok {
 		err = obv.Set(v)
-		err = errors.Wrap(err, "error setting value in observable")
+		if err != nil {
+			return fmt.Errorf("error setting value in observable:%w", err)
+		}
 	}
 
-	return err
+	return nil
 }
 
 func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
 	err := idx.db.Delete([]byte(addr))
 	if err != nil {
-		return errors.Wrap(err, "error in store")
+		return fmt.Errorf("error in store:%w", err)
 	}
 
 	idx.l.Lock()
@@ -136,10 +140,12 @@ func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
 	obv, ok := idx.obvs[addr]
 	if ok {
 		err = obv.Set(librarian.UnsetValue{addr})
-		err = errors.Wrap(err, "error setting value in observable")
+		if err != nil {
+			return fmt.Errorf("error setting value in observable:%w", err)
+		}
 	}
 
-	return err
+	return nil
 }
 
 func (idx *index) SetSeq(seq margaret.Seq) error {
@@ -153,7 +159,7 @@ func (idx *index) SetSeq(seq margaret.Seq) error {
 
 	err = idx.db.Set([]byte(addr), raw)
 	if err != nil {
-		return errors.Wrapf(err, "error during mkv update (%T)", seq.Seq())
+		return fmt.Errorf("error during mkv update (%T): %w", seq.Seq(), err)
 	}
 
 	idx.l.Lock()
@@ -176,14 +182,14 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 
 	data, err := idx.db.Get(nil, []byte(addr))
 	if err != nil {
-		return margaret.BaseSeq(-2), errors.Wrap(err, "error getting item")
+		return margaret.BaseSeq(-2), fmt.Errorf("error getting item:%w", err)
 	}
 	if data == nil {
 		return margaret.SeqEmpty, nil
 	}
 
 	if l := len(data); l != 8 {
-		return margaret.BaseSeq(-2), errors.Errorf("expected data of length 8, got %v", l)
+		return margaret.BaseSeq(-2), fmt.Errorf("expected data of length 8, got %v", l)
 	}
 
 	idx.curSeq = margaret.BaseSeq(binary.BigEndian.Uint64(data))

@@ -3,11 +3,11 @@
 package test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"modernc.org/kv"
 
 	"go.cryptoscope.co/librarian"
@@ -21,13 +21,13 @@ func init() {
 		os.MkdirAll("testrun", 0700)
 		dir, err := ioutil.TempDir("./testrun", "mkv")
 		if err != nil {
-			return nil, errors.Wrap(err, "error creating tempdir")
+			return nil, fmt.Errorf("error creating tempdir: %w", err)
 		}
 
 		opts := &kv.Options{}
 		db, err := kv.Create(filepath.Join(dir, "db"), opts)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create KV")
+			return nil, fmt.Errorf("error opening test database (%s): %w", dir, err)
 		}
 
 		return libmkv.NewIndex(db, tipe), nil

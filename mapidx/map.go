@@ -4,9 +4,9 @@ package mapidx // import "go.cryptoscope.co/librarian/mapidx"
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
-	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 
@@ -51,7 +51,9 @@ func (idx *mapSetterIndex) Set(_ context.Context, addr librarian.Addr, v interfa
 	obv, ok := idx.m[addr]
 	if ok {
 		err := obv.Set(v)
-		return errors.Wrap(err, "error setting observable")
+		if err != nil {
+			return fmt.Errorf("error setting observable: %w", err)
+		}
 	}
 
 	obv = luigi.NewObservable(v)
@@ -67,7 +69,9 @@ func (idx *mapSetterIndex) Delete(_ context.Context, addr librarian.Addr) error 
 	obv, ok := idx.m[addr]
 	if ok {
 		err := obv.Set(librarian.UnsetValue{addr})
-		return errors.Wrap(err, "error setting observable")
+		if err != nil {
+			return fmt.Errorf("error setting observable: %w", err)
+		}
 	}
 
 	return nil

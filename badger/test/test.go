@@ -3,11 +3,11 @@
 package test
 
 import (
-	"io/ioutil"
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/dgraph-io/badger"
-	"github.com/pkg/errors"
 
 	"go.cryptoscope.co/librarian"
 	libadger "go.cryptoscope.co/librarian/badger"
@@ -16,18 +16,16 @@ import (
 
 func init() {
 	newSeqSetterIdx := func(name string, tipe interface{}) (librarian.SeqSetterIndex, error) {
-		dir, err := ioutil.TempDir("", "badger")
-		if err != nil {
-			return nil, errors.Wrap(err, "error creating tempdir")
-		}
 
-		defer os.RemoveAll(dir)
+		dir := filepath.Join("testrun", name)
+		os.RemoveAll(dir)
+		os.MkdirAll(dir, 0700)
 
 		opts := badger.DefaultOptions(dir)
 
 		db, err := badger.Open(opts)
 		if err != nil {
-			return nil, errors.Wrap(err, "error opening database")
+			return nil, fmt.Errorf("error opening test database (%s): %w", dir, err)
 		}
 
 		return libadger.NewIndex(db, tipe), nil
