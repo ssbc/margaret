@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cryptix/go/logging"
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
-	goon "github.com/shurcooL/go-goon"
+	"go.mindeco.de/logging"
+
 	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/codec/msgpack"
@@ -39,7 +39,10 @@ func main() {
 	addrs, err := mlog.List()
 	check(errors.Wrap(err, "error listing multilog"))
 	log.Log("mlog", "opened", "list#", len(addrs))
-	goon.Dump(addrs)
+
+	for i, addr := range addrs {
+		log.Log("i", i, "addr", addr)
+	}
 
 	// check has
 	if len(os.Args) > 2 {
