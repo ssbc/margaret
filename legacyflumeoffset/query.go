@@ -27,6 +27,7 @@ type lfoQuery struct {
 }
 
 func (qry *lfoQuery) Gt(s margaret.Seq) error {
+	return fmt.Errorf("TODO: implement gt")
 	if qry.nextOfst > margaret.SeqEmpty {
 		return errors.Errorf("lower bound already set")
 	}
@@ -37,6 +38,7 @@ func (qry *lfoQuery) Gt(s margaret.Seq) error {
 }
 
 func (qry *lfoQuery) Gte(s margaret.Seq) error {
+	return fmt.Errorf("TODO: implement gte")
 	if qry.nextOfst > margaret.SeqEmpty {
 		return errors.Errorf("lower bound already set")
 	}
@@ -46,6 +48,7 @@ func (qry *lfoQuery) Gte(s margaret.Seq) error {
 }
 
 func (qry *lfoQuery) Lt(s margaret.Seq) error {
+	return fmt.Errorf("TODO: implement lt")
 	if qry.lt != margaret.SeqEmpty {
 		return errors.Errorf("upper bound already set")
 	}
@@ -55,6 +58,7 @@ func (qry *lfoQuery) Lt(s margaret.Seq) error {
 }
 
 func (qry *lfoQuery) Lte(s margaret.Seq) error {
+	return fmt.Errorf("TODO: implement lte")
 	if qry.lt != margaret.SeqEmpty {
 		return errors.Errorf("upper bound already set")
 	}
