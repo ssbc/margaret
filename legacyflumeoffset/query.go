@@ -2,11 +2,11 @@ package legacyflumeoffset
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
 
-	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
@@ -29,7 +29,7 @@ type lfoQuery struct {
 func (qry *lfoQuery) Gt(s margaret.Seq) error {
 	return fmt.Errorf("TODO: implement gt")
 	if qry.nextOfst > margaret.SeqEmpty {
-		return errors.Errorf("lower bound already set")
+		return fmt.Errorf("lower bound already set")
 	}
 
 	// TODO: seek to the next entry correctly
@@ -40,7 +40,7 @@ func (qry *lfoQuery) Gt(s margaret.Seq) error {
 func (qry *lfoQuery) Gte(s margaret.Seq) error {
 	return fmt.Errorf("TODO: implement gte")
 	if qry.nextOfst > margaret.SeqEmpty {
-		return errors.Errorf("lower bound already set")
+		return fmt.Errorf("lower bound already set")
 	}
 
 	qry.nextOfst = margaret.BaseSeq(s.Seq())
@@ -50,7 +50,7 @@ func (qry *lfoQuery) Gte(s margaret.Seq) error {
 func (qry *lfoQuery) Lt(s margaret.Seq) error {
 	return fmt.Errorf("TODO: implement lt")
 	if qry.lt != margaret.SeqEmpty {
-		return errors.Errorf("upper bound already set")
+		return fmt.Errorf("upper bound already set")
 	}
 
 	qry.lt = margaret.BaseSeq(s.Seq())
@@ -60,7 +60,7 @@ func (qry *lfoQuery) Lt(s margaret.Seq) error {
 func (qry *lfoQuery) Lte(s margaret.Seq) error {
 	return fmt.Errorf("TODO: implement lte")
 	if qry.lt != margaret.SeqEmpty {
-		return errors.Errorf("upper bound already set")
+		return fmt.Errorf("upper bound already set")
 	}
 
 	// TODO: seek to the previous entry correctly
@@ -102,7 +102,7 @@ func (qry *lfoQuery) Reverse(yes bool) error {
 // 	}
 // 	currSeq, ok := v.(margaret.Seq)
 // 	if !ok {
-// 		return errors.Errorf("setCursorToLast: failed to establish current value")
+// 		return fmt.Errorf("setCursorToLast: failed to establish current value")
 // 	}
 // 	qry.nextOfst = margaret.BaseSeq(currSeq.Seq())
 // 	return nil
@@ -132,12 +132,12 @@ func (qry *lfoQuery) Next(ctx context.Context) (interface{}, error) {
 	}
 
 	v, sz, err := qry.log.readOffset(qry.nextOfst)
-	if errors.Cause(err) == io.EOF {
+	if errors.Is(err, io.EOF) {
 		if qry.live {
 			return nil, fmt.Errorf("live not supported")
 		}
 		return v, luigi.EOS{}
-	} else if errors.Cause(err) == margaret.ErrNulled {
+	} else if errors.Is(err, margaret.ErrNulled) {
 		// TODO: qry.skipNulled
 		qry.nextOfst = margaret.BaseSeq(qry.nextOfst.Seq() + int64(sz))
 		return margaret.ErrNulled, nil

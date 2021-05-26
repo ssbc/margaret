@@ -14,12 +14,13 @@ package legacyflumeoffset
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sync"
 
-	"github.com/pkg/errors"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 )
@@ -55,16 +56,16 @@ func (l *Log) Seq() luigi.Observable {
 func (log *Log) readOffset(ofst margaret.Seq) (interface{}, uint32, error) {
 	r, entryLen, err := log.dataReader(ofst)
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "error getting reader for ofst:%d", ofst.Seq())
+		return nil, 0, fmt.Errorf("error getting reader for ofst:%d: %w", ofst.Seq(), err)
 	}
 
 	dec := log.codec.NewDecoder(r)
 	v, err := dec.Decode()
 	if err != nil {
-		if errors.Cause(err) == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return v, 0, luigi.EOS{}
 		}
-		return nil, 0, errors.Wrapf(err, "error decoding data for ofst:%d", ofst.Seq())
+		return nil, 0, fmt.Errorf("error decoding data for ofst:%d: %w", ofst.Seq(), err)
 	}
 	return v, entryLen, nil
 }
@@ -121,7 +122,7 @@ func (log *Log) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	}
 
 	if qry.reverse && qry.live {
-		return nil, errors.Errorf("offset2: can't do reverse and live")
+		return nil, errors.New("offset2: can't do reverse and live")
 	}
 
 	return qry, nil
