@@ -4,7 +4,7 @@ package offset2 // import "go.cryptoscope.co/margaret/offset2"
 
 import (
 	"context"
-	stderrs "errors"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,8 +13,6 @@ import (
 
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-
-	"github.com/pkg/errors"
 )
 
 type offsetQuery struct {
@@ -34,7 +32,7 @@ type offsetQuery struct {
 
 func (qry *offsetQuery) Gt(s margaret.Seq) error {
 	if qry.nextSeq > margaret.SeqEmpty {
-		return errors.Errorf("lower bound already set")
+		return fmt.Errorf("lower bound already set")
 	}
 
 	qry.nextSeq = margaret.BaseSeq(s.Seq() + 1)
@@ -43,7 +41,7 @@ func (qry *offsetQuery) Gt(s margaret.Seq) error {
 
 func (qry *offsetQuery) Gte(s margaret.Seq) error {
 	if qry.nextSeq > margaret.SeqEmpty {
-		return errors.Errorf("lower bound already set")
+		return fmt.Errorf("lower bound already set")
 	}
 
 	qry.nextSeq = margaret.BaseSeq(s.Seq())
@@ -52,7 +50,7 @@ func (qry *offsetQuery) Gte(s margaret.Seq) error {
 
 func (qry *offsetQuery) Lt(s margaret.Seq) error {
 	if qry.lt != margaret.SeqEmpty {
-		return errors.Errorf("upper bound already set")
+		return fmt.Errorf("upper bound already set")
 	}
 
 	qry.lt = margaret.BaseSeq(s.Seq())
@@ -61,7 +59,7 @@ func (qry *offsetQuery) Lt(s margaret.Seq) error {
 
 func (qry *offsetQuery) Lte(s margaret.Seq) error {
 	if qry.lt != margaret.SeqEmpty {
-		return errors.Errorf("upper bound already set")
+		return fmt.Errorf("upper bound already set")
 	}
 
 	qry.lt = margaret.BaseSeq(s.Seq() + 1)
@@ -96,11 +94,11 @@ func (qry *offsetQuery) Reverse(yes bool) error {
 func (qry *offsetQuery) setCursorToLast() error {
 	v, err := qry.log.seq.Value()
 	if err != nil {
-		return errors.Wrap(err, "setCursorToLast: failed to establish current value")
+		return fmt.Errorf("setCursorToLast: failed to establish current value: %w", err)
 	}
 	currSeq, ok := v.(margaret.Seq)
 	if !ok {
-		return errors.Errorf("setCursorToLast: failed to establish current value")
+		return fmt.Errorf("setCursorToLast: failed to establish current value")
 	}
 	qry.nextSeq = margaret.BaseSeq(currSeq.Seq())
 	return nil
@@ -130,7 +128,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	}
 
 	v, err := qry.log.readFrame(qry.nextSeq)
-	if errors.Cause(err) == io.EOF {
+	if errors.Is(err, io.EOF) {
 		if !qry.live {
 			return nil, luigi.EOS{}
 		}
@@ -164,7 +162,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if errors.Cause(err) == margaret.ErrNulled {
+	} else if errors.Is(err, margaret.ErrNulled) {
 		// TODO: qry.skipNulled
 		qry.nextSeq++
 		return margaret.ErrNulled, nil
@@ -175,7 +173,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 	// we waited until the value is in the log - now read it again
 
 	v, err = qry.log.readFrame(qry.nextSeq)
-	if errors.Cause(err) == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return nil, io.ErrUnexpectedEOF
 	} else if err != nil {
 		return nil, err
@@ -201,7 +199,7 @@ func (qry *offsetQuery) Push(ctx context.Context, sink luigi.Sink) error {
 	// then hooks us into the live log updater.
 	cancel, err := qry.fastFwdPush(ctx, sink)
 	if err != nil {
-		return errors.Wrap(err, "error in fast forward")
+		return err
 	}
 
 	defer cancel()
@@ -246,15 +244,14 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		//     i.e. don't use ReadAt but have a separate fd just for this query
 		//     and just Read that.
 		v, err := qry.log.readFrame(qry.nextSeq)
-		if errors.Cause(err) == margaret.ErrNulled {
+		if errors.Is(err, margaret.ErrNulled) {
 			// TODO: if qry.skipNulls
 			v = margaret.ErrNulled
 		} else if err != nil {
-			cerr := errors.Cause(err)
-			if cerr != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				var perr *os.PathError
-				if stderrs.As(cerr, &perr) {
-					if perr.Op == "seek" && (stderrs.Is(perr.Err, syscall.EINVAL) || stderrs.Is(perr.Err, os.ErrInvalid)) {
+				if errors.As(err, &perr) {
+					if perr.Op == "seek" && (errors.Is(perr.Err, syscall.EINVAL) || errors.Is(perr.Err, os.ErrInvalid)) {
 						// seeked passed the end == EOF
 						break
 					}
@@ -269,7 +266,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		}
 		err = sink.Pour(ctx, v)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error pouring read value of seq:%d", qry.nextSeq)
+			return nil, fmt.Errorf("error pouring read value of seq(%d): %w", qry.nextSeq, err)
 		}
 
 		if qry.reverse {
@@ -318,7 +315,11 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 			v = sw
 		}
 
-		return errors.Wrap(sink.Pour(ctx, v), "offset2/push qry: pour of next live value failed")
+		if err := sink.Pour(ctx, v); err != nil {
+			return fmt.Errorf("offset2/push qry: pour of next live value failed: %w", err)
+		}
+
+		return nil
 	})))
 
 	return cancel, nil

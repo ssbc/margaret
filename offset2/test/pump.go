@@ -109,7 +109,7 @@ func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {
 			if tc.live {
 				a.Equal(context.Canceled, err, "stream copy error")
 			} else {
-				a.Equal(nil, err, "stream copy error")
+				a.NoError(err, "stream copy error")
 			}
 		}
 	}

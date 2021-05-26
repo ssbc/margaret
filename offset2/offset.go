@@ -4,10 +4,10 @@ package offset2
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"os"
 
-	"github.com/pkg/errors"
 	"go.cryptoscope.co/margaret"
 )
 
@@ -18,18 +18,21 @@ type offset struct {
 func (o *offset) readOffset(seq margaret.Seq) (int64, error) {
 	_, err := o.Seek(seq.Seq()*8, io.SeekStart)
 	if err != nil {
-		return 0, errors.Wrap(err, "seek failed")
+		return -1, fmt.Errorf("seek failed:%w", err)
 	}
 
 	var ofst int64
 	err = binary.Read(o, binary.BigEndian, &ofst)
-	return ofst, errors.Wrapf(err, "error reading offset %d", seq.Seq())
+	if err != nil {
+		return -1, fmt.Errorf("error reading offset %d: %w", seq.Seq(), err)
+	}
+	return ofst, nil
 }
 
 func (o *offset) readLastOffset() (int64, margaret.Seq, error) {
 	stat, err := o.Stat()
 	if err != nil {
-		return 0, margaret.SeqEmpty, errors.Wrap(err, "stat failed")
+		return 0, margaret.SeqEmpty, fmt.Errorf("stat failed:%w", err)
 	}
 
 	sz := stat.Size()
@@ -44,7 +47,7 @@ func (o *offset) readLastOffset() (int64, margaret.Seq, error) {
 	var ofstData int64
 	err = binary.Read(io.NewSectionReader(o, sz-8, 8), binary.BigEndian, &ofstData)
 	if err != nil {
-		return 0, margaret.SeqEmpty, errors.Wrap(err, "error reading entry")
+		return 0, margaret.SeqEmpty, fmt.Errorf("error reading entry:%w", err)
 	}
 
 	return ofstData, seqOfst, nil
@@ -52,11 +55,14 @@ func (o *offset) readLastOffset() (int64, margaret.Seq, error) {
 
 func (o *offset) append(ofst int64) (margaret.Seq, error) {
 	ofstOfst, err := o.Seek(0, io.SeekEnd)
-	seq := margaret.BaseSeq(ofstOfst / 8)
 	if err != nil {
-		return seq, errors.Wrap(err, "could not seek to end of file")
+		return margaret.SeqEmpty, fmt.Errorf("could not seek to end of file:%w", err)
 	}
+	seq := margaret.BaseSeq(ofstOfst / 8)
 
 	err = binary.Write(o, binary.BigEndian, ofst)
-	return seq, errors.Wrap(err, "error writing offset")
+	if err != nil {
+		return margaret.SeqEmpty, fmt.Errorf("error writing offset:%w", err)
+	}
+	return seq, nil
 }

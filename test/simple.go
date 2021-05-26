@@ -4,12 +4,12 @@ package test // import "go.cryptoscope.co/margaret/test"
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -109,7 +109,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			v, err := src.Next(ctx)
 			if !tc.live && !luigi.IsEOS(err) {
 				t.Errorf("expected end-of-stream but got %+v (value: %v)", err, v)
-			} else if tc.live && errors.Cause(err) != context.Canceled {
+			} else if tc.live && !errors.Is(err, context.Canceled) {
 				t.Errorf("expected context canceled but got %v, %+v", v, err)
 			}
 
