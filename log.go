@@ -3,7 +3,8 @@
 package margaret // import "go.cryptoscope.co/margaret"
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+
 	"go.cryptoscope.co/luigi"
 )
 
@@ -43,19 +44,8 @@ type Alterer interface {
 	Replace(Seq, []byte) error
 }
 
-type errNulled bool
-
-var ErrNulled errNulled
-
-func (errNulled) Error() string {
-	return "margaret: Entry Nulled"
-}
+var ErrNulled = errors.New("margaret: Entry Nulled")
 
 func IsErrNulled(err error) bool {
-	switch errors.Cause(err).(type) {
-	case errNulled:
-		return true
-	default:
-		return false
-	}
+	return errors.Is(err, ErrNulled)
 }

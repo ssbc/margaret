@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/luigi"
@@ -121,8 +120,7 @@ func replaceOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 		i = 0
 		for {
 			v, err := src.Next(ctx)
-			// fmt.Println(i, v, err)
-			if luigi.IsEOS(errors.Cause(err)) {
+			if luigi.IsEOS(err) {
 				break
 			}
 			te, ok := v.(*testEvent)

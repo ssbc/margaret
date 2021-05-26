@@ -4,12 +4,12 @@ package offset2
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/luigi"
@@ -79,8 +79,8 @@ func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 		for i := 0; i < len(tevs); i++ {
 			v, err := log.Get(margaret.BaseSeq(i))
 			if int64(i) == nullSeq.Seq() {
-				// r.Error(err)
-				r.EqualError(margaret.ErrNulled, errors.Cause(err).Error())
+				r.True(errors.Is(err, margaret.ErrNulled))
+				r.True(margaret.IsErrNulled(err))
 				r.Nil(v)
 			} else {
 				r.NoError(err, "error reopening log")
@@ -122,7 +122,7 @@ func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 		for {
 			v, err := src.Next(ctx)
 			// fmt.Println(i, v, err)
-			if luigi.IsEOS(errors.Cause(err)) {
+			if luigi.IsEOS(err) {
 				break
 			}
 			if int64(i) == nullSeq.Seq() {
