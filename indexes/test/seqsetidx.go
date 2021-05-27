@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/margaret"
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
-type NewSeqSetterIndexFunc func(name string, tipe interface{}) (librarian.SeqSetterIndex, error)
+type NewSeqSetterIndexFunc func(name string, tipe interface{}) (indexes.SeqSetterIndex, error)
 
 func TestSeqSetterIndex(newIdx NewSeqSetterIndexFunc) func(*testing.T) {
 	return func(t *testing.T) {

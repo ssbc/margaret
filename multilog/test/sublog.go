@@ -13,14 +13,14 @@ import (
 
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 	type testcase struct {
 		tipe    interface{}
 		specs   []margaret.QuerySpec
-		values  map[librarian.Addr][]interface{}
+		values  map[indexes.Addr][]interface{}
 		errStr  string
 		live    bool
 		seqWrap bool
@@ -135,26 +135,26 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 			tipe:  margaret.BaseSeq(0),
 			specs: []margaret.QuerySpec{margaret.Live(true)},
 			live:  true,
-			values: map[librarian.Addr][]interface{}{
-				librarian.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
-				librarian.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},
-				librarian.Addr([]byte{0, 0, 0, 4}):  []interface{}{4, 8, 12, 16},
-				librarian.Addr([]byte{0, 0, 0, 5}):  []interface{}{5, 10, 15},
-				librarian.Addr([]byte{0, 0, 0, 6}):  []interface{}{6, 12, 18},
-				librarian.Addr([]byte{0, 0, 0, 7}):  []interface{}{7, 14},
-				librarian.Addr([]byte{0, 0, 0, 8}):  []interface{}{8, 16},
-				librarian.Addr([]byte{0, 0, 0, 9}):  []interface{}{9, 18},
-				librarian.Addr([]byte{0, 0, 0, 10}): []interface{}{10},
-				librarian.Addr([]byte{0, 0, 0, 11}): []interface{}{11},
-				librarian.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
-				librarian.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
-				librarian.Addr([]byte{0, 0, 0, 13}): []interface{}{13},
-				librarian.Addr([]byte{0, 0, 0, 14}): []interface{}{14},
-				librarian.Addr([]byte{0, 0, 0, 15}): []interface{}{15},
-				librarian.Addr([]byte{0, 0, 0, 16}): []interface{}{16},
-				librarian.Addr([]byte{0, 0, 0, 17}): []interface{}{17},
-				librarian.Addr([]byte{0, 0, 0, 18}): []interface{}{18},
-				librarian.Addr([]byte{0, 0, 0, 19}): []interface{}{19},
+			values: map[indexes.Addr][]interface{}{
+				indexes.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
+				indexes.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},
+				indexes.Addr([]byte{0, 0, 0, 4}):  []interface{}{4, 8, 12, 16},
+				indexes.Addr([]byte{0, 0, 0, 5}):  []interface{}{5, 10, 15},
+				indexes.Addr([]byte{0, 0, 0, 6}):  []interface{}{6, 12, 18},
+				indexes.Addr([]byte{0, 0, 0, 7}):  []interface{}{7, 14},
+				indexes.Addr([]byte{0, 0, 0, 8}):  []interface{}{8, 16},
+				indexes.Addr([]byte{0, 0, 0, 9}):  []interface{}{9, 18},
+				indexes.Addr([]byte{0, 0, 0, 10}): []interface{}{10},
+				indexes.Addr([]byte{0, 0, 0, 11}): []interface{}{11},
+				indexes.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
+				indexes.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
+				indexes.Addr([]byte{0, 0, 0, 13}): []interface{}{13},
+				indexes.Addr([]byte{0, 0, 0, 14}): []interface{}{14},
+				indexes.Addr([]byte{0, 0, 0, 15}): []interface{}{15},
+				indexes.Addr([]byte{0, 0, 0, 16}): []interface{}{16},
+				indexes.Addr([]byte{0, 0, 0, 17}): []interface{}{17},
+				indexes.Addr([]byte{0, 0, 0, 18}): []interface{}{18},
+				indexes.Addr([]byte{0, 0, 0, 19}): []interface{}{19},
 			},
 		},
 	}

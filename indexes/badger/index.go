@@ -18,9 +18,9 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
 
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 // badger starts to complain >100k
@@ -34,7 +34,7 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
-		log.Println("[librarian/badger] overwrote batch limit", parsed)
+		log.Println("[margaret/indexes/badger] overwrote batch limit", parsed)
 		batchFullLimit = uint32(parsed)
 	}
 }
@@ -58,14 +58,23 @@ type index struct {
 
 	nextbatch []setOp
 
-	db *badger.DB
+	db        *badger.DB
+	keyPrefix []byte
 
-	obvs   map[librarian.Addr]luigi.Observable
+	obvs   map[indexes.Addr]luigi.Observable
 	tipe   interface{}
 	curSeq margaret.BaseSeq
 }
 
-func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
+func NewIndex(db *badger.DB, tipe interface{}) indexes.SeqSetterIndex {
+	return newIndex(db, tipe, []byte{})
+}
+
+func NewIndexWithKeyPrefix(db *badger.DB, tipe interface{}, keyPrefix []byte) indexes.SeqSetterIndex {
+	return newIndex(db, tipe, keyPrefix)
+}
+
+func newIndex(db *badger.DB, tipe interface{}, keyPrefix []byte) indexes.SeqSetterIndex {
 	ctx, cancel := context.WithCancel(context.TODO())
 	idx := &index{
 		stop:    cancel,
@@ -80,9 +89,11 @@ func NewIndex(db *badger.DB, tipe interface{}) librarian.SeqSetterIndex {
 		batchFullLimit:  batchFullLimit,
 		nextbatch:       make([]setOp, 0),
 
+		keyPrefix: keyPrefix,
+
 		db:     db,
 		tipe:   tipe,
-		obvs:   make(map[librarian.Addr]luigi.Observable),
+		obvs:   make(map[indexes.Addr]luigi.Observable),
 		curSeq: margaret.BaseSeq(-2),
 	}
 	go idx.writeBatches()
@@ -109,11 +120,13 @@ func (idx *index) Close() error {
 
 	err := idx.flushBatch()
 	if err != nil {
-		return fmt.Errorf("librarian/badger: failed to flush remaining batched operations: %w", err)
+		return fmt.Errorf("margaret/indexes/badger: failed to flush remaining batched operations: %w", err)
 	}
 
-	if err := idx.db.Close(); err != nil {
-		return fmt.Errorf("librarian/badger: failed to close backing store: %w", err)
+	if len(idx.keyPrefix) == 0 {
+		if err := idx.db.Close(); err != nil {
+			return fmt.Errorf("margaret/indexes/badger: failed to close backing store: %w", err)
+		}
 	}
 
 	return nil
@@ -182,13 +195,13 @@ func (idx *index) writeBatches() {
 		err := idx.flushBatch()
 		if err != nil {
 			// TODO: maybe set error and stop further writes?
-			log.Println("librarian: flushing failed", err)
+			log.Println("margaret/indexes: flushing failed", err)
 		}
 		idx.l.Unlock()
 	}
 }
 
-func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observable, error) {
+func (idx *index) Get(ctx context.Context, addr indexes.Addr) (luigi.Observable, error) {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
@@ -205,7 +218,8 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 	v := reflect.New(t).Interface()
 
 	err := idx.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(addr))
+		dbKey := append(idx.keyPrefix, addr...)
+		item, err := txn.Get(dbKey)
 		if err != nil {
 			return fmt.Errorf("error getting item: %w", err)
 		}
@@ -242,9 +256,9 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 	}
 
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		obv = librarian.NewObservable(librarian.UnsetValue{Addr: addr}, idx.deleter(addr))
+		obv = indexes.NewObservable(indexes.UnsetValue{Addr: addr}, idx.deleter(addr))
 	} else {
-		obv = librarian.NewObservable(v, idx.deleter(addr))
+		obv = indexes.NewObservable(v, idx.deleter(addr))
 	}
 
 	idx.obvs[addr] = obv
@@ -252,13 +266,13 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 	return roObv{obv}, nil
 }
 
-func (idx *index) deleter(addr librarian.Addr) func() {
+func (idx *index) deleter(addr indexes.Addr) func() {
 	return func() {
 		delete(idx.obvs, addr)
 	}
 }
 
-func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) error {
+func (idx *index) Set(ctx context.Context, addr indexes.Addr, v interface{}) error {
 	var (
 		raw []byte
 		err error
@@ -275,11 +289,11 @@ func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) e
 			return fmt.Errorf("error marshaling value using json marshaler: %w", err)
 		}
 	}
-
 	idx.l.Lock()
 	defer idx.l.Unlock()
+	dbKey := append(idx.keyPrefix, addr...)
 	batchedOp := setOp{
-		addr: []byte(addr),
+		addr: dbKey,
 		val:  raw,
 	}
 	idx.nextbatch = append(idx.nextbatch, batchedOp)
@@ -302,9 +316,10 @@ func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) e
 	return nil
 }
 
-func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
+func (idx *index) Delete(ctx context.Context, addr indexes.Addr) error {
 	err := idx.db.Update(func(txn *badger.Txn) error {
-		err := txn.Delete([]byte(addr))
+		dbKey := append(idx.keyPrefix, addr...)
+		err := txn.Delete(dbKey)
 		if err != nil {
 			return fmt.Errorf("error deleting item: %w", err)
 		}
@@ -319,7 +334,7 @@ func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
 
 	obv, ok := idx.obvs[addr]
 	if ok {
-		err = obv.Set(librarian.UnsetValue{Addr: addr})
+		err = obv.Set(indexes.UnsetValue{Addr: addr})
 		if err != nil {
 			return fmt.Errorf("error setting value in observable: %w", err)
 		}
@@ -347,7 +362,8 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 	}
 
 	err := idx.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(addr))
+		dbKey := append(idx.keyPrefix, addr...)
+		item, err := txn.Get(dbKey)
 		if err != nil {
 			return fmt.Errorf("error getting item: %w", err)
 		}

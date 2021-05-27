@@ -35,7 +35,6 @@ func (r *sinkIndex) QuerySpec() margaret.QuerySpec {
 }
 
 func (idx *sinkIndex) Pour(ctx context.Context, v interface{}) error {
-
 	switch tv := v.(type) {
 	case margaret.SeqWrapper:
 		err := idx.f(ctx, tv.Seq(), tv.Value(), idx.idx)

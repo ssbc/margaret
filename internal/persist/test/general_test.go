@@ -120,9 +120,9 @@ func makeFS(t *testing.T) persist.Saver {
 
 func makeBadger(t *testing.T) persist.Saver {
 	base := filepath.Join("testrun", t.Name())
-	//os.RemoveAll(base)
+	os.RemoveAll(base)
 	t.Log(base)
-	s, err := badger.New(base)
+	s, err := badger.NewStandalone(base)
 	if err != nil {
 		t.Fatal(err)
 	}

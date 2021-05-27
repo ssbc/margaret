@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/luigi"
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
-type NewSetterIndexFunc func(name string, tipe interface{}) (librarian.SetterIndex, error)
+type NewSetterIndexFunc func(name string, tipe interface{}) (indexes.SetterIndex, error)
 
 func TestSetterIndex(newIdx NewSetterIndexFunc) func(*testing.T) {
 	return func(t *testing.T) {
@@ -58,11 +58,11 @@ func TestSetterIndexObservable(newIdx NewSetterIndexFunc) func(*testing.T) {
 		first := make(chan struct{})
 		closed := make(chan struct{})
 		rxExp := []interface{}{
-			librarian.UnsetValue{"test"},
+			indexes.UnsetValue{"test"},
 			"omg what is this",
 			"so rad",
 			"wowzers",
-			librarian.UnsetValue{"test"},
+			indexes.UnsetValue{"test"},
 		}
 
 		var cancel func()

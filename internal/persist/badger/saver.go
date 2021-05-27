@@ -3,20 +3,41 @@
 package badger
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+
 	"github.com/dgraph-io/badger/v3"
 	"go.cryptoscope.co/margaret/internal/persist"
 )
 
-func (s ModernSaver) Put(key persist.Key, data []byte) error {
+func (s BadgerSaver) Put(key persist.Key, data []byte) error {
+	actualKey := append(s.keyPrefix, []byte(key)...)
+
 	return s.db.Update(func(txn *badger.Txn) error {
-		return txn.Set(key, data)
+		return txn.Set(actualKey, data)
 	})
 }
 
-func (s ModernSaver) Get(key persist.Key) ([]byte, error) {
+func (s BadgerSaver) PutMultiple(values []persist.KeyValuePair) error {
+	return s.db.Update(func(txn *badger.Txn) error {
+		for i, kv := range values {
+			actualKey := append(s.keyPrefix, []byte(kv.Key)...)
+			err := txn.Set(actualKey, kv.Value)
+			if err != nil {
+				return fmt.Errorf("badger/putMultiple: failed to set entry %d (%s): %w", i, kv.Key, err)
+			}
+		}
+		return nil
+	})
+}
+
+func (s BadgerSaver) Get(key persist.Key) ([]byte, error) {
+	actualKey := append(s.keyPrefix, []byte(key)...)
+
 	var data []byte
 	err := s.db.View(func(txn *badger.Txn) error {
-		it, err := txn.Get(key)
+		it, err := txn.Get(actualKey)
 		if err != nil {
 			return err
 		}
@@ -27,7 +48,10 @@ func (s ModernSaver) Get(key persist.Key) ([]byte, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, persist.ErrNotFound
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return nil, persist.ErrNotFound
+		}
+		return nil, err
 	}
 
 	if len(data) == 0 {
@@ -37,8 +61,7 @@ func (s ModernSaver) Get(key persist.Key) ([]byte, error) {
 	return data, nil
 }
 
-func (s ModernSaver) List() ([]persist.Key, error) {
-
+func (s BadgerSaver) List() ([]persist.Key, error) {
 	var keys []persist.Key
 
 	err := s.db.Update(func(txn *badger.Txn) error {
@@ -49,18 +72,31 @@ func (s ModernSaver) List() ([]persist.Key, error) {
 			it := iter.Item()
 
 			k := it.Key()
-			keys = append(keys, persist.Key(k))
+
+			if !bytes.HasPrefix(k, s.keyPrefix) {
+				continue
+			}
+
+			k = bytes.TrimPrefix(k, s.keyPrefix)
+
+			// we need to make a copy of the key since badger reuses the slice on the next iteration
+			var trimmedKey = make([]byte, len(k))
+			copy(trimmedKey, k)
+
+			keys = append(keys, persist.Key(trimmedKey))
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	return keys, nil
 }
 
-func (s ModernSaver) Delete(rm persist.Key) error {
+func (s BadgerSaver) Delete(rm persist.Key) error {
+	actualKey := append(s.keyPrefix, []byte(rm)...)
 	return s.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete(rm)
+		return txn.Delete(actualKey)
 	})
 }

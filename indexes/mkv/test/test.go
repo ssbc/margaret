@@ -10,13 +10,13 @@ import (
 
 	"modernc.org/kv"
 
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 	libmkv "go.cryptoscope.co/margaret/indexes/mkv"
 	"go.cryptoscope.co/margaret/indexes/test"
 )
 
 func init() {
-	newSeqSetterIdx := func(name string, tipe interface{}) (librarian.SeqSetterIndex, error) {
+	newSeqSetterIdx := func(name string, tipe interface{}) (indexes.SeqSetterIndex, error) {
 		os.RemoveAll("testrun")
 		os.MkdirAll("testrun", 0700)
 		dir, err := ioutil.TempDir("./testrun", "mkv")
@@ -34,7 +34,7 @@ func init() {
 	}
 
 	toSetterIdx := func(f test.NewSeqSetterIndexFunc) test.NewSetterIndexFunc {
-		return func(name string, tipe interface{}) (librarian.SetterIndex, error) {
+		return func(name string, tipe interface{}) (indexes.SetterIndex, error) {
 			idx, err := f(name, tipe)
 			return idx, err
 		}

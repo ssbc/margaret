@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
@@ -28,7 +28,7 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 		r.NoError(err, "error listing mlog")
 		r.Len(addrs, 0)
 
-		testLogs := map[librarian.Addr][]margaret.BaseSeq{
+		testLogs := map[indexes.Addr][]margaret.BaseSeq{
 			"fii": []margaret.BaseSeq{1, 2, 3},
 			"faa": []margaret.BaseSeq{100, 200, 300},
 			"foo": []margaret.BaseSeq{4, 5, 6},
@@ -50,13 +50,13 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 			r.EqualValues(v, len(vals)-1)
 		}
 
-		logOfFaa, err := mlog.Get(librarian.Addr("faa"))
+		logOfFaa, err := mlog.Get(indexes.Addr("faa"))
 		r.NoError(err)
 
 		// produce new values in the background
 		go func() {
 			time.Sleep(time.Second / 10)
-			slog, err := mlog.Get(librarian.Addr("faa"))
+			slog, err := mlog.Get(indexes.Addr("faa"))
 			if err != nil {
 				panic(err)
 			}

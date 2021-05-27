@@ -18,7 +18,7 @@ import (
 
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 	"go.cryptoscope.co/margaret/multilog"
 )
 
@@ -28,7 +28,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 		values  []interface{}
 		specs   []margaret.QuerySpec
 		f       func(t *testing.T) multilog.Func
-		result  map[librarian.Addr][]interface{}
+		result  map[indexes.Addr][]interface{}
 		errStr  string
 		live    bool
 		seqWrap bool
@@ -172,7 +172,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 					for _, fac := range facs {
 						prefixBs := make([]byte, 4)
 						binary.BigEndian.PutUint32(prefixBs, uint32(fac))
-						prefix := librarian.Addr(prefixBs)
+						prefix := indexes.Addr(prefixBs)
 
 						var slog margaret.Log
 						slog, err = mlog.Get(prefix)
@@ -194,15 +194,15 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 			},
 			specs: []margaret.QuerySpec{margaret.Live(true)},
 			live:  true,
-			result: map[librarian.Addr][]interface{}{
-				librarian.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
-				librarian.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},
-				librarian.Addr([]byte{0, 0, 0, 5}):  []interface{}{5, 10, 15},
-				librarian.Addr([]byte{0, 0, 0, 7}):  []interface{}{7, 14},
-				librarian.Addr([]byte{0, 0, 0, 11}): []interface{}{11},
-				librarian.Addr([]byte{0, 0, 0, 13}): []interface{}{13},
-				librarian.Addr([]byte{0, 0, 0, 17}): []interface{}{17},
-				librarian.Addr([]byte{0, 0, 0, 19}): []interface{}{19},
+			result: map[indexes.Addr][]interface{}{
+				indexes.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
+				indexes.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},
+				indexes.Addr([]byte{0, 0, 0, 5}):  []interface{}{5, 10, 15},
+				indexes.Addr([]byte{0, 0, 0, 7}):  []interface{}{7, 14},
+				indexes.Addr([]byte{0, 0, 0, 11}): []interface{}{11},
+				indexes.Addr([]byte{0, 0, 0, 13}): []interface{}{13},
+				indexes.Addr([]byte{0, 0, 0, 17}): []interface{}{17},
+				indexes.Addr([]byte{0, 0, 0, 19}): []interface{}{19},
 			},
 		},
 	}

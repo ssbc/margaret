@@ -4,6 +4,7 @@ package fs
 
 import (
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -44,6 +45,17 @@ func (s Saver) Put(key persist.Key, data []byte) error {
 		return errors.Wrap(err, "roaringfiles: file write failed")
 	}
 	return nil
+}
+
+func (s Saver) PutMultiple(values []persist.KeyValuePair) error {
+	for i, kv := range values {
+		err := s.Put(kv.Key, kv.Value)
+		if err != nil {
+			return fmt.Errorf("roaringfiles/putMultiple: failed to set entry %d (%s): %w", i, kv.Key, err)
+		}
+	}
+	return nil
+
 }
 
 func (s Saver) Get(key persist.Key) ([]byte, error) {

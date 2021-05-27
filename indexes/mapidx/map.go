@@ -9,20 +9,19 @@ import (
 
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 // New returns a new map based index
-func New() librarian.SeqSetterIndex {
+func New() indexes.SeqSetterIndex {
 	return &mapSetterIndex{
-		m:      make(map[librarian.Addr]luigi.Observable),
+		m:      make(map[indexes.Addr]luigi.Observable),
 		curSeq: margaret.SeqEmpty,
 	}
 }
 
 type mapSetterIndex struct {
-	m      map[librarian.Addr]luigi.Observable
+	m      map[indexes.Addr]luigi.Observable
 	curSeq margaret.Seq
 	l      sync.Mutex
 }
@@ -30,7 +29,7 @@ type mapSetterIndex struct {
 func (idx *mapSetterIndex) Flush() error { return nil }
 func (idx *mapSetterIndex) Close() error { return nil }
 
-func (idx *mapSetterIndex) Get(_ context.Context, addr librarian.Addr) (luigi.Observable, error) {
+func (idx *mapSetterIndex) Get(_ context.Context, addr indexes.Addr) (luigi.Observable, error) {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
@@ -39,13 +38,13 @@ func (idx *mapSetterIndex) Get(_ context.Context, addr librarian.Addr) (luigi.Ob
 		return obv, nil
 	}
 
-	obv = luigi.NewObservable(librarian.UnsetValue{Addr: addr})
+	obv = luigi.NewObservable(indexes.UnsetValue{Addr: addr})
 	idx.m[addr] = obv
 
 	return obv, nil
 }
 
-func (idx *mapSetterIndex) Set(_ context.Context, addr librarian.Addr, v interface{}) error {
+func (idx *mapSetterIndex) Set(_ context.Context, addr indexes.Addr, v interface{}) error {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
@@ -64,13 +63,13 @@ func (idx *mapSetterIndex) Set(_ context.Context, addr librarian.Addr, v interfa
 	return nil
 }
 
-func (idx *mapSetterIndex) Delete(_ context.Context, addr librarian.Addr) error {
+func (idx *mapSetterIndex) Delete(_ context.Context, addr indexes.Addr) error {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
 	obv, ok := idx.m[addr]
 	if ok {
-		err := obv.Set(librarian.UnsetValue{Addr: addr})
+		err := obv.Set(indexes.UnsetValue{Addr: addr})
 		if err != nil {
 			return fmt.Errorf("error setting observable: %w", err)
 		}

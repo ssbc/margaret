@@ -347,11 +347,16 @@ func (log *offsetLog) Get(seq margaret.Seq) (interface{}, error) {
 	defer log.l.Unlock()
 
 	v, err := log.readFrame(seq)
-	if errors.Is(err, io.EOF) {
-		return v, luigi.EOS{}
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return v, luigi.EOS{}
+		}
+		if errors.Is(err, margaret.ErrNulled) {
+			return nil, margaret.ErrNulled
+		}
+		return nil, err
 	}
-
-	return v, err
+	return v, nil
 }
 
 // readFrame reads and parses a frame.

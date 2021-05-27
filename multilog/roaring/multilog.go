@@ -12,7 +12,7 @@ import (
 
 	"github.com/dgraph-io/sroar"
 	"go.cryptoscope.co/luigi"
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/internal/persist"
@@ -22,19 +22,19 @@ import (
 
 // NewStore returns a new multilog that is only good to store sequences
 // It uses files to store roaring bitmaps directly.
-// for this it turns the librarian.Addrs into a hex string.
+// for this it turns the indexes.Addrs into a hex string.
 func NewStore(store persist.Saver) *MultiLog {
 	ctx, cancel := context.WithCancel(context.TODO())
 	ml := &MultiLog{
 		store:   store,
 		l:       &sync.Mutex{},
-		sublogs: make(map[librarian.Addr]*sublog),
+		sublogs: make(map[indexes.Addr]*sublog),
 		curSeq:  margaret.BaseSeq(-2),
 
-		processing:   ctx,
-		done:         cancel,
-		writerClosed: make(chan struct{}),
-		tickPersist:  time.NewTicker(13 * time.Second),
+		processing:    ctx,
+		done:          cancel,
+		batcherClosed: make(chan struct{}),
+		tickPersist:   time.NewTicker(13 * time.Second),
 	}
 	go ml.writeBatches()
 	return ml
@@ -45,7 +45,7 @@ func (log *MultiLog) writeBatches() {
 		select {
 		case <-log.tickPersist.C:
 		case <-log.processing.Done():
-			close(log.writerClosed)
+			close(log.batcherClosed)
 			return
 		}
 		err := log.Flush()
@@ -62,15 +62,22 @@ func (log *MultiLog) Flush() error {
 }
 
 func (log *MultiLog) flushAllSublogs() error {
+	var dirtySublogs []persist.KeyValuePair
 	for addr, sublog := range log.sublogs {
 		if sublog.dirty {
-			err := sublog.store()
-			if err != nil {
-				return fmt.Errorf("roaringfiles: sublog(%x) store failed: %w", addr, err)
-			}
+			dirtySublogs = append(dirtySublogs, persist.KeyValuePair{
+				Key:   persist.Key(addr),
+				Value: sublog.bmap.ToBuffer(),
+			})
 			sublog.dirty = false
 		}
 	}
+
+	err := log.store.PutMultiple(dirtySublogs)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -80,24 +87,25 @@ type MultiLog struct {
 	curSeq margaret.Seq
 
 	l       *sync.Mutex
-	sublogs map[librarian.Addr]*sublog
+	sublogs map[indexes.Addr]*sublog
 
-	processing   context.Context
-	done         context.CancelFunc
-	writerClosed chan struct{}
-	tickPersist  *time.Ticker
+	processing context.Context
+	done       context.CancelFunc
+
+	batcherClosed chan struct{}
+	tickPersist   *time.Ticker
 }
 
-func (log *MultiLog) Get(addr librarian.Addr) (margaret.Log, error) {
+func (log *MultiLog) Get(addr indexes.Addr) (margaret.Log, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 	return log.openSublog(addr)
 }
 
 // openSublog alters the sublogs map, take the lock first!
-func (log *MultiLog) openSublog(addr librarian.Addr) (*sublog, error) {
-	slog := log.sublogs[addr]
-	if slog != nil {
+func (log *MultiLog) openSublog(addr indexes.Addr) (*sublog, error) {
+	slog, has := log.sublogs[addr]
+	if has {
 		return slog, nil
 	}
 
@@ -133,7 +141,7 @@ func (log *MultiLog) openSublog(addr librarian.Addr) (*sublog, error) {
 }
 
 // LoadInternalBitmap loads the raw roaringbitmap for key
-func (log *MultiLog) LoadInternalBitmap(key librarian.Addr) (*sroar.Bitmap, error) {
+func (log *MultiLog) LoadInternalBitmap(key indexes.Addr) (*sroar.Bitmap, error) {
 	if err := log.Flush(); err != nil {
 		return nil, err
 	}
@@ -141,19 +149,15 @@ func (log *MultiLog) LoadInternalBitmap(key librarian.Addr) (*sroar.Bitmap, erro
 }
 
 func (log *MultiLog) loadBitmap(key []byte) (*sroar.Bitmap, error) {
-	var r *sroar.Bitmap
-
 	data, err := log.store.Get(key)
 	if err != nil {
-		return nil, fmt.Errorf("roaringfiles: invalid stored bitfield %x: %w", key, err)
+		return nil, fmt.Errorf("roaringfiles: invalid stored bitfield %s: %w", key, err)
 	}
 
-	r = sroar.FromBuffer(data)
-
-	return r, nil
+	return sroar.FromBuffer(data), nil
 }
 
-func (log *MultiLog) Delete(addr librarian.Addr) error {
+func (log *MultiLog) Delete(addr indexes.Addr) error {
 	log.l.Lock()
 	defer log.l.Unlock()
 
@@ -167,7 +171,7 @@ func (log *MultiLog) Delete(addr librarian.Addr) error {
 }
 
 // List returns a list of all stored sublogs
-func (log *MultiLog) List() ([]librarian.Addr, error) {
+func (log *MultiLog) List() ([]indexes.Addr, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 
@@ -176,7 +180,7 @@ func (log *MultiLog) List() ([]librarian.Addr, error) {
 		return nil, err
 	}
 
-	list := make([]librarian.Addr, len(log.sublogs))
+	list := make([]indexes.Addr, len(log.sublogs))
 	i := 0
 	for addr, sublog := range log.sublogs {
 		if sublog.bmap.GetCardinality() == 0 {
@@ -196,7 +200,7 @@ func (log *MultiLog) loadAll() error {
 		return fmt.Errorf("roaringfiles: store iteration failed: %w", err)
 	}
 	for _, bk := range keys {
-		_, err := log.openSublog(librarian.Addr(bk))
+		_, err := log.openSublog(indexes.Addr(bk))
 		if err != nil {
 			return fmt.Errorf("roaringfiles: broken bitmap file (%s): %w", bk, err)
 		}
@@ -207,7 +211,7 @@ func (log *MultiLog) loadAll() error {
 func (log *MultiLog) Close() error {
 	log.done()
 	log.tickPersist.Stop()
-	<-log.writerClosed
+	<-log.batcherClosed
 
 	if err := log.Flush(); err != nil {
 		return fmt.Errorf("roaringfiles: close failed to flush: %w", err)

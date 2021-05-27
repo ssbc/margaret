@@ -13,11 +13,11 @@ import (
 
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 	mtest "go.cryptoscope.co/margaret/test"
 )
 
-type NewSinkIndexFunc func(name string, tipe interface{}, f librarian.StreamProcFunc) (librarian.SinkIndex, error)
+type NewSinkIndexFunc func(name string, tipe interface{}, f indexes.StreamProcFunc) (indexes.SinkIndex, error)
 
 func TestSinkIndex(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFunc) func(*testing.T) {
 	return func(t *testing.T) {
@@ -35,7 +35,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		var lastSeq margaret.BaseSeq = -1
 
 		// define indexing function
-		f := func(ctx context.Context, seq margaret.Seq, v interface{}, idx librarian.SetterIndex) error {
+		f := func(ctx context.Context, seq margaret.Seq, v interface{}, idx indexes.SetterIndex) error {
 			a.Equal(lastSeq+1, seq, "unexpected sequence number")
 			lastSeq++
 
@@ -53,7 +53,7 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		r.NoError(err, "error creating SeqSetterIndex")
 
 		// prepare sinkindex
-		idx := librarian.NewSinkIndex(f, seqSetIdx)
+		idx := indexes.NewSinkIndex(f, seqSetIdx)
 
 		// prepare log
 		log, err := newLog(t.Name(), "str")

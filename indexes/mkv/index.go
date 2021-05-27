@@ -14,16 +14,15 @@ import (
 
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/indexes"
 	"modernc.org/kv"
-
-	librarian "go.cryptoscope.co/margaret/indexes"
 )
 
-func NewIndex(db *kv.DB, tipe interface{}) librarian.SeqSetterIndex {
+func NewIndex(db *kv.DB, tipe interface{}) indexes.SeqSetterIndex {
 	return &index{
 		db:     db,
 		tipe:   tipe,
-		obvs:   make(map[librarian.Addr]luigi.Observable),
+		obvs:   make(map[indexes.Addr]luigi.Observable),
 		curSeq: margaret.BaseSeq(-2),
 	}
 }
@@ -31,7 +30,7 @@ func NewIndex(db *kv.DB, tipe interface{}) librarian.SeqSetterIndex {
 type index struct {
 	l      sync.Mutex
 	db     *kv.DB
-	obvs   map[librarian.Addr]luigi.Observable
+	obvs   map[indexes.Addr]luigi.Observable
 	tipe   interface{}
 	curSeq margaret.Seq
 }
@@ -40,7 +39,7 @@ func (idx *index) Flush() error { return nil }
 
 func (idx *index) Close() error { return idx.db.Close() }
 
-func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observable, error) {
+func (idx *index) Get(ctx context.Context, addr indexes.Addr) (luigi.Observable, error) {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
@@ -54,7 +53,7 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 
 	data, err := idx.db.Get(nil, []byte(addr))
 	if data == nil {
-		obv := librarian.NewObservable(librarian.UnsetValue{addr}, idx.deleter(addr))
+		obv := indexes.NewObservable(indexes.UnsetValue{addr}, idx.deleter(addr))
 		idx.obvs[addr] = obv
 		return roObv{obv}, nil
 	}
@@ -80,18 +79,18 @@ func (idx *index) Get(ctx context.Context, addr librarian.Addr) (luigi.Observabl
 		v = reflect.ValueOf(v).Elem().Interface()
 	}
 
-	obv = librarian.NewObservable(v, idx.deleter(addr))
+	obv = indexes.NewObservable(v, idx.deleter(addr))
 	idx.obvs[addr] = obv
 	return roObv{obv}, nil
 }
 
-func (idx *index) deleter(addr librarian.Addr) func() {
+func (idx *index) deleter(addr indexes.Addr) func() {
 	return func() {
 		delete(idx.obvs, addr)
 	}
 }
 
-func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) error {
+func (idx *index) Set(ctx context.Context, addr indexes.Addr, v interface{}) error {
 	var (
 		raw []byte
 		err error
@@ -128,7 +127,7 @@ func (idx *index) Set(ctx context.Context, addr librarian.Addr, v interface{}) e
 	return nil
 }
 
-func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
+func (idx *index) Delete(ctx context.Context, addr indexes.Addr) error {
 	err := idx.db.Delete([]byte(addr))
 	if err != nil {
 		return fmt.Errorf("error in store:%w", err)
@@ -139,7 +138,7 @@ func (idx *index) Delete(ctx context.Context, addr librarian.Addr) error {
 
 	obv, ok := idx.obvs[addr]
 	if ok {
-		err = obv.Set(librarian.UnsetValue{addr})
+		err = obv.Set(indexes.UnsetValue{addr})
 		if err != nil {
 			return fmt.Errorf("error setting value in observable:%w", err)
 		}
@@ -152,7 +151,7 @@ func (idx *index) SetSeq(seq margaret.Seq) error {
 	var (
 		raw  = make([]byte, 8)
 		err  error
-		addr librarian.Addr = "__current_observable"
+		addr indexes.Addr = "__current_observable"
 	)
 
 	binary.BigEndian.PutUint64(raw, uint64(seq.Seq()))

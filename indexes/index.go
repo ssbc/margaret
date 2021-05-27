@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-package indexes // import librarian "go.cryptoscope.co/margaret/indexes"
+package indexes
 
 import (
 	"context"
+	"fmt"
 
 	"io"
 
@@ -13,8 +14,11 @@ import (
 
 // Addr is an address (or key) in the index.
 // TODO maybe not use a string but a Stringer or
-// interface{ Addr() string }?
 type Addr string
+
+func (a Addr) String() string {
+	return fmt.Sprintf("index-address:%q", string(a))
+}
 
 // Index provides an index table keyed by Addr.
 // Often also implements Setter.

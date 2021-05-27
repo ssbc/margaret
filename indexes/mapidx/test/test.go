@@ -3,17 +3,17 @@
 package test
 
 import (
-	librarian "go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes"
 	"go.cryptoscope.co/margaret/indexes/mapidx"
 	"go.cryptoscope.co/margaret/indexes/test"
 )
 
 func init() {
-	newSeqSetterIdx := func(name string, tipe interface{}) (librarian.SeqSetterIndex, error) {
+	newSeqSetterIdx := func(name string, tipe interface{}) (indexes.SeqSetterIndex, error) {
 		return mapidx.New(), nil
 	}
 
-	newSetterIdx := func(name string, tipe interface{}) (librarian.SetterIndex, error) {
+	newSetterIdx := func(name string, tipe interface{}) (indexes.SetterIndex, error) {
 		return mapidx.New(), nil
 	}
 
