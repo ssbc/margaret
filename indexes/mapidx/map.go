@@ -13,6 +13,7 @@ import (
 	librarian "go.cryptoscope.co/margaret/indexes"
 )
 
+// New returns a new map based index
 func New() librarian.SeqSetterIndex {
 	return &mapSetterIndex{
 		m:      make(map[librarian.Addr]luigi.Observable),
@@ -38,7 +39,7 @@ func (idx *mapSetterIndex) Get(_ context.Context, addr librarian.Addr) (luigi.Ob
 		return obv, nil
 	}
 
-	obv = luigi.NewObservable(librarian.UnsetValue{addr})
+	obv = luigi.NewObservable(librarian.UnsetValue{Addr: addr})
 	idx.m[addr] = obv
 
 	return obv, nil
@@ -54,6 +55,7 @@ func (idx *mapSetterIndex) Set(_ context.Context, addr librarian.Addr, v interfa
 		if err != nil {
 			return fmt.Errorf("error setting observable: %w", err)
 		}
+		return nil
 	}
 
 	obv = luigi.NewObservable(v)
@@ -68,7 +70,7 @@ func (idx *mapSetterIndex) Delete(_ context.Context, addr librarian.Addr) error 
 
 	obv, ok := idx.m[addr]
 	if ok {
-		err := obv.Set(librarian.UnsetValue{addr})
+		err := obv.Set(librarian.UnsetValue{Addr: addr})
 		if err != nil {
 			return fmt.Errorf("error setting observable: %w", err)
 		}
