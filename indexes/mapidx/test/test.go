@@ -3,9 +3,9 @@
 package test
 
 import (
-	"go.cryptoscope.co/librarian"
-	"go.cryptoscope.co/librarian/mapidx"
-	"go.cryptoscope.co/librarian/test"
+	"go.cryptoscope.co/margaret/indexes"
+	"go.cryptoscope.co/margaret/indexes/mapidx"
+	"go.cryptoscope.co/margaret/indexes/test"
 )
 
 func init() {

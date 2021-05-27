@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package librarian // import "go.cryptoscope.co/librarian"
+package indexes // import "go.cryptoscope.co/margaret/indexes"
 
 import (
 	"context"

@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/margaret"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 type NewSeqSetterIndexFunc func(name string, tipe interface{}) (librarian.SeqSetterIndex, error)

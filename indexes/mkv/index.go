@@ -16,7 +16,7 @@ import (
 	"go.cryptoscope.co/margaret"
 	"modernc.org/kv"
 
-	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 func NewIndex(db *kv.DB, tipe interface{}) librarian.SeqSetterIndex {

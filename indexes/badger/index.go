@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package badger // import "go.cryptoscope.co/librarian/badger"
+package badger // import "go.cryptoscope.co/margaret/indexes/badger"
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 
-	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 // badger starts to complain >100k

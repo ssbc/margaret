@@ -5,7 +5,7 @@ package test
 import (
 	"testing"
 
-	"go.cryptoscope.co/librarian/test"
+	"go.cryptoscope.co/margaret/indexes/test"
 )
 
 func TestMap(t *testing.T) {

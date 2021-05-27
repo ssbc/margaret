@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package mapidx // import "go.cryptoscope.co/librarian/mapidx"
+package mapidx // import "go.cryptoscope.co/margaret/indexes/mapidx"
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 
-	"go.cryptoscope.co/librarian"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 func New() librarian.SeqSetterIndex {

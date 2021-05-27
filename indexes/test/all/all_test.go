@@ -5,7 +5,7 @@ package all
 import (
 	"testing"
 
-	ltest "go.cryptoscope.co/librarian/test"
+	ltest "go.cryptoscope.co/margaret/indexes/test"
 )
 
 func Test(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/luigi"
+	"go.cryptoscope.co/margaret/indexes"
 )
 
 type NewSetterIndexFunc func(name string, tipe interface{}) (librarian.SetterIndex, error)

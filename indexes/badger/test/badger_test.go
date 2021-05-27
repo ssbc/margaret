@@ -5,10 +5,10 @@ package test
 import (
 	"testing"
 
-	"go.cryptoscope.co/librarian/test"
+	"go.cryptoscope.co/margaret/indexes/test"
 )
 
-func TestMKV(t *testing.T) {
+func TestBadger(t *testing.T) {
 	t.Run("SetterIndex", test.RunSetterIndexTests)
 	t.Run("SeqSetterIndex", test.RunSeqSetterIndexTests)
 }

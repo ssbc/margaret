@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package librarian
+package indexes
 
 import (
 	"context"

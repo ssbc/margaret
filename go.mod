@@ -1,4 +1,4 @@
-module go.cryptoscope.co/librarian
+module go.cryptoscope.co/margaret
 
 go 1.16
 
