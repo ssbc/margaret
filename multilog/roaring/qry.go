@@ -106,10 +106,10 @@ func (qry *query) Next(ctx context.Context) (interface{}, error) {
 	}
 
 	var v interface{}
-	seqVal, err := qry.log.bmap.Select(uint32(qry.nextSeq.Seq()))
+	seqVal, err := qry.log.bmap.Select(uint64(qry.nextSeq.Seq()))
 	v = margaret.BaseSeq(seqVal)
 	if err != nil {
-		if !strings.Contains(err.Error(), "th integer in a bitmap with only ") {
+		if !strings.Contains(err.Error(), " is not less than the cardinality:") {
 			qry.log.mlog.l.Unlock()
 			return nil, fmt.Errorf("roaringfiles/qry: error in read transaction (%T): %w", err, err)
 		}

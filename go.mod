@@ -4,14 +4,13 @@ go 1.16
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
-	github.com/RoaringBitmap/roaring v0.4.21-0.20190925020156-96f2302555b6
-	github.com/cheekybits/is v0.0.0-20150225183255-68e9c0620927 // indirect
 	github.com/dgraph-io/badger v2.0.0-rc2+incompatible
+	github.com/dgraph-io/sroar v0.0.0-20210524170324-9b164cbe6e02
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/keks/persist v0.0.0-20191006175951-43c124092b8b
+	github.com/keks/persist v0.0.0-20210520094901-9bdd97c1fad2
 	github.com/mattn/go-sqlite3 v1.11.0
 	github.com/maxbrunsfeld/counterfeiter/v6 v6.2.2
 	github.com/pkg/errors v0.9.1

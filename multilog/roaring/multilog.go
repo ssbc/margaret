@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RoaringBitmap/roaring"
+	"github.com/dgraph-io/sroar"
 	"go.cryptoscope.co/luigi"
 	librarian "go.cryptoscope.co/margaret/indexes"
 
@@ -108,7 +108,7 @@ func (log *MultiLog) openSublog(addr librarian.Addr) (*sublog, error) {
 	r, err := log.loadBitmap(pk)
 	if errors.Is(err, persist.ErrNotFound) {
 		seq = margaret.SeqEmpty
-		r = roaring.New()
+		r = sroar.NewBitmap()
 	} else if err != nil {
 		return nil, err
 	} else {
@@ -133,81 +133,24 @@ func (log *MultiLog) openSublog(addr librarian.Addr) (*sublog, error) {
 }
 
 // LoadInternalBitmap loads the raw roaringbitmap for key
-func (log *MultiLog) LoadInternalBitmap(key librarian.Addr) (*roaring.Bitmap, error) {
+func (log *MultiLog) LoadInternalBitmap(key librarian.Addr) (*sroar.Bitmap, error) {
 	if err := log.Flush(); err != nil {
 		return nil, err
 	}
 	return log.loadBitmap([]byte(key))
 }
 
-func (log *MultiLog) loadBitmap(key []byte) (*roaring.Bitmap, error) {
-	var r *roaring.Bitmap
+func (log *MultiLog) loadBitmap(key []byte) (*sroar.Bitmap, error) {
+	var r *sroar.Bitmap
 
 	data, err := log.store.Get(key)
 	if err != nil {
 		return nil, fmt.Errorf("roaringfiles: invalid stored bitfield %x: %w", key, err)
 	}
 
-	r = roaring.New()
-	err = r.UnmarshalBinary(data)
-	if err != nil {
-		return nil, fmt.Errorf("roaringfiles: unpack of %x failed: %w", key, err)
-	}
+	r = sroar.FromBuffer(data)
 
 	return r, nil
-}
-
-func (log *MultiLog) compress(key persist.Key, r *roaring.Bitmap) (bool, error) {
-	n := r.GetSizeInBytes()
-	if n < 4*1024 {
-		return false, nil
-	}
-
-	currSize := r.GetSerializedSizeInBytes()
-	r.RunOptimize()
-	newSize := r.GetSerializedSizeInBytes()
-
-	if currSize < newSize {
-		return false, nil
-	}
-
-	compressed, err := r.MarshalBinary()
-	if err != nil {
-		return false, fmt.Errorf("roaringfiles: compress marshal failed: %w", err)
-	}
-	err = log.store.Put(key, compressed)
-	if err != nil {
-		return false, fmt.Errorf("roaringfiles: write compressed failed: %w", err)
-	}
-
-	return true, nil
-}
-
-func (log *MultiLog) CompressAll() error {
-	log.l.Lock()
-	defer log.l.Unlock()
-
-	// save open ones
-	for addr, sublog := range log.sublogs {
-		err := sublog.store()
-		if err != nil {
-			return fmt.Errorf("failed to update open sublog %x: %w", addr, err)
-		}
-	}
-	// load idle ones
-	err := log.loadAll()
-	if err != nil {
-		return fmt.Errorf("failed to load all sublogs: %w", err)
-	}
-
-	// compress all
-	for addr, sublog := range log.sublogs {
-		_, err := log.compress(persist.Key(addr), sublog.bmap)
-		if err != nil {
-			return fmt.Errorf("failed to update open sublog %x: %w", addr, err)
-		}
-	}
-	return nil
 }
 
 func (log *MultiLog) Delete(addr librarian.Addr) error {

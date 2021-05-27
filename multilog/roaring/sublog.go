@@ -5,7 +5,7 @@ package roaring
 import (
 	"fmt"
 
-	"github.com/RoaringBitmap/roaring"
+	"github.com/dgraph-io/sroar"
 	"go.cryptoscope.co/luigi"
 
 	"go.cryptoscope.co/margaret"
@@ -20,7 +20,7 @@ type sublog struct {
 	key       persist.Key
 	seq       *seqobsv.Observable
 	luigiObsv luigi.Observable
-	bmap      *roaring.Bitmap
+	bmap      *sroar.Bitmap
 
 	dirty bool
 
@@ -46,7 +46,7 @@ func (log *sublog) get(seq margaret.Seq) (interface{}, error) {
 		return nil, luigi.EOS{}
 	}
 
-	v, err := log.bmap.Select(uint32(seq.Seq()))
+	v, err := log.bmap.Select(uint64(seq.Seq()))
 	if err != nil {
 		return nil, luigi.EOS{}
 	}
@@ -101,7 +101,7 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 		return nil, fmt.Errorf("roaringfiles can only store positive numbers")
 	}
 
-	log.bmap.Add(uint32(val.Seq()))
+	log.bmap.Set(uint64(val.Seq()))
 
 	log.dirty = true
 	log.seq.Inc()
@@ -118,11 +118,9 @@ func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
 }
 
 func (log *sublog) store() error {
-	data, err := log.bmap.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("roaringfiles: failed to encode bitmap: %w", err)
-	}
+	data := log.bmap.ToBuffer()
 
+	var err error
 	err = log.mlog.store.Put(log.key, data)
 	if err != nil {
 		return fmt.Errorf("roaringfiles: file write failed: %w", err)
