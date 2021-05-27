@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/RoaringBitmap/roaring"
-	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/luigi"
+	librarian "go.cryptoscope.co/margaret/indexes"
 
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/internal/persist"

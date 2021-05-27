@@ -6,8 +6,8 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/margaret"
+	librarian "go.cryptoscope.co/margaret/indexes"
 )
 
 var ErrSublogDeleted = errors.Errorf("multilog: stored sublog was deleted. please re-open")

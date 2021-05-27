@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 	"go.mindeco.de/logging"
 
-	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/codec/msgpack"
+	librarian "go.cryptoscope.co/margaret/indexes"
 	"go.cryptoscope.co/margaret/multilog"
 	mlbadger "go.cryptoscope.co/margaret/multilog/badger"
 )

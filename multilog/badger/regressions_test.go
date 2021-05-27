@@ -10,8 +10,8 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/stretchr/testify/require"
 
-	"go.cryptoscope.co/librarian"
 	"go.cryptoscope.co/margaret/codec/msgpack"
+	librarian "go.cryptoscope.co/margaret/indexes"
 )
 
 func logPath(t *testing.T, path string) {
