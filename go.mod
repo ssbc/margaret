@@ -1,5 +1,7 @@
 module go.cryptoscope.co/margaret
 
+go 1.16
+
 require (
 	github.com/RoaringBitmap/roaring v0.4.21-0.20190925020156-96f2302555b6
 	github.com/dgraph-io/badger v2.0.0-rc2+incompatible
@@ -14,5 +16,3 @@ require (
 	go.mindeco.de v1.12.0
 	modernc.org/kv v1.0.3
 )
-
-go 1.13
