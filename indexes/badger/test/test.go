@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v3"
 
 	librarian "go.cryptoscope.co/margaret/indexes"
 	libadger "go.cryptoscope.co/margaret/indexes/badger"

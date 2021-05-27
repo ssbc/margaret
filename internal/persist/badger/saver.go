@@ -3,7 +3,7 @@
 package badger
 
 import (
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v3"
 	"go.cryptoscope.co/margaret/internal/persist"
 )
 

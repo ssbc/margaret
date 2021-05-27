@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v3"
 	"go.cryptoscope.co/luigi"
 	"go.cryptoscope.co/margaret"
 
