@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -71,11 +72,6 @@ func (log *Log) readOffset(ofst margaret.Seq) (interface{}, uint32, error) {
 }
 
 func (log *Log) dataReader(ofst margaret.Seq) (io.Reader, uint32, error) {
-	// whereAmI, err := log.f.Seek(0, io.SeekCurrent)
-	// if err != nil {
-	// 	return nil, 0, err
-	// }
-
 	var sz uint32
 
 	sizeRd := io.NewSectionReader(log.f, ofst.Seq(), 4)
@@ -84,8 +80,6 @@ func (log *Log) dataReader(ofst margaret.Seq) (io.Reader, uint32, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-
-	// fmt.Printf("reading ofst:%d with size: %d\n", ofst.Seq(), sz)
 
 	entryRd := io.NewSectionReader(log.f, ofst.Seq()+4, int64(sz))
 	// next offset is 12 bytes after the size
@@ -141,22 +135,33 @@ func (l *Log) Append(v interface{}) (margaret.Seq, error) {
 	}
 
 	var sz = uint32(len(b))
+
+	// offset/size of entry _before_ the entry
 	err = binary.Write(l.f, binary.BigEndian, sz)
 	if err != nil {
 		return nil, err
 	}
 
+	// the actual entry
 	_, err = l.f.Write(b)
 	if err != nil {
 		return nil, err
 	}
 
+	// offset/size of entry _after_ the entry
 	err = binary.Write(l.f, binary.BigEndian, sz)
 	if err != nil {
 		return nil, err
 	}
 
-	next := uint32(where) + 2*4 + sz
+	// now the "final" file length marker
+
+	if where > math.MaxUint32 {
+		return nil, fmt.Errorf("legacyflumeoffset: size limit breaks uint32 - implement weird uint48 and 53 stuff")
+	}
+
+	// 3*4 because we have 3 uint32's
+	next := uint32(where) + 3*4 + sz
 	err = binary.Write(l.f, binary.BigEndian, next)
 	if err != nil {
 		return nil, err
