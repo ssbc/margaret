@@ -343,16 +343,35 @@ func (idx *index) Delete(ctx context.Context, addr indexes.Addr) error {
 	return nil
 }
 
+var currentSeqAddr = []byte("__current_observable")
+
 func (idx *index) SetSeq(seq margaret.Seq) error {
 	idx.l.Lock()
 	defer idx.l.Unlock()
+
+	dbKey := append(idx.keyPrefix, currentSeqAddr...)
+
+	raw := make([]byte, 8)
+	binary.BigEndian.PutUint64(raw, uint64(seq.Seq()))
+
+	err := idx.db.Update(func(txn *badger.Txn) error {
+		err := txn.Set(dbKey, raw)
+		if err != nil {
+			return fmt.Errorf("error during setSeq update: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
 	idx.curSeq = margaret.BaseSeq(seq.Seq())
 	return nil
 }
 
 func (idx *index) GetSeq() (margaret.Seq, error) {
-	var addr = "__current_observable"
+
+	dbKey := append(idx.keyPrefix, currentSeqAddr...)
 
 	idx.l.Lock()
 	defer idx.l.Unlock()
@@ -362,7 +381,6 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 	}
 
 	err := idx.db.View(func(txn *badger.Txn) error {
-		dbKey := append(idx.keyPrefix, addr...)
 		item, err := txn.Get(dbKey)
 		if err != nil {
 			return fmt.Errorf("error getting item: %w", err)

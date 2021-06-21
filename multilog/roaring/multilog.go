@@ -145,7 +145,14 @@ func (log *MultiLog) LoadInternalBitmap(key indexes.Addr) (*sroar.Bitmap, error)
 	if err := log.Flush(); err != nil {
 		return nil, err
 	}
-	return log.loadBitmap([]byte(key))
+	bmap, err := log.loadBitmap([]byte(key))
+	if err != nil {
+		if errors.Is(err, persist.ErrNotFound) {
+			return nil, multilog.ErrSublogNotFound
+		}
+		return nil, err
+	}
+	return bmap, nil
 }
 
 func (log *MultiLog) loadBitmap(key []byte) (*sroar.Bitmap, error) {
