@@ -5,6 +5,7 @@ package sqlite
 import (
 	"database/sql"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"go.cryptoscope.co/margaret/internal/persist"
@@ -15,6 +16,16 @@ func (s SqliteSaver) Put(key persist.Key, data []byte) error {
 	_, err := s.db.Exec(`insert or replace into persisted_roaring (key,data) VALUES(?,?)`, hexKey, data)
 	if err != nil {
 		return errors.Wrap(err, "sqlite/put: failed run delete/insert value")
+	}
+	return nil
+}
+
+func (s SqliteSaver) PutMultiple(values []persist.KeyValuePair) error {
+	for i, kv := range values {
+		err := s.Put(kv.Key, kv.Value)
+		if err != nil {
+			return fmt.Errorf("persist/seqlite: failed to put entry %d of %d (%s): %w", i, len(values), kv.Key, err)
+		}
 	}
 	return nil
 }

@@ -20,16 +20,47 @@ func (s BadgerSaver) Put(key persist.Key, data []byte) error {
 }
 
 func (s BadgerSaver) PutMultiple(values []persist.KeyValuePair) error {
+	// badger can only deal with ~18600 set operations in a single transition
+	splitted := chunks(values, 18000)
+	for i, chunk := range splitted {
+		err := s.putMultiple(chunk)
+		if err != nil {
+			return fmt.Errorf("badger/putMultiple: chunk %d of %d failed: %w", i, len(splitted), err)
+		}
+	}
+	return nil
+}
+
+func (s BadgerSaver) putMultiple(values []persist.KeyValuePair) error {
 	return s.db.Update(func(txn *badger.Txn) error {
 		for i, kv := range values {
 			actualKey := append(s.keyPrefix, []byte(kv.Key)...)
 			err := txn.Set(actualKey, kv.Value)
 			if err != nil {
-				return fmt.Errorf("badger/putMultiple: failed to set entry %d (%s): %w", i, kv.Key, err)
+				return fmt.Errorf("failed to set entry %d of %d (%s): %w", i, len(values), kv.Key, err)
 			}
 		}
 		return nil
 	})
+}
+
+// splits up the passed slice into chunks of a specific sice
+func chunks(pairs []persist.KeyValuePair, chunkSize int) [][]persist.KeyValuePair {
+	if len(pairs) == 0 {
+		return nil
+	}
+	divided := make([][]persist.KeyValuePair, (len(pairs)+chunkSize-1)/chunkSize)
+	prev := 0 // previous start of a chunk
+	i := 0    // how many chunks we processed
+	till := len(pairs) - chunkSize
+	for prev < till {
+		next := prev + chunkSize
+		divided[i] = pairs[prev:next]
+		prev = next
+		i++
+	}
+	divided[i] = pairs[prev:] // rest (ie final chunk)
+	return divided
 }
 
 func (s BadgerSaver) Get(key persist.Key) ([]byte, error) {

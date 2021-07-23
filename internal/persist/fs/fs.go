@@ -55,7 +55,6 @@ func (s Saver) PutMultiple(values []persist.KeyValuePair) error {
 		}
 	}
 	return nil
-
 }
 
 func (s Saver) Get(key persist.Key) ([]byte, error) {

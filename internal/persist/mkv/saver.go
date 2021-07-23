@@ -4,6 +4,7 @@ package mkv
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 
 	"github.com/pkg/errors"
@@ -43,6 +44,16 @@ func (s ModernSaver) Put(key persist.Key, data []byte) error {
 		err = s.db.Delete(k)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (s ModernSaver) PutMultiple(values []persist.KeyValuePair) error {
+	for i, kv := range values {
+		err := s.Put(kv.Key, kv.Value)
+		if err != nil {
+			return fmt.Errorf("persist/mkv: failed to put entry %d of %d (%s): %w", i, len(values), kv.Key, err)
 		}
 	}
 	return nil
