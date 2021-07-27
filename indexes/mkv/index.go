@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"sync"
 
@@ -23,7 +24,7 @@ func NewIndex(db *kv.DB, tipe interface{}) indexes.SeqSetterIndex {
 		db:     db,
 		tipe:   tipe,
 		obvs:   make(map[indexes.Addr]luigi.Observable),
-		curSeq: margaret.BaseSeq(-2),
+		curSeq: int64(-2),
 	}
 }
 
@@ -32,7 +33,7 @@ type index struct {
 	db     *kv.DB
 	obvs   map[indexes.Addr]luigi.Observable
 	tipe   interface{}
-	curSeq margaret.Seq
+	curSeq int64
 }
 
 func (idx *index) Flush() error { return nil }
@@ -147,18 +148,18 @@ func (idx *index) Delete(ctx context.Context, addr indexes.Addr) error {
 	return nil
 }
 
-func (idx *index) SetSeq(seq margaret.Seq) error {
+func (idx *index) SetSeq(seq int64) error {
 	var (
 		raw  = make([]byte, 8)
 		err  error
 		addr indexes.Addr = "__current_observable"
 	)
 
-	binary.BigEndian.PutUint64(raw, uint64(seq.Seq()))
+	binary.BigEndian.PutUint64(raw, uint64(seq))
 
 	err = idx.db.Set([]byte(addr), raw)
 	if err != nil {
-		return fmt.Errorf("error during mkv update (%T): %w", seq.Seq(), err)
+		return fmt.Errorf("error during mkv update (%T): %w", seq, err)
 	}
 
 	idx.l.Lock()
@@ -169,29 +170,34 @@ func (idx *index) SetSeq(seq margaret.Seq) error {
 	return nil
 }
 
-func (idx *index) GetSeq() (margaret.Seq, error) {
+func (idx *index) GetSeq() (int64, error) {
 	var addr = "__current_observable"
 
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
-	if idx.curSeq.Seq() != -2 {
+	if idx.curSeq != -2 {
 		return idx.curSeq, nil
 	}
 
 	data, err := idx.db.Get(nil, []byte(addr))
 	if err != nil {
-		return margaret.BaseSeq(-2), fmt.Errorf("error getting item:%w", err)
+		return margaret.SeqErrored, fmt.Errorf("error getting item:%w", err)
 	}
 	if data == nil {
 		return margaret.SeqEmpty, nil
 	}
 
 	if l := len(data); l != 8 {
-		return margaret.BaseSeq(-2), fmt.Errorf("expected data of length 8, got %v", l)
+		return margaret.SeqErrored, fmt.Errorf("expected data of length 8, got %v", l)
 	}
 
-	idx.curSeq = margaret.BaseSeq(binary.BigEndian.Uint64(data))
+	val := binary.BigEndian.Uint64(data)
+	if val > math.MaxInt64 {
+		return margaret.SeqErrored, fmt.Errorf("current value bigger then sequence (int64)")
+	}
+
+	idx.curSeq = int64(val)
 
 	return idx.curSeq, nil
 }

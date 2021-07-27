@@ -29,7 +29,6 @@ func NewStore(store persist.Saver) *MultiLog {
 		store:   store,
 		l:       &sync.Mutex{},
 		sublogs: make(map[indexes.Addr]*sublog),
-		curSeq:  margaret.BaseSeq(-2),
 
 		processing:    ctx,
 		done:          cancel,
@@ -84,8 +83,6 @@ func (log *MultiLog) flushAllSublogs() error {
 type MultiLog struct {
 	store persist.Saver
 
-	curSeq margaret.Seq
-
 	l       *sync.Mutex
 	sublogs map[indexes.Addr]*sublog
 
@@ -111,7 +108,7 @@ func (log *MultiLog) openSublog(addr indexes.Addr) (*sublog, error) {
 
 	pk := persist.Key(addr)
 
-	var seq margaret.BaseSeq
+	var seq int64
 
 	r, err := log.loadBitmap(pk)
 	if errors.Is(err, persist.ErrNotFound) {
@@ -120,7 +117,7 @@ func (log *MultiLog) openSublog(addr indexes.Addr) (*sublog, error) {
 	} else if err != nil {
 		return nil, err
 	} else {
-		seq = margaret.BaseSeq(r.GetCardinality() - 1)
+		seq = int64(r.GetCardinality() - 1)
 	}
 
 	var obsV uint64
@@ -171,6 +168,7 @@ func (log *MultiLog) Delete(addr indexes.Addr) error {
 	if sl, ok := log.sublogs[addr]; ok {
 		sl.deleted = true
 		sl.luigiObsv.Set(multilog.ErrSublogDeleted)
+		sl.seq = seqobsv.New(0)
 		delete(log.sublogs, addr)
 	}
 

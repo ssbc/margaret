@@ -15,7 +15,7 @@ import (
 )
 
 // Func is a processing function that consumes a stream and sets values in the multilog.
-type Func func(ctx context.Context, seq margaret.Seq, value interface{}, mlog MultiLog) error
+type Func func(ctx context.Context, seq int64, value interface{}, mlog MultiLog) error
 
 // Sink is both a multilog and a luigi sink. Pouring values into it will append values to the multilog, usually by calling a user-defined processing function.
 type Sink interface {
@@ -63,7 +63,7 @@ func (slog *sinkLog) QuerySpec() margaret.QuerySpec {
 	slog.l.Lock()
 	defer slog.l.Unlock()
 
-	var seq margaret.BaseSeq
+	var seq int64
 
 	if err := persist.Load(slog.file, &seq); err != nil {
 		if errors.Cause(err) != io.EOF {
@@ -84,6 +84,6 @@ type roLog struct {
 }
 
 // Append always returns an error that indicates that this log is read only.
-func (roLog) Append(v interface{}) (margaret.Seq, error) {
+func (roLog) Append(v interface{}) (int64, error) {
 	return margaret.SeqEmpty, errors.New("can't append to read-only log")
 }

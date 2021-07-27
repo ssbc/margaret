@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
 	mjson "go.cryptoscope.co/margaret/codec/json"
 )
 
@@ -47,12 +46,12 @@ func TestReadWrite(t *testing.T) {
 	for i, ev := range tevs {
 		seq, err := log.Append(ev)
 		r.NoError(err, "failed to append event %d", i)
-		r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+		r.Equal(int64(i), seq, "sequence missmatch")
 	}
 
 	// read
 	for i := 0; i < len(tevs); i++ {
-		v, err := log.Get(margaret.BaseSeq(i))
+		v, err := log.Get(int64(i))
 		r.NoError(err, "failed to get event %d", i)
 
 		ev, ok := v.(*testEvent)
@@ -81,7 +80,7 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	for i, ev := range tevs {
 		seq, err := log.Append(ev)
 		r.NoError(err, "failed to append event %d", i)
-		r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+		r.Equal(int64(i), seq, "sequence missmatch")
 	}
 
 	log, err = Open(name, mjson.New(&testEvent{}))
@@ -90,7 +89,7 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	for i, ev := range tevs {
 		seq, err := log.Append(ev)
 		r.NoError(err, "failed to do 2nd append %d", i)
-		r.Equal(margaret.BaseSeq(len(tevs)+i), seq, "sequence missmatch %d", i)
+		r.Equal(int64(len(tevs)+i), seq, "sequence missmatch %d", i)
 	}
 
 	// close
@@ -102,13 +101,13 @@ func TestWriteAndWriteAgain(t *testing.T) {
 	log, err = Open(name, mjson.New(&testEvent{}))
 	r.NoError(err, "error during log creation")
 
-	currSeq, err := log.Seq().Value()
+	currSeq := log.Seq()
 	r.NoError(err, "failed to get current sequence")
-	r.Equal(margaret.BaseSeq(2*len(tevs)-1), currSeq.(margaret.BaseSeq))
+	r.EqualValues(int64(2*len(tevs)-1), currSeq)
 
 	// read by seq
 	for i := 0; i < 2*len(tevs); i++ {
-		v, err := log.Get(margaret.BaseSeq(i))
+		v, err := log.Get(int64(i))
 		r.NoError(err, "failed to get event %d", i)
 
 		ev, ok := v.(*testEvent)
@@ -163,7 +162,7 @@ func TestRecover(t *testing.T) {
 	for i, ev := range tevs {
 		seq, err := log.Append(ev)
 		r.NoError(err, "failed to append event %d", i)
-		r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+		r.Equal(int64(i), seq, "sequence missmatch")
 	}
 
 	// close
@@ -184,7 +183,7 @@ func TestRecover(t *testing.T) {
 	r.NoError(err, "error while recover")
 	r.NotNil(log)
 
-	v, err := log.Seq().Value()
+	v := log.Seq()
 	r.NoError(err, "error while recover")
 	r.EqualValues(v, len(tevs)-1)
 }

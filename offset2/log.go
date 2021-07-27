@@ -48,7 +48,9 @@ type offsetLog struct {
 	ofst *offset
 	data *data
 
-	seq   luigi.Observable
+	seqCurrent int64
+	seqChanges luigi.Observable
+
 	codec margaret.Codec
 
 	bcast  luigi.Broadcast
@@ -84,7 +86,7 @@ var _ margaret.Alterer = (*offsetLog)(nil)
 // Null overwrites the entry at seq with zeros
 // updating is kinda odd in append-only
 // but in some cases you still might want to redact entries
-func (log *offsetLog) Null(seq margaret.Seq) error {
+func (log *offsetLog) Null(seq int64) error {
 
 	log.l.Lock()
 	defer log.l.Unlock()
@@ -125,7 +127,7 @@ func (log *offsetLog) Null(seq margaret.Seq) error {
 
 // Replace overwrites the seq entry with data.
 // data has to be smaller then the current entry.
-func (log *offsetLog) Replace(seq margaret.Seq, data []byte) error {
+func (log *offsetLog) Replace(seq int64, data []byte) error {
 	log.l.Lock()
 	defer log.l.Unlock()
 
@@ -191,7 +193,7 @@ func Open(name string, cdc margaret.Codec) (*offsetLog, error) {
 		codec: cdc,
 	}
 
-	err = log.checkJournal()
+	_, err = log.checkJournal()
 	if err != nil {
 		return nil, fmt.Errorf("offset2: integrity error: %w", err)
 	}
@@ -204,7 +206,8 @@ func Open(name string, cdc margaret.Codec) (*offsetLog, error) {
 		return nil, fmt.Errorf("offset2: failed to seek to end of log-offset-file: %w", err)
 	}
 	// assumes -1 is SeqEmpty
-	log.seq = luigi.NewObservable(margaret.BaseSeq((end / 8) - 1))
+	log.seqCurrent = (end / 8) - 1
+	log.seqChanges = luigi.NewObservable(log.seqCurrent)
 
 	return log, nil
 }
@@ -215,65 +218,65 @@ func Open(name string, cdc margaret.Codec) (*offsetLog, error) {
 //  - read frame size from data file at previously read offset
 //  - check that the end of the frame is also end of file
 //  - check that number of entries in offset file equals value in journal
-func (log *offsetLog) checkJournal() error {
+func (log *offsetLog) checkJournal() (int64, error) {
 	seqJrnl, err := log.jrnl.readSeq()
 	if err != nil {
-		return fmt.Errorf("error reading seq: %w", err)
+		return margaret.SeqErrored, fmt.Errorf("error reading seq: %w", err)
 	}
 
-	if seqJrnl.Seq() == -1 {
+	if seqJrnl == margaret.SeqEmpty {
 		statOfst, err := log.ofst.Stat()
 		if err != nil {
-			return fmt.Errorf("stat failed on offset file: %w", err)
+			return margaret.SeqErrored, fmt.Errorf("stat failed on offset file: %w", err)
 		}
 
 		if statOfst.Size() != 0 {
-			return errors.New("journal empty but offset file isnt")
+			return margaret.SeqErrored, errors.New("journal empty but offset file isnt")
 		}
 
 		statData, err := log.data.Stat()
 		if err != nil {
-			return fmt.Errorf("stat failed on data file: %w", err)
+			return margaret.SeqErrored, fmt.Errorf("stat failed on data file: %w", err)
 		}
 
 		if statData.Size() != 0 {
-			return errors.New("journal empty but data file isnt")
+			return margaret.SeqErrored, errors.New("journal empty but data file isnt")
 		}
 
-		return nil
+		return margaret.SeqEmpty, nil
 	}
 
 	ofstData, seqOfst, err := log.ofst.readLastOffset()
 	if err != nil {
-		return fmt.Errorf("error reading last entry of log offset file: %w", err)
+		return margaret.SeqErrored, fmt.Errorf("error reading last entry of log offset file: %w", err)
 	}
 
-	diff := seqJrnl.Seq() - seqOfst.Seq()
+	diff := seqJrnl - seqOfst
 	if diff != 0 {
 		if diff < 0 { // more data then entries in journal (unclear how to handle)
 			// TODO: chop of data and offset to min(journal,count(ofst))
-			return fmt.Errorf("seq in journal does not match element count in log offset file - %d != %d", seqJrnl, seqOfst)
+			return margaret.SeqErrored, fmt.Errorf("seq in journal does not match element count in log offset file - %d != %d", seqJrnl, seqOfst)
 		}
 
 		// recover by truncating setting journal to count(ofst)
 		_, err = log.jrnl.Seek(0, io.SeekStart)
 		if err != nil {
-			return fmt.Errorf("recover: could not seek to start of journal file: %w", err)
+			return margaret.SeqErrored, fmt.Errorf("recover: could not seek to start of journal file: %w", err)
 		}
 
 		err = binary.Write(log.jrnl, binary.BigEndian, seqOfst)
 		if err != nil {
-			return fmt.Errorf("recover: could not overwrite journal with offset seq: %w", err)
+			return margaret.SeqErrored, fmt.Errorf("recover: could not overwrite journal with offset seq: %w", err)
 		}
 
 		if err := log.CheckConsistency(); err != nil {
-			return fmt.Errorf("recover: check journal 2nd pass: %w", err)
+			return margaret.SeqErrored, fmt.Errorf("recover: check journal 2nd pass: %w", err)
 		}
 	}
 
 	sz, err := log.data.getFrameSize(ofstData)
 	if err != nil {
-		return fmt.Errorf("error getting frame size from log data file: %w", err)
+		return margaret.SeqErrored, fmt.Errorf("error getting frame size from log data file: %w", err)
 	}
 
 	if sz < 0 { // entry nulled
@@ -283,29 +286,29 @@ func (log *offsetLog) checkJournal() error {
 
 	stat, err := log.data.Stat()
 	if err != nil {
-		return fmt.Errorf("error stat'ing data file: %w", err)
+		return margaret.SeqErrored, fmt.Errorf("error stat'ing data file: %w", err)
 	}
 
 	n := ofstData + 8 + sz
 	d := n - stat.Size()
 	if d != 0 {
 		// TODO: chop off the rest
-		return fmt.Errorf("data file size difference %d", d)
+		return margaret.SeqErrored, fmt.Errorf("data file size difference %d", d)
 	}
 
-	return nil
+	return seqJrnl, nil
 }
 
 // CheckConsistency is an fsck for the offset log.
 func (log *offsetLog) CheckConsistency() error {
-	err := log.checkJournal()
+	_, err := log.checkJournal()
 	if err != nil {
 		return fmt.Errorf("offset2: journal inconsistent: %w", err)
 	}
 
 	var (
 		ofst, nextOfst int64
-		seq            margaret.BaseSeq
+		seq            int64
 	)
 
 	for {
@@ -338,11 +341,17 @@ func (log *offsetLog) CheckConsistency() error {
 	}
 }
 
-func (log *offsetLog) Seq() luigi.Observable {
-	return log.seq
+func (log *offsetLog) Seq() int64 {
+	log.l.Lock()
+	defer log.l.Unlock()
+	return log.seqCurrent
 }
 
-func (log *offsetLog) Get(seq margaret.Seq) (interface{}, error) {
+func (log *offsetLog) Changes() luigi.Observable {
+	return log.seqChanges
+}
+
+func (log *offsetLog) Get(seq int64) (interface{}, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 
@@ -360,15 +369,15 @@ func (log *offsetLog) Get(seq margaret.Seq) (interface{}, error) {
 }
 
 // readFrame reads and parses a frame.
-func (log *offsetLog) readFrame(seq margaret.Seq) (interface{}, error) {
+func (log *offsetLog) readFrame(seq int64) (interface{}, error) {
 	ofst, err := log.ofst.readOffset(seq)
 	if err != nil {
-		return nil, fmt.Errorf("error read offset of seq(%d): %w", seq.Seq(), err)
+		return nil, fmt.Errorf("error read offset of seq(%d): %w", seq, err)
 	}
 
 	r, err := log.data.frameReader(ofst)
 	if err != nil {
-		return nil, fmt.Errorf("error getting frame reader for seq(%d) (ofst:%d): %w", seq.Seq(), ofst, err)
+		return nil, fmt.Errorf("error getting frame reader for seq(%d) (ofst:%d): %w", seq, ofst, err)
 	}
 
 	dec := log.codec.NewDecoder(r)
@@ -377,7 +386,7 @@ func (log *offsetLog) readFrame(seq margaret.Seq) (interface{}, error) {
 		if errors.Is(err, io.EOF) {
 			return v, luigi.EOS{}
 		}
-		return nil, fmt.Errorf("error decoding data for seq(%d) (ofst:%d): %w", seq.Seq(), ofst, err)
+		return nil, fmt.Errorf("error decoding data for seq(%d) (ofst:%d): %w", seq, ofst, err)
 	}
 	return v, nil
 }
@@ -411,7 +420,7 @@ func (log *offsetLog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	return qry, nil
 }
 
-func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
+func (log *offsetLog) Append(v interface{}) (int64, error) {
 	data, err := log.codec.Marshal(v)
 	if err != nil {
 		return margaret.SeqEmpty, fmt.Errorf("offset2: error marshaling value: %w", err)
@@ -440,7 +449,8 @@ func (log *offsetLog) Append(v interface{}) (margaret.Seq, error) {
 	}
 
 	err = log.bcSink.Pour(context.TODO(), margaret.WrapWithSeq(v, jrnlSeq))
-	log.seq.Set(jrnlSeq)
+	log.seqCurrent = seq
+	log.seqChanges.Set(seq)
 
 	if err != nil {
 		return margaret.SeqEmpty, fmt.Errorf("offset2: error while updating registerd broadcasts with new value: %w", err)

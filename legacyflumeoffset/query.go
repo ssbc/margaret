@@ -16,7 +16,7 @@ type lfoQuery struct {
 	log   *Log
 	codec margaret.Codec
 
-	nextOfst, lt margaret.BaseSeq
+	nextOfst, lt int64
 
 	limit   int
 	live    bool
@@ -26,45 +26,45 @@ type lfoQuery struct {
 	err     error
 }
 
-func (qry *lfoQuery) Gt(s margaret.Seq) error {
+func (qry *lfoQuery) Gt(s int64) error {
 	return fmt.Errorf("TODO: implement gt")
 	if qry.nextOfst > margaret.SeqEmpty {
 		return fmt.Errorf("lower bound already set")
 	}
 
 	// TODO: seek to the next entry correctly
-	qry.nextOfst = margaret.BaseSeq(s.Seq() + 1)
+	qry.nextOfst = s + 1
 	return nil
 }
 
-func (qry *lfoQuery) Gte(s margaret.Seq) error {
+func (qry *lfoQuery) Gte(s int64) error {
 	return fmt.Errorf("TODO: implement gte")
 	if qry.nextOfst > margaret.SeqEmpty {
 		return fmt.Errorf("lower bound already set")
 	}
 
-	qry.nextOfst = margaret.BaseSeq(s.Seq())
+	qry.nextOfst = s
 	return nil
 }
 
-func (qry *lfoQuery) Lt(s margaret.Seq) error {
+func (qry *lfoQuery) Lt(s int64) error {
 	return fmt.Errorf("TODO: implement lt")
 	if qry.lt != margaret.SeqEmpty {
 		return fmt.Errorf("upper bound already set")
 	}
 
-	qry.lt = margaret.BaseSeq(s.Seq())
+	qry.lt = s
 	return nil
 }
 
-func (qry *lfoQuery) Lte(s margaret.Seq) error {
+func (qry *lfoQuery) Lte(s int64) error {
 	return fmt.Errorf("TODO: implement lte")
 	if qry.lt != margaret.SeqEmpty {
 		return fmt.Errorf("upper bound already set")
 	}
 
 	// TODO: seek to the previous entry correctly
-	qry.lt = margaret.BaseSeq(s.Seq() + 1)
+	qry.lt = s + 1
 	return nil
 }
 
@@ -94,19 +94,6 @@ func (qry *lfoQuery) Reverse(yes bool) error {
 	// }
 	return nil
 }
-
-// func (qry *lfoQuery) setCursorToLast() error {
-// 	v, err := qry.log.seq.Value()
-// 	if err != nil {
-// 		return errors.Wrap(err, "setCursorToLast: failed to establish current value")
-// 	}
-// 	currSeq, ok := v.(margaret.Seq)
-// 	if !ok {
-// 		return fmt.Errorf("setCursorToLast: failed to establish current value")
-// 	}
-// 	qry.nextOfst = margaret.BaseSeq(currSeq.Seq())
-// 	return nil
-// }
 
 func (qry *lfoQuery) Next(ctx context.Context) (interface{}, error) {
 	qry.l.Lock()
@@ -139,7 +126,7 @@ func (qry *lfoQuery) Next(ctx context.Context) (interface{}, error) {
 		return v, luigi.EOS{}
 	} else if errors.Is(err, margaret.ErrNulled) {
 		// TODO: qry.skipNulled
-		qry.nextOfst = margaret.BaseSeq(qry.nextOfst.Seq() + int64(sz))
+		qry.nextOfst = qry.nextOfst + int64(sz)
 		return margaret.ErrNulled, nil
 	} else if err != nil {
 		return nil, err
@@ -147,14 +134,14 @@ func (qry *lfoQuery) Next(ctx context.Context) (interface{}, error) {
 
 	defer func() {
 		if qry.reverse {
-			qry.nextOfst = margaret.BaseSeq(qry.nextOfst.Seq() - int64(sz))
+			qry.nextOfst = qry.nextOfst - int64(sz)
 		} else {
-			qry.nextOfst = margaret.BaseSeq(qry.nextOfst.Seq() + int64(sz))
+			qry.nextOfst = qry.nextOfst + int64(sz)
 		}
 	}()
 
 	if qry.seqWrap {
-		return margaret.WrapWithSeq(v, margaret.BaseSeq(qry.nextOfst)), nil
+		return margaret.WrapWithSeq(v, qry.nextOfst), nil
 	}
 
 	return v, nil

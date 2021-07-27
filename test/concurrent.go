@@ -41,9 +41,9 @@ func LogTestConcurrent(f NewLogFunc) func(*testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			seq, err := log.Seq().Value()
+			seq := log.Seq()
 			a.NoError(err, "unexpected error")
-			a.Equal(margaret.SeqEmpty, seq, "expected empty log")
+			a.EqualValues(margaret.SeqEmpty, seq, "expected empty log")
 
 			var wg sync.WaitGroup
 			wg.Add(2)
@@ -70,7 +70,7 @@ func LogTestConcurrent(f NewLogFunc) func(*testing.T) {
 				for i, v := range tc.values {
 					seq, err := log.Append(v)
 					a.NoError(err, "error appending to log")
-					a.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+					a.EqualValues(i, seq, "sequence missmatch")
 
 					if t.Failed() {
 						t.Log("error in iteration", i)

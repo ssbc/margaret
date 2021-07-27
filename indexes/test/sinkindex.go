@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/indexes"
 	mtest "go.cryptoscope.co/margaret/test"
 )
@@ -32,10 +31,10 @@ func TestSinkIndexWithBreak(newLog mtest.NewLogFunc, newIdx NewSeqSetterIndexFun
 		ctx := context.Background()
 
 		// track this to check that we get every sequence number just once
-		var lastSeq margaret.BaseSeq = -1
+		var lastSeq int64 = -1
 
 		// define indexing function
-		f := func(ctx context.Context, seq margaret.Seq, v interface{}, idx indexes.SetterIndex) error {
+		f := func(ctx context.Context, seq int64, v interface{}, idx indexes.SetterIndex) error {
 			a.Equal(lastSeq+1, seq, "unexpected sequence number")
 			lastSeq++
 

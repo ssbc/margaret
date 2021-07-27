@@ -111,7 +111,7 @@ func LogTestPumpLive(f mtest.NewLogFunc) func(*testing.T) {
 			for i, v := range tc.values1 {
 				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
-				r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+				r.EqualValues(i, seq, "sequence missmatch")
 			}
 
 			// make live query and process it
@@ -135,7 +135,7 @@ func LogTestPumpLive(f mtest.NewLogFunc) func(*testing.T) {
 			for i, v := range tc.values2 {
 				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
-				r.Equal(margaret.BaseSeq(len(tc.values1)+i), seq, "sequence missmatch")
+				r.EqualValues(len(tc.values1)+i, seq, "sequence missmatch")
 			}
 
 			// cancel query processing goroutine

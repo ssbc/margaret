@@ -48,16 +48,21 @@ func Open(path string, codec margaret.Codec) (*Log, error) {
 	}, nil
 }
 
-// Seq returns an observable that holds the current sequence number
-func (l *Log) Seq() luigi.Observable {
-	panic("not implemented") // TODO: Implement
+// TODO: problem with these two methods is: there is no O(1) method to get the number of entries in a log file.
+
+func (l *Log) Changes() luigi.Observable {
+	panic("not implemented")
+}
+
+func (l *Log) Seq() int64 {
+	panic("not implemented")
 }
 
 // readOffset reads and parses a frame.
-func (log *Log) readOffset(ofst margaret.Seq) (interface{}, uint32, error) {
+func (log *Log) readOffset(ofst int64) (interface{}, uint32, error) {
 	r, entryLen, err := log.dataReader(ofst)
 	if err != nil {
-		return nil, 0, fmt.Errorf("error getting reader for ofst:%d: %w", ofst.Seq(), err)
+		return nil, 0, fmt.Errorf("error getting reader for ofst:%d: %w", ofst, err)
 	}
 
 	dec := log.codec.NewDecoder(r)
@@ -66,28 +71,28 @@ func (log *Log) readOffset(ofst margaret.Seq) (interface{}, uint32, error) {
 		if errors.Is(err, io.EOF) {
 			return v, 0, luigi.EOS{}
 		}
-		return nil, 0, fmt.Errorf("error decoding data for ofst:%d: %w", ofst.Seq(), err)
+		return nil, 0, fmt.Errorf("error decoding data for ofst:%d: %w", ofst, err)
 	}
 	return v, entryLen, nil
 }
 
-func (log *Log) dataReader(ofst margaret.Seq) (io.Reader, uint32, error) {
+func (log *Log) dataReader(ofst int64) (io.Reader, uint32, error) {
 	var sz uint32
 
-	sizeRd := io.NewSectionReader(log.f, ofst.Seq(), 4)
+	sizeRd := io.NewSectionReader(log.f, int64(ofst), 4)
 
 	err := binary.Read(sizeRd, binary.BigEndian, &sz)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	entryRd := io.NewSectionReader(log.f, ofst.Seq()+4, int64(sz))
+	entryRd := io.NewSectionReader(log.f, int64(ofst)+4, int64(sz))
 	// next offset is 12 bytes after the size
 	return entryRd, sz + 12, nil
 }
 
 // Get returns the entry with sequence number seq
-func (l *Log) Get(ofst margaret.Seq) (interface{}, error) {
+func (l *Log) Get(ofst int64) (interface{}, error) {
 	v, _, err := l.readOffset(ofst)
 	return v, err
 }
@@ -123,15 +128,15 @@ func (log *Log) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 }
 
 // Append appends a new entry to the log
-func (l *Log) Append(v interface{}) (margaret.Seq, error) {
+func (l *Log) Append(v interface{}) (int64, error) {
 	where, err := l.f.Seek(0, io.SeekEnd)
 	if err != nil {
-		return nil, err
+		return margaret.SeqErrored, err
 	}
 
 	b, err := l.codec.Marshal(v)
 	if err != nil {
-		return nil, err
+		return margaret.SeqErrored, err
 	}
 
 	var sz = uint32(len(b))
@@ -139,33 +144,33 @@ func (l *Log) Append(v interface{}) (margaret.Seq, error) {
 	// offset/size of entry _before_ the entry
 	err = binary.Write(l.f, binary.BigEndian, sz)
 	if err != nil {
-		return nil, err
+		return margaret.SeqErrored, err
 	}
 
 	// the actual entry
 	_, err = l.f.Write(b)
 	if err != nil {
-		return nil, err
+		return margaret.SeqErrored, err
 	}
 
 	// offset/size of entry _after_ the entry
 	err = binary.Write(l.f, binary.BigEndian, sz)
 	if err != nil {
-		return nil, err
+		return margaret.SeqErrored, err
 	}
 
 	// now the "final" file length marker
 
 	if where > math.MaxUint32 {
-		return nil, fmt.Errorf("legacyflumeoffset: size limit breaks uint32 - implement weird uint48 and 53 stuff")
+		return margaret.SeqErrored, fmt.Errorf("legacyflumeoffset: size limit breaks uint32 - implement weird uint48 and 53 stuff")
 	}
 
 	// 3*4 because we have 3 uint32's
 	next := uint32(where) + 3*4 + sz
 	err = binary.Write(l.f, binary.BigEndian, next)
 	if err != nil {
-		return nil, err
+		return margaret.SeqErrored, err
 	}
 
-	return margaret.BaseSeq(where), nil
+	return int64(where), nil
 }

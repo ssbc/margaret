@@ -30,12 +30,12 @@ func TestNull(t *testing.T) {
 	}
 
 	for i := 0; i < len(tevs); i++ {
-		var seq = margaret.BaseSeq(i)
+		var seq = int64(i)
 		t.Run(strconv.Itoa(i), nullOne(tevs, seq))
 	}
 }
 
-func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
+func nullOne(tevs []testEvent, nullSeq int64) func(*testing.T) {
 	return func(t *testing.T) {
 		//setup
 		r := require.New(t)
@@ -50,7 +50,7 @@ func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 		for i, ev := range tevs {
 			seq, err := log.Append(ev)
 			r.NoError(err, "failed to append event %d", i)
-			r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+			r.Equal(int64(i), seq, "sequence missmatch")
 		}
 
 		r.NoError(log.Close())
@@ -59,9 +59,8 @@ func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 		log, err = Open(name, mjson.New(&testEvent{}))
 		r.NoError(err, "error reopening log")
 
-		seq, err := log.Seq().Value()
-		r.NoError(err, "failed get current value")
-		r.Equal(margaret.BaseSeq(len(tevs)-1), seq, "sequence missmatch")
+		seq := log.Seq()
+		r.EqualValues(int64(len(tevs)-1), seq, "sequence missmatch")
 
 		err = log.Null(nullSeq)
 		r.NoError(err, "failed null")
@@ -77,8 +76,8 @@ func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 
 		// get loop
 		for i := 0; i < len(tevs); i++ {
-			v, err := log.Get(margaret.BaseSeq(i))
-			if int64(i) == nullSeq.Seq() {
+			v, err := log.Get(int64(i))
+			if i == int(nullSeq) {
 				r.True(errors.Is(err, margaret.ErrNulled))
 				r.True(margaret.IsErrNulled(err))
 				r.Nil(v)
@@ -103,7 +102,7 @@ func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 				}
 				return err
 			}
-			if int64(i) == nullSeq.Seq() {
+			if i == int(nullSeq) {
 				r.Equal(margaret.ErrNulled, v)
 			}
 			i++
@@ -125,7 +124,7 @@ func nullOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 			if luigi.IsEOS(err) {
 				break
 			}
-			if int64(i) == nullSeq.Seq() {
+			if i == int(nullSeq) {
 				a.Equal(margaret.ErrNulled, v)
 			}
 			i++

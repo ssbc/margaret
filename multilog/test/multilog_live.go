@@ -20,7 +20,7 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 		r := require.New(t)
 		ctx, cancel := context.WithCancel(context.TODO())
 
-		mlog, _, err := f(t.Name(), margaret.BaseSeq(0), "")
+		mlog, _, err := f(t.Name(), int64(0), "")
 		r.NoError(err)
 
 		// empty yet
@@ -28,11 +28,11 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 		r.NoError(err, "error listing mlog")
 		r.Len(addrs, 0)
 
-		testLogs := map[indexes.Addr][]margaret.BaseSeq{
-			"fii": []margaret.BaseSeq{1, 2, 3},
-			"faa": []margaret.BaseSeq{100, 200, 300},
-			"foo": []margaret.BaseSeq{4, 5, 6},
-			"fum": []margaret.BaseSeq{7, 8, 9},
+		testLogs := map[indexes.Addr][]int64{
+			"fii": {1, 2, 3},
+			"faa": {100, 200, 300},
+			"foo": {4, 5, 6},
+			"fum": {7, 8, 9},
 		}
 
 		// fill in some values
@@ -45,9 +45,7 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 				r.NoError(err, "valied to append %s:%d", name, i)
 			}
 
-			v, err := slog.Seq().Value()
-			r.NoError(err)
-			r.EqualValues(v, len(vals)-1)
+			r.EqualValues(slog.Seq(), len(vals)-1)
 		}
 
 		logOfFaa, err := mlog.Get(indexes.Addr("faa"))
@@ -75,7 +73,7 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 		}()
 
 		seqSrc, err := logOfFaa.Query(
-			margaret.Gt(margaret.BaseSeq(2)),
+			margaret.Gt(2),
 			margaret.Live(true),
 			margaret.SeqWrap(true),
 		)
@@ -95,14 +93,13 @@ func MultilogLiveQueryCheck(f NewLogFunc) func(*testing.T) {
 			}
 			sw := swv.(margaret.SeqWrapper)
 
-			gotVal := sw.Value().(margaret.BaseSeq)
+			gotVal := sw.Value().(int64)
 
 			a.EqualValues(expVal, gotVal, "wrong actual val")
 			expVal += 100
-			seq := sw.Seq().(margaret.Seq)
 
-			a.EqualValues(expSeq, seq.Seq(), "wrong seq value from query")
-			t.Log(expSeq, seq.Seq())
+			a.EqualValues(expSeq, sw.Seq(), "wrong seq value from query")
+			t.Log(expSeq, sw.Seq())
 			expSeq++
 		}
 

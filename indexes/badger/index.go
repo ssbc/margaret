@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"reflect"
 	"strconv"
@@ -63,7 +64,7 @@ type index struct {
 
 	obvs   map[indexes.Addr]luigi.Observable
 	tipe   interface{}
-	curSeq margaret.BaseSeq
+	curSeq int64
 }
 
 func NewIndex(db *badger.DB, tipe interface{}) indexes.SeqSetterIndex {
@@ -94,7 +95,7 @@ func newIndex(db *badger.DB, tipe interface{}, keyPrefix []byte) indexes.SeqSett
 		db:     db,
 		tipe:   tipe,
 		obvs:   make(map[indexes.Addr]luigi.Observable),
-		curSeq: margaret.BaseSeq(-2),
+		curSeq: int64(-2),
 	}
 	go idx.writeBatches()
 	return idx
@@ -345,14 +346,14 @@ func (idx *index) Delete(ctx context.Context, addr indexes.Addr) error {
 
 var currentSeqAddr = []byte("__current_observable")
 
-func (idx *index) SetSeq(seq margaret.Seq) error {
+func (idx *index) SetSeq(seq int64) error {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
 	dbKey := append(idx.keyPrefix, currentSeqAddr...)
 
 	raw := make([]byte, 8)
-	binary.BigEndian.PutUint64(raw, uint64(seq.Seq()))
+	binary.BigEndian.PutUint64(raw, uint64(seq))
 
 	err := idx.db.Update(func(txn *badger.Txn) error {
 		err := txn.Set(dbKey, raw)
@@ -365,18 +366,18 @@ func (idx *index) SetSeq(seq margaret.Seq) error {
 		return err
 	}
 
-	idx.curSeq = margaret.BaseSeq(seq.Seq())
+	idx.curSeq = seq
 	return nil
 }
 
-func (idx *index) GetSeq() (margaret.Seq, error) {
+func (idx *index) GetSeq() (int64, error) {
 
 	dbKey := append(idx.keyPrefix, currentSeqAddr...)
 
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
-	if idx.curSeq.Seq() != -2 {
+	if idx.curSeq != -2 {
 		return idx.curSeq, nil
 	}
 
@@ -392,7 +393,12 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 				return fmt.Errorf("expected data of length 8, got %v", l)
 			}
 
-			idx.curSeq = margaret.BaseSeq(binary.BigEndian.Uint64(data))
+			val := binary.BigEndian.Uint64(data)
+			if val > math.MaxInt64 {
+				return fmt.Errorf("current value bigger then sequence (int64)")
+			}
+
+			idx.curSeq = int64(val)
 
 			return nil
 		})
@@ -407,7 +413,7 @@ func (idx *index) GetSeq() (margaret.Seq, error) {
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			return margaret.SeqEmpty, nil
 		}
-		return margaret.BaseSeq(0), fmt.Errorf("error in badger transaction (view): %w", err)
+		return 0, fmt.Errorf("error in badger transaction (view): %w", err)
 	}
 
 	return idx.curSeq, nil

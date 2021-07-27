@@ -44,9 +44,8 @@ func TestSimple(t *testing.T) {
 			for i, v := range tc.values {
 				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
-				//r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
-				r.True(int(seq.Seq()) >= i, "increasing sequence")
-				t.Log("entry", i, "seq:", seq.Seq())
+				r.True(int(seq) >= i, "increasing sequence")
+				t.Log("entry", i, "seq:", seq)
 			}
 
 			src, err := log.Query(tc.specs...)
@@ -148,7 +147,7 @@ func TestSimple(t *testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3},
 		// 	result: []interface{}{2, 3},
-		// 	specs:  []margaret.QuerySpec{margaret.Gt(margaret.BaseSeq(0))},
+		// 	specs:  []margaret.QuerySpec{margaret.Gt(int64(0))},
 		// },
 
 		// {
@@ -156,7 +155,7 @@ func TestSimple(t *testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3},
 		// 	result: []interface{}{2, 3},
-		// 	specs:  []margaret.QuerySpec{margaret.Gte(margaret.BaseSeq(13))},
+		// 	specs:  []margaret.QuerySpec{margaret.Gte(int64(13))},
 		// },
 
 		// {
@@ -164,7 +163,7 @@ func TestSimple(t *testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3},
 		// 	result: []interface{}{1, 2},
-		// 	specs:  []margaret.QuerySpec{margaret.Lt(margaret.BaseSeq(14))},
+		// 	specs:  []margaret.QuerySpec{margaret.Lt(int64(14))},
 		// },
 
 		// {
@@ -172,7 +171,7 @@ func TestSimple(t *testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3},
 		// 	result: []interface{}{1, 2},
-		// 	specs:  []margaret.QuerySpec{margaret.Lte(margaret.BaseSeq(13))},
+		// 	specs:  []margaret.QuerySpec{margaret.Lte(int64(13))},
 		// },
 
 		{
@@ -197,7 +196,7 @@ func TestSimple(t *testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3, 4, 5},
 		// 	result: []interface{}{5, 4, 3, 2},
-		// 	specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Gte(margaret.BaseSeq(2))},
+		// 	specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Gte(int64(2))},
 		// },
 
 		// {
@@ -205,7 +204,7 @@ func TestSimple(t *testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3, 4, 5},
 		// 	result: []interface{}{3, 2, 1},
-		// 	specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Lt(margaret.BaseSeq(4))},
+		// 	specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Lt(int64(4))},
 		// },
 
 		// {
@@ -222,9 +221,9 @@ func TestSimple(t *testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3},
 		// 	result: []interface{}{
-		// 		margaret.WrapWithSeq(1, margaret.BaseSeq(0)),
-		// 		margaret.WrapWithSeq(2, margaret.BaseSeq(1)),
-		// 		margaret.WrapWithSeq(3, margaret.BaseSeq(2)),
+		// 		margaret.WrapWithSeq(1, int64(0)),
+		// 		margaret.WrapWithSeq(2, int64(1)),
+		// 		margaret.WrapWithSeq(3, int64(2)),
 		// 	},
 		// 	specs:   []margaret.QuerySpec{margaret.SeqWrap(true)},
 		// 	seqWrap: true,

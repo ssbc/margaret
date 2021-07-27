@@ -77,8 +77,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 
 			// append values
 			for i, v := range tc.values {
-				//err := sink.Pour(ctx, multilog.WithValue(margaret.BaseSeq(i), v))
-				err := sink.Pour(ctx, margaret.WrapWithSeq(v, margaret.BaseSeq(i)))
+				err := sink.Pour(ctx, margaret.WrapWithSeq(v, int64(i)))
 				a.NoError(err, "error pouring into sink")
 			}
 
@@ -164,11 +163,11 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 
 	tcs := []testcase{
 		{
-			tipe:   margaret.BaseSeq(0),
+			tipe:   int64(0),
 			values: count(0, 20),
 			f: func(t *testing.T) multilog.Func {
-				return func(ctx context.Context, seq margaret.Seq, v interface{}, mlog multilog.MultiLog) (err error) {
-					facs := uniq(factorize(int(v.(margaret.Seq).Seq())))
+				return func(ctx context.Context, seq int64, v interface{}, mlog multilog.MultiLog) (err error) {
+					facs := uniq(factorize(int(v.(int64))))
 					for _, fac := range facs {
 						prefixBs := make([]byte, 4)
 						binary.BigEndian.PutUint32(prefixBs, uint32(fac))
@@ -181,7 +180,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 							return err
 						}
 
-						_, err = slog.Append(seq.Seq())
+						_, err = slog.Append(seq)
 						if err != nil {
 							err = errors.Wrapf(err, "error appending to sublog for prefix %d", fac)
 							return err
@@ -217,7 +216,7 @@ func SinkTestSimple(f NewLogFunc) func(*testing.T) {
 func count(from, to int) []interface{} {
 	out := make([]interface{}, to-from)
 	for i := from; i < to; i++ {
-		out[i-from] = margaret.BaseSeq(i)
+		out[i-from] = int64(i)
 	}
 	return out
 }

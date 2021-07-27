@@ -15,7 +15,7 @@ import (
 // TODO optimization idea: skip list
 type memlogElem struct {
 	v    interface{}
-	seq  margaret.BaseSeq
+	seq  int64
 	next *memlogElem
 	prev *memlogElem
 
@@ -83,11 +83,15 @@ func (log *memlog) Close() error {
 	return nil
 }
 
-func (log *memlog) Seq() luigi.Observable {
+func (log *memlog) Seq() int64 {
+	return log.tail.seq
+}
+
+func (log *memlog) Changes() luigi.Observable {
 	return log.seq
 }
 
-func (log *memlog) Get(s margaret.Seq) (interface{}, error) {
+func (log *memlog) Get(s int64) (interface{}, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 	if log.closed {
@@ -98,15 +102,15 @@ func (log *memlog) Get(s margaret.Seq) (interface{}, error) {
 		cur = log.head
 	)
 
-	for cur.seq.Seq() < s.Seq() && cur.next != nil {
+	for cur.seq < s && cur.next != nil {
 		cur = cur.next
 	}
 
-	if cur.seq.Seq() < s.Seq() {
+	if cur.seq < s {
 		return nil, margaret.OOB
 	}
 
-	if cur.seq.Seq() > s.Seq() {
+	if cur.seq > s {
 		// TODO maybe better handling of this case?
 		panic("datastructure borked, sequence number missing")
 	}
@@ -147,11 +151,11 @@ func (log *memlog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	return qry, nil
 }
 
-func (log *memlog) Append(v interface{}) (margaret.Seq, error) {
+func (log *memlog) Append(v interface{}) (int64, error) {
 	log.l.Lock()
 	defer log.l.Unlock()
 	if log.closed {
-		return nil, io.ErrClosedPipe // already closed
+		return margaret.SeqErrored, io.ErrClosedPipe // already closed
 	}
 
 	nxt := &memlogElem{
