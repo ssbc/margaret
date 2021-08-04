@@ -22,7 +22,7 @@ func New() indexes.SeqSetterIndex {
 
 type mapSetterIndex struct {
 	m      map[indexes.Addr]luigi.Observable
-	curSeq margaret.Seq
+	curSeq int64
 	l      sync.Mutex
 }
 
@@ -78,14 +78,14 @@ func (idx *mapSetterIndex) Delete(_ context.Context, addr indexes.Addr) error {
 	return nil
 }
 
-func (idx *mapSetterIndex) GetSeq() (margaret.Seq, error) {
+func (idx *mapSetterIndex) GetSeq() (int64, error) {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 
 	return idx.curSeq, nil
 }
 
-func (idx *mapSetterIndex) SetSeq(seq margaret.Seq) error {
+func (idx *mapSetterIndex) SetSeq(seq int64) error {
 	idx.l.Lock()
 	defer idx.l.Unlock()
 

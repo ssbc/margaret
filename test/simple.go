@@ -47,7 +47,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			for i, v := range tc.values {
 				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
-				r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+				r.EqualValues(i, seq, "sequence missmatch")
 
 			}
 
@@ -150,7 +150,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
-			specs:  []margaret.QuerySpec{margaret.Gt(margaret.BaseSeq(0))},
+			specs:  []margaret.QuerySpec{margaret.Gt(0)},
 		},
 
 		{
@@ -158,7 +158,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{2, 3},
-			specs:  []margaret.QuerySpec{margaret.Gte(margaret.BaseSeq(1))},
+			specs:  []margaret.QuerySpec{margaret.Gte(1)},
 		},
 
 		{
@@ -166,7 +166,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
-			specs:  []margaret.QuerySpec{margaret.Lt(margaret.BaseSeq(2))},
+			specs:  []margaret.QuerySpec{margaret.Lt(2)},
 		},
 
 		{
@@ -174,7 +174,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{1, 2},
-			specs:  []margaret.QuerySpec{margaret.Lte(margaret.BaseSeq(1))},
+			specs:  []margaret.QuerySpec{margaret.Lte(1)},
 		},
 
 		{
@@ -199,7 +199,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3, 4, 5},
 		// 	result: []interface{}{5, 4, 3, 2},
-		// 	specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Gte(margaret.BaseSeq(2))},
+		// 	specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Gte(int64(2))},
 		// },
 
 		// {
@@ -207,7 +207,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 		// 	tipe:   0,
 		// 	values: []interface{}{1, 2, 3, 4, 5},
 		// 	result: []interface{}{3, 2, 1},
-		// 	specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Lt(margaret.BaseSeq(4))},
+		// 	specs:  []margaret.QuerySpec{margaret.Reverse(true), margaret.Lt(int64(4))},
 		// },
 
 		{
@@ -224,9 +224,9 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			tipe:   0,
 			values: []interface{}{1, 2, 3},
 			result: []interface{}{
-				margaret.WrapWithSeq(1, margaret.BaseSeq(0)),
-				margaret.WrapWithSeq(2, margaret.BaseSeq(1)),
-				margaret.WrapWithSeq(3, margaret.BaseSeq(2)),
+				margaret.WrapWithSeq(1, 0),
+				margaret.WrapWithSeq(2, 1),
+				margaret.WrapWithSeq(3, 2),
 			},
 			specs:   []margaret.QuerySpec{margaret.SeqWrap(true)},
 			seqWrap: true,

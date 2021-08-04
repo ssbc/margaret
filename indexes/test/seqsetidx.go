@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/margaret"
 	"go.cryptoscope.co/margaret/indexes"
 )
 
@@ -32,12 +31,12 @@ func TestSeqSetterIndexSequential(newIdx NewSeqSetterIndexFunc) func(*testing.T)
 
 		seq, err := idx.GetSeq()
 		a.NoError(err, "returned by GetSeq before setting")
-		a.Equal(margaret.BaseSeq(-1), seq, "returned by GetSeq before setting")
+		a.EqualValues(-1, seq, "returned by GetSeq before setting")
 
 		err = idx.Set(ctx, "test", "omg what is this")
 		r.NoError(err, "error setting value")
 
-		err = idx.SetSeq(margaret.BaseSeq(0))
+		err = idx.SetSeq(0)
 		a.NoError(err, "returned by SetSeq")
 
 		obv, err := idx.Get(ctx, "test")
@@ -46,7 +45,7 @@ func TestSeqSetterIndexSequential(newIdx NewSeqSetterIndexFunc) func(*testing.T)
 
 		seq, err = idx.GetSeq()
 		a.NoError(err, "returned by GetSeq after setting")
-		a.Equal(margaret.BaseSeq(0), seq, "returned by GetSeq after setting")
+		a.EqualValues(0, seq, "returned by GetSeq after setting")
 
 		v, err := obv.Value()
 		a.NoError(err, "error getting value")

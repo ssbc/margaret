@@ -10,17 +10,20 @@ import (
 
 // Log stores entries sequentially, which can be queried individually using Get or as streams using Query.
 type Log interface {
-	// Seq returns an observable that holds the current sequence number
-	Seq() luigi.Observable
+	// Seq returns the current sequence number, which is also the number of entries in the log
+	Seqer
+
+	// Changes returns an observable that holds the current sequence number
+	Changes() luigi.Observable
 
 	// Get returns the entry with sequence number seq
-	Get(seq Seq) (interface{}, error)
+	Get(seq int64) (interface{}, error)
 
 	// Query returns a stream that is constrained by the passed query specification
 	Query(...QuerySpec) (luigi.Source, error)
 
 	// Append appends a new entry to the log
-	Append(interface{}) (Seq, error)
+	Append(interface{}) (int64, error)
 }
 
 type oob struct{}
@@ -39,9 +42,9 @@ func IsOutOfBounds(err error) bool {
 }
 
 type Alterer interface {
-	Null(Seq) error
+	Null(int64) error
 
-	Replace(Seq, []byte) error
+	Replace(int64, []byte) error
 }
 
 var ErrNulled = errors.New("margaret: Entry Nulled")

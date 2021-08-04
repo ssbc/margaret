@@ -16,7 +16,7 @@ type memlogQuery struct {
 	log *memlog
 	cur *memlogElem
 
-	gt, lt, gte, lte margaret.Seq
+	gt, lt, gte, lte int64
 
 	limit   int
 	live    bool
@@ -28,22 +28,22 @@ func (qry *memlogQuery) seek(ctx context.Context) error {
 	var err error
 
 	if qry.gt != margaret.SeqEmpty {
-		if qry.cur.seq.Seq() > qry.gt.Seq() {
+		if qry.cur.seq > qry.gt {
 			qry.cur = qry.log.head
 		}
 
-		for (qry.cur.seq + 1).Seq() <= qry.gt.Seq() {
+		for (qry.cur.seq + 1) <= qry.gt {
 			qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
 			if err != nil {
 				return err
 			}
 		}
 	} else if qry.gte != margaret.SeqEmpty {
-		if qry.cur.seq.Seq() > qry.gte.Seq() {
+		if qry.cur.seq > qry.gte {
 			qry.cur = qry.log.head
 		}
 
-		for (qry.cur.seq + 1).Seq() < qry.gte.Seq() {
+		for (qry.cur.seq + 1) < qry.gte {
 			qry.cur, err = qry.cur.waitNext(ctx, &qry.log.l)
 			if err != nil {
 				return err
@@ -54,7 +54,7 @@ func (qry *memlogQuery) seek(ctx context.Context) error {
 	return nil
 }
 
-func (qry *memlogQuery) Gt(s margaret.Seq) error {
+func (qry *memlogQuery) Gt(s int64) error {
 	if qry.gt != margaret.SeqEmpty || qry.gte != margaret.SeqEmpty {
 		return fmt.Errorf("lower bound already set")
 	}
@@ -63,7 +63,7 @@ func (qry *memlogQuery) Gt(s margaret.Seq) error {
 	return nil
 }
 
-func (qry *memlogQuery) Gte(s margaret.Seq) error {
+func (qry *memlogQuery) Gte(s int64) error {
 	if qry.gt != margaret.SeqEmpty || qry.gte != margaret.SeqEmpty {
 		return fmt.Errorf("lower bound already set")
 	}
@@ -72,7 +72,7 @@ func (qry *memlogQuery) Gte(s margaret.Seq) error {
 	return nil
 }
 
-func (qry *memlogQuery) Lt(s margaret.Seq) error {
+func (qry *memlogQuery) Lt(s int64) error {
 	if qry.lt != margaret.SeqEmpty || qry.lte != margaret.SeqEmpty {
 		return fmt.Errorf("upper bound already set")
 	}
@@ -81,7 +81,7 @@ func (qry *memlogQuery) Lt(s margaret.Seq) error {
 	return nil
 }
 
-func (qry *memlogQuery) Lte(s margaret.Seq) error {
+func (qry *memlogQuery) Lte(s int64) error {
 	if qry.lt != margaret.SeqEmpty || qry.lte != margaret.SeqEmpty {
 		return fmt.Errorf("upper bound already set")
 	}
@@ -131,7 +131,7 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 		return v, nil
 	}
 
-	if qry.cur.seq.Seq() <= qry.gt.Seq() || qry.cur.seq.Seq() < qry.gt.Seq() {
+	if qry.cur.seq <= qry.gt || qry.cur.seq < qry.gt {
 		err := qry.seek(ctx)
 		if err != nil {
 			return nil, err
@@ -143,9 +143,9 @@ func (qry *memlogQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, luigi.EOS{}
 	}
 
-	if qry.lt != margaret.SeqEmpty && !(qry.cur.seq.Seq() < (qry.lt).Seq()-1) {
+	if qry.lt != margaret.SeqEmpty && !(qry.cur.seq < (qry.lt)-1) {
 		return nil, luigi.EOS{}
-	} else if qry.lte != margaret.SeqEmpty && !(qry.cur.seq.Seq() < qry.lte.Seq()) {
+	} else if qry.lte != margaret.SeqEmpty && !(qry.cur.seq < qry.lte) {
 		return nil, luigi.EOS{}
 	}
 

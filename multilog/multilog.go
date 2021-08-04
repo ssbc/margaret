@@ -16,7 +16,6 @@ var (
 )
 
 // MultiLog is a collection of logs, keyed by a indexes.Addr
-// TODO maybe only call this log to avoid multilog.MultiLog?
 type MultiLog interface {
 	Get(indexes.Addr) (margaret.Log, error)
 	List() ([]indexes.Addr, error)
@@ -35,10 +34,5 @@ func Has(mlog MultiLog, addr indexes.Addr) (bool, error) {
 		return false, err
 	}
 
-	seqVal, err := slog.Seq().Value()
-	if err != nil {
-		return false, err
-	}
-
-	return seqVal.(margaret.BaseSeq) != margaret.SeqEmpty, nil
+	return slog.Seq() != margaret.SeqEmpty, nil
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/margaret"
 	mtest "go.cryptoscope.co/margaret/test"
 )
 
@@ -14,7 +13,7 @@ func TestGet(t *testing.T) {
 	type testcase struct {
 		tipe    interface{}
 		values  []interface{}
-		offsets []margaret.Seq
+		offsets []int64
 	}
 
 	mkTest := func(fn mtest.NewLogFunc, tc testcase) func(*testing.T) {
@@ -26,13 +25,13 @@ func TestGet(t *testing.T) {
 			r.NoError(err, "error creating log")
 			r.NotNil(log, "returned log is nil")
 
-			tc.offsets = make([]margaret.Seq, len(tc.values))
+			tc.offsets = make([]int64, len(tc.values))
 
 			// add the values and keep the offsets
 			for i, v := range tc.values {
 				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
-				t.Logf("entry:%d has seq: %d", i, seq.Seq())
+				t.Logf("entry:%d has seq: %d", i, seq)
 				tc.offsets[i] = seq
 			}
 

@@ -10,7 +10,7 @@ import (
 	"go.cryptoscope.co/margaret"
 )
 
-type StreamProcFunc func(context.Context, margaret.Seq, interface{}, SetterIndex) error
+type StreamProcFunc func(context.Context, int64, interface{}, SetterIndex) error
 
 func NewSinkIndex(f StreamProcFunc, idx SeqSetterIndex) SinkIndex {
 	return &sinkIndex{

@@ -48,11 +48,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 				r.NoError(err, "error getting sublog")
 
 				// check empty
-				sv, err := slog.Seq().Value()
-				r.NoError(err, "error getting sublog sequence")
-				seq, ok := sv.(margaret.Seq)
-				r.True(ok, "wrong type:%T", sv)
-				r.EqualValues(seq.Seq(), margaret.SeqEmpty)
+				r.EqualValues(slog.Seq(), margaret.SeqEmpty)
 
 				ev, err := slog.Get(margaret.SeqEmpty)
 				r.Error(err)
@@ -62,15 +58,11 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 				for i, v := range values {
 					seq, err := slog.Append(v)
 					r.NoError(err, "error appending to log")
-					r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+					r.EqualValues(i, seq, "sequence missmatch")
 				}
 
 				// check full
-				sv, err = slog.Seq().Value()
-				r.NoError(err, "error getting sublog sequence")
-				seq, ok = sv.(margaret.Seq)
-				r.True(ok, "wrong type:%T", sv)
-				r.EqualValues(len(values)-1, seq.Seq())
+				r.EqualValues(len(values)-1, slog.Seq())
 			}
 
 			// check if multilog entries match
@@ -83,7 +75,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 				err = nil
 
 				for seq, v := range results {
-					v_, err = slog.Get(margaret.BaseSeq(seq))
+					v_, err = slog.Get(int64(seq))
 					if tc.errStr == "" {
 						if tc.seqWrap {
 							sw := v.(margaret.SeqWrapper)
@@ -108,9 +100,7 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 					t.Errorf("expected error %q but got %q", tc.errStr, err)
 				}
 
-				currV, err := slog.Seq().Value()
-				r.NoError(err)
-				currSeq := currV.(margaret.BaseSeq)
+				currSeq := slog.Seq()
 				v, err := slog.Get(currSeq)
 				r.NoError(err)
 				r.NotNil(v)
@@ -132,29 +122,29 @@ func SubLogTestGet(f NewLogFunc) func(*testing.T) {
 
 	tcs := []testcase{
 		{
-			tipe:  margaret.BaseSeq(0),
+			tipe:  int64(0),
 			specs: []margaret.QuerySpec{margaret.Live(true)},
 			live:  true,
 			values: map[indexes.Addr][]interface{}{
-				indexes.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
-				indexes.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},
-				indexes.Addr([]byte{0, 0, 0, 4}):  []interface{}{4, 8, 12, 16},
-				indexes.Addr([]byte{0, 0, 0, 5}):  []interface{}{5, 10, 15},
-				indexes.Addr([]byte{0, 0, 0, 6}):  []interface{}{6, 12, 18},
-				indexes.Addr([]byte{0, 0, 0, 7}):  []interface{}{7, 14},
-				indexes.Addr([]byte{0, 0, 0, 8}):  []interface{}{8, 16},
-				indexes.Addr([]byte{0, 0, 0, 9}):  []interface{}{9, 18},
-				indexes.Addr([]byte{0, 0, 0, 10}): []interface{}{10},
-				indexes.Addr([]byte{0, 0, 0, 11}): []interface{}{11},
-				indexes.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
-				indexes.Addr([]byte{0, 0, 0, 12}): []interface{}{12},
-				indexes.Addr([]byte{0, 0, 0, 13}): []interface{}{13},
-				indexes.Addr([]byte{0, 0, 0, 14}): []interface{}{14},
-				indexes.Addr([]byte{0, 0, 0, 15}): []interface{}{15},
-				indexes.Addr([]byte{0, 0, 0, 16}): []interface{}{16},
-				indexes.Addr([]byte{0, 0, 0, 17}): []interface{}{17},
-				indexes.Addr([]byte{0, 0, 0, 18}): []interface{}{18},
-				indexes.Addr([]byte{0, 0, 0, 19}): []interface{}{19},
+				indexes.Addr([]byte{0, 0, 0, 2}):  {2, 4, 6, 8, 10, 12, 14, 16, 18},
+				indexes.Addr([]byte{0, 0, 0, 3}):  {3, 6, 9, 12, 15, 18},
+				indexes.Addr([]byte{0, 0, 0, 4}):  {4, 8, 12, 16},
+				indexes.Addr([]byte{0, 0, 0, 5}):  {5, 10, 15},
+				indexes.Addr([]byte{0, 0, 0, 6}):  {6, 12, 18},
+				indexes.Addr([]byte{0, 0, 0, 7}):  {7, 14},
+				indexes.Addr([]byte{0, 0, 0, 8}):  {8, 16},
+				indexes.Addr([]byte{0, 0, 0, 9}):  {9, 18},
+				indexes.Addr([]byte{0, 0, 0, 10}): {10},
+				indexes.Addr([]byte{0, 0, 0, 11}): {11},
+				indexes.Addr([]byte{0, 0, 0, 12}): {12},
+				indexes.Addr([]byte{0, 0, 0, 12}): {12},
+				indexes.Addr([]byte{0, 0, 0, 13}): {13},
+				indexes.Addr([]byte{0, 0, 0, 14}): {14},
+				indexes.Addr([]byte{0, 0, 0, 15}): {15},
+				indexes.Addr([]byte{0, 0, 0, 16}): {16},
+				indexes.Addr([]byte{0, 0, 0, 17}): {17},
+				indexes.Addr([]byte{0, 0, 0, 18}): {18},
+				indexes.Addr([]byte{0, 0, 0, 19}): {19},
 			},
 		},
 	}

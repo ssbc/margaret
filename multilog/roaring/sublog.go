@@ -27,30 +27,34 @@ type sublog struct {
 	deleted bool
 }
 
-func (log *sublog) Seq() luigi.Observable {
+func (log *sublog) Seq() int64 {
+	return log.seq.Seq() - 1
+}
+
+func (log *sublog) Changes() luigi.Observable {
 	return log.luigiObsv
 }
 
-func (log *sublog) Get(seq margaret.Seq) (interface{}, error) {
+func (log *sublog) Get(seq int64) (interface{}, error) {
 	log.mlog.l.Lock()
 	defer log.mlog.l.Unlock()
 	return log.get(seq)
 }
 
-func (log *sublog) get(seq margaret.Seq) (interface{}, error) {
+func (log *sublog) get(seq int64) (interface{}, error) {
 	if log.deleted {
 		return nil, multilog.ErrSublogDeleted
 	}
 
-	if seq.Seq() < 0 {
+	if seq < 0 {
 		return nil, luigi.EOS{}
 	}
 
-	v, err := log.bmap.Select(uint64(seq.Seq()))
+	v, err := log.bmap.Select(uint64(seq))
 	if err != nil {
 		return nil, luigi.EOS{}
 	}
-	return margaret.BaseSeq(v), err
+	return int64(v), err
 }
 
 func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
@@ -78,46 +82,49 @@ func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
 	return qry, nil
 }
 
-func (log *sublog) Append(v interface{}) (margaret.Seq, error) {
+func (log *sublog) Append(v interface{}) (int64, error) {
 	log.mlog.l.Lock()
 	defer log.mlog.l.Unlock()
 	if log.deleted {
-		return nil, multilog.ErrSublogDeleted
+		return margaret.SeqSublogDeleted, multilog.ErrSublogDeleted
 	}
-	val, ok := v.(margaret.BaseSeq)
+	val, ok := v.(int64)
 	if !ok {
 		switch tv := v.(type) {
 		case int:
-			val = margaret.BaseSeq(tv)
+			val = int64(tv)
 		case int64:
-			val = margaret.BaseSeq(tv)
+			val = int64(tv)
 		case uint32:
-			val = margaret.BaseSeq(tv)
+			val = int64(tv)
 		default:
-			return margaret.BaseSeq(-2), fmt.Errorf("roaringfiles: not a sequence (%T)", v)
+			return int64(-2), fmt.Errorf("roaringfiles: not a sequence (%T)", v)
 		}
 	}
-	if val.Seq() < 0 {
-		return nil, fmt.Errorf("roaringfiles can only store positive numbers")
+	if val < 0 {
+		return margaret.SeqErrored, fmt.Errorf("roaringfiles can only store positive numbers")
 	}
 
-	log.bmap.Set(uint64(val.Seq()))
+	log.bmap.Set(uint64(val))
 
 	log.dirty = true
 	log.seq.Inc()
 
 	count := log.bmap.GetCardinality() - 1
-	newSeq := margaret.BaseSeq(count)
+	newSeq := int64(count)
 
 	err := log.luigiObsv.Set(newSeq)
 	if err != nil {
 		err = fmt.Errorf("roaringfiles: failed to update sequence: %w", err)
-		return margaret.BaseSeq(-2), err
+		return margaret.SeqErrored, err
 	}
 	return newSeq, nil
 }
 
 func (log *sublog) store() error {
+	if log.deleted {
+		return multilog.ErrSublogDeleted
+	}
 	data := log.bmap.ToBuffer()
 
 	var err error

@@ -20,7 +20,7 @@ type offsetQuery struct {
 	log   *offsetLog
 	codec margaret.Codec
 
-	nextSeq, lt margaret.BaseSeq
+	nextSeq, lt int64
 
 	limit   int
 	live    bool
@@ -30,39 +30,39 @@ type offsetQuery struct {
 	err     error
 }
 
-func (qry *offsetQuery) Gt(s margaret.Seq) error {
+func (qry *offsetQuery) Gt(s int64) error {
 	if qry.nextSeq > margaret.SeqEmpty {
 		return fmt.Errorf("lower bound already set")
 	}
 
-	qry.nextSeq = margaret.BaseSeq(s.Seq() + 1)
+	qry.nextSeq = int64(s + 1)
 	return nil
 }
 
-func (qry *offsetQuery) Gte(s margaret.Seq) error {
+func (qry *offsetQuery) Gte(s int64) error {
 	if qry.nextSeq > margaret.SeqEmpty {
 		return fmt.Errorf("lower bound already set")
 	}
 
-	qry.nextSeq = margaret.BaseSeq(s.Seq())
+	qry.nextSeq = int64(s)
 	return nil
 }
 
-func (qry *offsetQuery) Lt(s margaret.Seq) error {
+func (qry *offsetQuery) Lt(s int64) error {
 	if qry.lt != margaret.SeqEmpty {
 		return fmt.Errorf("upper bound already set")
 	}
 
-	qry.lt = margaret.BaseSeq(s.Seq())
+	qry.lt = int64(s)
 	return nil
 }
 
-func (qry *offsetQuery) Lte(s margaret.Seq) error {
+func (qry *offsetQuery) Lte(s int64) error {
 	if qry.lt != margaret.SeqEmpty {
 		return fmt.Errorf("upper bound already set")
 	}
 
-	qry.lt = margaret.BaseSeq(s.Seq() + 1)
+	qry.lt = int64(s + 1)
 	return nil
 }
 
@@ -92,15 +92,7 @@ func (qry *offsetQuery) Reverse(yes bool) error {
 }
 
 func (qry *offsetQuery) setCursorToLast() error {
-	v, err := qry.log.seq.Value()
-	if err != nil {
-		return fmt.Errorf("setCursorToLast: failed to establish current value: %w", err)
-	}
-	currSeq, ok := v.(margaret.Seq)
-	if !ok {
-		return fmt.Errorf("setCursorToLast: failed to establish current value")
-	}
-	qry.nextSeq = margaret.BaseSeq(currSeq.Seq())
+	qry.nextSeq = qry.log.seqCurrent
 	return nil
 }
 
@@ -127,7 +119,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 		return nil, luigi.EOS{}
 	}
 
-	v, err := qry.log.readFrame(qry.nextSeq)
+	_, err := qry.log.readFrame(qry.nextSeq)
 	if errors.Is(err, io.EOF) {
 		if !qry.live {
 			return nil, luigi.EOS{}
@@ -135,12 +127,12 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 
 		wait := make(chan struct{})
 		var cancel func()
-		cancel = qry.log.seq.Register(luigi.FuncSink(
+		cancel = qry.log.seqChanges.Register(luigi.FuncSink(
 			func(ctx context.Context, v interface{}, err error) error {
 				if err != nil {
 					return err
 				}
-				if v.(margaret.Seq).Seq() >= qry.nextSeq.Seq() {
+				if v.(int64) >= qry.nextSeq {
 					close(wait)
 					cancel()
 				}
@@ -172,7 +164,7 @@ func (qry *offsetQuery) Next(ctx context.Context) (interface{}, error) {
 
 	// we waited until the value is in the log - now read it again
 
-	v, err = qry.log.readFrame(qry.nextSeq)
+	v, err := qry.log.readFrame(qry.nextSeq)
 	if errors.Is(err, io.EOF) {
 		return nil, io.ErrUnexpectedEOF
 	} else if err != nil {
@@ -233,7 +225,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 	}
 
 	// determines whether we should go on
-	hasNext := func(seq margaret.BaseSeq) bool {
+	hasNext := func(seq int64) bool {
 		return qry.limit != 0 && !(qry.lt >= 0 && seq >= qry.lt)
 	}
 
@@ -307,7 +299,7 @@ func (qry *offsetQuery) fastFwdPush(ctx context.Context, sink luigi.Sink) (func(
 		sw := v.(margaret.SeqWrapper)
 		v, seq := sw.Value(), sw.Seq()
 
-		if !hasNext(margaret.BaseSeq(seq.Seq())) {
+		if !hasNext(seq) {
 			close(qry.close)
 		}
 

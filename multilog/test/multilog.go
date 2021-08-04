@@ -24,7 +24,7 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		a := assert.New(t)
 		r := require.New(t)
 
-		mlog, dir, err := f(t.Name(), margaret.BaseSeq(0), "")
+		mlog, dir, err := f(t.Name(), int64(0), "")
 		r.NoError(err)
 
 		// empty yet
@@ -38,14 +38,13 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		r.NotNil(sublog)
 
 		// add some vals
-		var vals = []margaret.BaseSeq{1, 2, 3}
+		var vals = []int64{1, 2, 3}
 		for i, v := range vals {
 			_, err := sublog.Append(v)
 			r.NoError(err, "failed to append testVal %d", i)
 		}
-		curr, err := sublog.Seq().Value()
-		r.NoError(err, "failed to get sublog sequence")
-		a.NotEqual(margaret.SeqEmpty, curr)
+
+		a.NotEqual(margaret.SeqEmpty, sublog.Seq())
 
 		// sublog was added
 		ok, err := multilog.Has(mlog, addr)
@@ -59,7 +58,7 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 
 		// reopen
 		r.NoError(mlog.Close())
-		mlog, dir, err = f(t.Name(), margaret.BaseSeq(0), dir)
+		mlog, dir, err = f(t.Name(), int64(0), dir)
 		r.NoError(err)
 
 		ok, err = multilog.Has(mlog, addr)
@@ -79,7 +78,7 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 
 		// reopen
 		r.NoError(mlog.Close())
-		mlog, dir, err = f(t.Name(), margaret.BaseSeq(0), dir)
+		mlog, dir, err = f(t.Name(), int64(0), dir)
 		r.NoError(err)
 
 		addrs, err = mlog.List()
@@ -91,7 +90,7 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		sublog, err = mlog.Get(delAddr)
 		r.NoError(err)
 		r.NotNil(sublog)
-		vals = []margaret.BaseSeq{99, 101, 101, 102}
+		vals = []int64{99, 101, 101, 102}
 		for i, v := range vals {
 			_, err := sublog.Append(v)
 			r.NoError(err, "failed to append testVal %d for deletion", i)
@@ -109,18 +108,13 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		r.NoError(err, "delete of %s", delAddr)
 
 		// cant use previous handle
-		sv, err := sublog.Seq().Value()
-		r.NoError(err, "should get a value")
-		r.NotNil(sv, "should not return value for deleted sequence")
-		r.EqualValues(multilog.ErrSublogDeleted, sv.(error))
-
-		v, err := sublog.Get(margaret.BaseSeq(0))
+		v, err := sublog.Get(0)
 		r.Error(err, "get shouldn't work")
 		r.Nil(v, "should not return value for deleted sequence")
 
-		seq, err := sublog.Append(666)
+		errSeq, err := sublog.Append(666)
 		r.Error(err, "append shouldn't work")
-		r.Nil(seq, "should not return new sequence")
+		r.EqualValues(margaret.SeqSublogDeleted, errSeq, "should not return new sequence")
 
 		src, err := sublog.Query()
 		r.Error(err, "query shouldn't work")
@@ -130,9 +124,8 @@ func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 		sublog, err = mlog.Get(delAddr)
 		r.NoError(err)
 		r.NotNil(sublog)
-		curr, err = sublog.Seq().Value()
-		r.NoError(err, "failed to get sublog sequence of deleted sublog")
-		a.Equal(margaret.SeqEmpty, curr)
+
+		a.Equal(margaret.SeqEmpty, sublog.Seq())
 
 		// one left
 		addrs, err = mlog.List()
@@ -179,7 +172,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 				for i, v := range values {
 					seq, err := slog.Append(v)
 					r.NoError(err, "error appending to log")
-					r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+					r.EqualValues(i, seq, "sequence missmatch")
 				}
 			}
 
@@ -296,7 +289,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 	tcs := []testcase{
 		{
 			name:  "simple all",
-			tipe:  margaret.BaseSeq(0),
+			tipe:  int64(0),
 			specs: []margaret.QuerySpec{margaret.Live(true)},
 			live:  true,
 			values: map[indexes.Addr][]interface{}{
@@ -346,7 +339,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 		// BUG(cryptix): roaring does not implement reverse right now and just throws an error (https://github.com/cryptoscope/margaret/issues/7)
 		{
 			name:  "reverse",
-			tipe:  margaret.BaseSeq(0),
+			tipe:  int64(0),
 			specs: []margaret.QuerySpec{margaret.Reverse(true)},
 			values: map[indexes.Addr][]interface{}{
 				indexes.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
@@ -394,7 +387,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 
 		{
 			name:  "limit1",
-			tipe:  margaret.BaseSeq(0),
+			tipe:  int64(0),
 			specs: []margaret.QuerySpec{margaret.Limit(1)},
 			values: map[indexes.Addr][]interface{}{
 				indexes.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
@@ -442,8 +435,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 
 		{
 			name:  "live and gte1",
-			tipe:  margaret.BaseSeq(0),
-			specs: []margaret.QuerySpec{margaret.Live(true), margaret.Gte(margaret.BaseSeq(1))},
+			tipe:  int64(0),
+			specs: []margaret.QuerySpec{margaret.Live(true), margaret.Gte(int64(1))},
 			live:  true,
 			values: map[indexes.Addr][]interface{}{
 				indexes.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
@@ -491,8 +484,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 
 		{
 			name:  "lte3",
-			tipe:  margaret.BaseSeq(0),
-			specs: []margaret.QuerySpec{margaret.Lte(margaret.BaseSeq(3))},
+			tipe:  int64(0),
+			specs: []margaret.QuerySpec{margaret.Lte(int64(3))},
 			values: map[indexes.Addr][]interface{}{
 				indexes.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
 				indexes.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},
@@ -539,8 +532,8 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 
 		{
 			name:  "lt3",
-			tipe:  margaret.BaseSeq(0),
-			specs: []margaret.QuerySpec{margaret.Lt(margaret.BaseSeq(3))},
+			tipe:  int64(0),
+			specs: []margaret.QuerySpec{margaret.Lt(int64(3))},
 			values: map[indexes.Addr][]interface{}{
 				indexes.Addr([]byte{0, 0, 0, 2}):  []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18},
 				indexes.Addr([]byte{0, 0, 0, 3}):  []interface{}{3, 6, 9, 12, 15, 18},

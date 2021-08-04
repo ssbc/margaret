@@ -9,8 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"go.cryptoscope.co/margaret"
 )
 
 func LogTestGet(f NewLogFunc) func(*testing.T) {
@@ -38,11 +36,11 @@ func LogTestGet(f NewLogFunc) func(*testing.T) {
 			for i, v := range tc.values {
 				seq, err := log.Append(v)
 				r.NoError(err, "error appending to log")
-				r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+				r.EqualValues(i, seq, "sequence missmatch")
 			}
 
 			for i, v_ := range tc.result {
-				v, err := log.Get(margaret.BaseSeq(i))
+				v, err := log.Get(int64(i))
 				a.NoError(err, "error getting value at position", i)
 				a.Equal(v, v_, "value mismatch at position", i)
 			}

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
 	mjson "go.cryptoscope.co/margaret/codec/json"
 )
 
@@ -29,12 +28,12 @@ func TestReplace(t *testing.T) {
 	}
 
 	for i := 0; i < len(tevs); i++ {
-		var seq = margaret.BaseSeq(i)
+		var seq = int64(i)
 		t.Run(strconv.Itoa(i), replaceOne(tevs, seq))
 	}
 }
 
-func replaceOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
+func replaceOne(tevs []testEvent, nullSeq int64) func(*testing.T) {
 	return func(t *testing.T) {
 		//setup
 		r := require.New(t)
@@ -48,7 +47,7 @@ func replaceOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 		for i, ev := range tevs {
 			seq, err := log.Append(ev)
 			r.NoError(err, "failed to append event %d", i)
-			r.Equal(margaret.BaseSeq(i), seq, "sequence missmatch")
+			r.EqualValues(i, seq, "sequence missmatch")
 		}
 
 		repEvt := testEvent{"REPLACE", 0}
@@ -60,9 +59,8 @@ func replaceOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 		log, err = Open(name, mjson.New(&testEvent{}))
 		r.NoError(err, "error reopening log")
 
-		seq, err := log.Seq().Value()
-		r.NoError(err, "failed get current value")
-		r.Equal(margaret.BaseSeq(len(tevs)-1), seq, "sequence missmatch")
+		seq := log.Seq()
+		r.EqualValues(len(tevs)-1, seq, "sequence missmatch")
 
 		err = log.Replace(nullSeq, replaceData)
 		r.NoError(err, "failed get current value")
@@ -74,11 +72,11 @@ func replaceOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 
 		// get loop
 		for i := 0; i < len(tevs); i++ {
-			v, err := log.Get(margaret.BaseSeq(i))
+			v, err := log.Get(int64(i))
 			r.NoError(err, "error reading from log")
 			te, ok := v.(*testEvent)
 			r.True(ok, "wrong type: %T %v", v, v)
-			if int64(i) == nullSeq.Seq() {
+			if i == int(nullSeq) {
 				a.Equal(repEvt, *te)
 			} else {
 				a.Equal(tevs[i], *te)
@@ -100,7 +98,7 @@ func replaceOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 			}
 			te, ok := v.(*testEvent)
 			r.True(ok, "wrong type: %T %v", v, v)
-			if int64(i) == nullSeq.Seq() {
+			if i == int(nullSeq) {
 				a.Equal(repEvt, *te)
 			} else {
 				a.Equal(tevs[i], *te)
@@ -125,7 +123,7 @@ func replaceOne(tevs []testEvent, nullSeq margaret.Seq) func(*testing.T) {
 			}
 			te, ok := v.(*testEvent)
 			r.True(ok, "wrong type: %T %v", v, v)
-			if int64(i) == nullSeq.Seq() {
+			if i == int(nullSeq) {
 				a.Equal(repEvt, *te)
 			} else {
 				a.Equal(tevs[i], *te)

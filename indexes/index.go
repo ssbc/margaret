@@ -61,8 +61,8 @@ type SinkIndex interface {
 type SeqSetterIndex interface {
 	SetterIndex
 
-	SetSeq(margaret.Seq) error
-	GetSeq() (margaret.Seq, error)
+	SetSeq(int64) error
+	GetSeq() (int64, error)
 
 	io.Closer
 }
