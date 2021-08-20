@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2021 The margaret Authors
+
+SPDX-License-Identifier: MIT
+-->
+
 # Margaret [![Go Reference](https://pkg.go.dev/badge/go.cryptoscope.co/margaret.svg)](https://pkg.go.dev/go.cryptoscope.co/margaret) ![[Github Actions Tests](https://github.com/cryptoscope/margaret/actions/workflows/go.yml)](https://github.com/cryptoscope/margaret/actions/workflows/go.yml/badge.svg) [![Go Report Card](https://goreportcard.com/badge/go.cryptoscope.co/margaret)](https://goreportcard.com/report/go.cryptoscope.co/margaret)
 
 aka the Log Lady. Helps you to store and interact with append-only logs.

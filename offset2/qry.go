@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2021 The margaret Authors
+//
 // SPDX-License-Identifier: MIT
 
 package offset2 // import "go.cryptoscope.co/margaret/offset2"

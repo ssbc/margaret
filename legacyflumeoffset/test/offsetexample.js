@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 The margaret Authors
+//
+// SPDX-License-Identifier: MIT
+
 // super simple example that creates a bunch of objects and writes them to example.lfo
 
 var OffsetLog = require('flumelog-offset')

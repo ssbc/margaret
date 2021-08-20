@@ -1,7 +1,12 @@
+// SPDX-FileCopyrightText: 2021 The margaret Authors
+//
+// SPDX-License-Identifier: MIT
+
 package test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,7 +19,15 @@ func TestShortExample(t *testing.T) {
 
 	var tc testCodec
 
-	log, err := lfo.Open("example.lfo", tc)
+	const fname = "example.lfo"
+	_, err := os.Stat(fname)
+	if err != nil && os.IsNotExist(err) {
+		t.Error(fname, "does not exist. use offsetexample.js to create it")
+		return
+	}
+	r.NoError(err)
+
+	log, err := lfo.Open(fname, tc)
 	r.NoError(err)
 
 	n := 6

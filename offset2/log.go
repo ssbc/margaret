@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2021 The margaret Authors
+//
 // SPDX-License-Identifier: MIT
 
 /*Package offset2 implements a margaret log as persisted sequence of data across multiple files.

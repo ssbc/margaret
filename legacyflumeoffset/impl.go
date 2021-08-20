@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 The margaret Authors
+//
+// SPDX-License-Identifier: MIT
+
 // Package legacyflumeoffset implements the first iteration of an offset file.
 // as implemented by https://github.com/flumedb/flumelog-offset
 // Format
