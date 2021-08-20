@@ -15,7 +15,7 @@ log lady**_
 
 Margaret has the following facilities:
 * an append-only log interface `.Append(interface{})`, `.Get(int64)`
-* [queries](https://github.com/cryptoscope/margaret/blob/master/qry.go) `.Query(...QuerySpec)` for retrieving ranges based on sequence numbers e.g. `Query.Gt(int64)`, or limiting the amount of data returned `.Limit(int64)` 
+* [queries](https://godocs.io/go.cryptoscope.co/margaret#Query) `.Query(...QuerySpec)` for retrieving ranges based on sequence numbers e.g. `.Gt(int64)`, or limiting the amount of data returned `.Limit(int64)` 
 * a variety of index mechanisms, both for categorizing log entries into buckets and for creating virtual logs (aka sublogs)
 
 Margaret is one of a few key components that make the [go implementation of ssb](https://github.com/cryptoscope/ssb/) tick, for example:
@@ -33,6 +33,7 @@ In brief: margaret stores the data of _all logs_ in the three following files:
 There are a few concepts that might be tough to digest for newcomers on first approach:
 
 * multilogs, a kind of _tree_-based index, where each leaf is a margaret.Log
+  * in other words: it creates virtual sublogs that map to entries in an offset log (see log storage above)
 * `margaret/indexes` similar to leveldb indexes (arbitrary key-value stores)
 * sublogs (and rxLog/receiveLog/offsetLog and its equivalence to offset.log)
 * queries
