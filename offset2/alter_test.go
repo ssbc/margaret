@@ -19,7 +19,7 @@ import (
 	mjson "go.cryptoscope.co/margaret/codec/json"
 )
 
-var _ margaret.Alterer = (*offsetLog)(nil)
+var _ margaret.Alterer = (*OffsetLog)(nil)
 
 func TestNull(t *testing.T) {
 	os.RemoveAll("testrun")
