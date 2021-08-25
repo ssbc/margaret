@@ -19,7 +19,7 @@ import (
 
 type offsetQuery struct {
 	l     sync.Mutex
-	log   *offsetLog
+	log   *OffsetLog
 	codec margaret.Codec
 
 	nextSeq, lt int64
