@@ -119,7 +119,7 @@ func (log *MultiLog) openSublog(addr indexes.Addr) (*sublog, error) {
 	} else if err != nil {
 		return nil, err
 	} else {
-		seq = int64(r.GetCardinality() - 1)
+		seq = int64(r.GetCardinality())
 	}
 
 	var obsV uint64
