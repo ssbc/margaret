@@ -21,6 +21,122 @@ import (
 	"go.cryptoscope.co/margaret/multilog"
 )
 
+// cblgh: tests to make sure the local fork reproduction that was found when testing against
+// peachcloud doesn't reappear
+//
+// the scenario that detected it:
+//  Start a fresh go-sbot (multilog)
+//  Post some messages (entries in a sublog)
+//  Stop it
+//  Some time later: start it again
+//  Post more messages (entries in a sublog)
+//  Uh-oh the first new message seems to fork, using the previous-to-last message (instead of the last message) as it's previous reference, and with a seqno that is one less than it should be
+// 
+func MultilogTestGetFreshLogCloseThenOpenAgain(f NewLogFunc) func(*testing.T) {
+	return func(t *testing.T) {
+		a := assert.New(t)
+		r := require.New(t)
+
+		mlog, dir, err := f(t.Name(), int64(0), "")
+		r.NoError(err)
+
+		// empty yet
+		addrs, err := mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 0)
+
+		var addr indexes.Addr = "f23"
+		sublog, err := mlog.Get(addr)
+		r.NoError(err)
+		r.NotNil(sublog)
+		// sublog should be empty
+		a.EqualValues(margaret.SeqEmpty, sublog.Seq())
+
+		// add some vals
+		var vals = []int64{1, 2, 3}
+		for i, v := range vals {
+			_, err := sublog.Append(v)
+			r.NoError(err, "failed to append testVal %d", i)
+		}
+
+		a.NotEqual(margaret.SeqEmpty, sublog.Seq())
+		a.EqualValues(len(vals)-1, sublog.Seq())
+
+		// sublog was added
+		ok, err := multilog.Has(mlog, addr)
+		a.NoError(err)
+		a.True(ok)
+
+		addrs, err = mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 1)
+		r.Equal(addrs[0], addr)
+
+		// reopen
+		r.NoError(mlog.Close())
+		mlog, dir, err = f(t.Name(), int64(0), dir)
+		r.NoError(err)
+
+		ok, err = multilog.Has(mlog, addr)
+		a.NoError(err)
+		a.True(ok)
+
+		addrs, err = mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 1)
+
+		// now, let's try to add some more values after reopening
+		sublog, err = mlog.Get(addr)
+		r.NoError(err)
+		r.NotNil(sublog)
+
+		for i, v := range vals  {
+			val, err := sublog.Get(int64(i))
+			r.NoError(err)
+			r.EqualValues(v, val)
+		}
+
+		// add more values
+		var moreVals = []int64{4, 5, 6}
+		for i, v := range moreVals {
+			_, err := sublog.Append(v)
+			r.NoError(err, "failed to append testVal %d", i)
+		}
+
+		combined := append(vals, moreVals...)
+
+		a.NotEqual(margaret.SeqEmpty, sublog.Seq())
+		a.EqualValues(len(combined)-1, sublog.Seq())
+
+		for i, v := range combined {
+			val, err := sublog.Get(int64(i))
+			r.NoError(err)
+			r.EqualValues(v, val)
+		}
+
+		// reopen one last time
+		r.NoError(mlog.Close())
+		mlog, dir, err = f(t.Name(), int64(0), dir)
+		r.NoError(err)
+
+		addrs, err = mlog.List()
+		r.NoError(err, "error listing mlog")
+		r.Len(addrs, 1)
+
+		// sequence numbers are still good
+		sublog, err = mlog.Get(addr)
+		r.NoError(err)
+		r.NotNil(sublog)
+		a.EqualValues(len(vals)+len(moreVals)-1, sublog.Seq())
+
+		for i, v := range combined {
+			val, err := sublog.Get(int64(i))
+			r.NoError(err)
+			r.EqualValues(v, val)
+		}
+	}
+}
+
 func MultilogTestAddLogAndListed(f NewLogFunc) func(*testing.T) {
 	return func(t *testing.T) {
 		a := assert.New(t)
