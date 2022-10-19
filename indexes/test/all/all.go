@@ -6,9 +6,9 @@ package all
 
 import (
 	// imported only for side effects / registring testing helpers
-	_ "go.cryptoscope.co/margaret/test/all"
+	_ "github.com/ssbc/margaret/test/all"
 
-	_ "go.cryptoscope.co/margaret/indexes/badger/test"
-	_ "go.cryptoscope.co/margaret/indexes/mapidx/test"
-	_ "go.cryptoscope.co/margaret/indexes/mkv/test"
+	_ "github.com/ssbc/margaret/indexes/badger/test"
+	_ "github.com/ssbc/margaret/indexes/mapidx/test"
+	_ "github.com/ssbc/margaret/indexes/mkv/test"
 )

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/margaret/internal/persist"
+	"github.com/ssbc/margaret/internal/persist"
 )
 
 type SqliteSaver struct {

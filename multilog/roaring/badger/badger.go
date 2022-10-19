@@ -7,8 +7,8 @@ package badger
 import (
 	"github.com/dgraph-io/badger/v3"
 
-	pbadger "go.cryptoscope.co/margaret/internal/persist/badger"
-	"go.cryptoscope.co/margaret/multilog/roaring"
+	pbadger "github.com/ssbc/margaret/internal/persist/badger"
+	"github.com/ssbc/margaret/multilog/roaring"
 )
 
 func NewStandalone(base string) (*roaring.MultiLog, error) {

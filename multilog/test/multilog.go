@@ -15,10 +15,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/indexes"
-	"go.cryptoscope.co/margaret/multilog"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/indexes"
+	"github.com/ssbc/margaret/multilog"
 )
 
 // cblgh: tests to make sure the local fork reproduction that was found when testing against
@@ -31,7 +31,7 @@ import (
 //  Some time later: start it again
 //  Post more messages (entries in a sublog)
 //  Uh-oh the first new message seems to fork, using the previous-to-last message (instead of the last message) as it's previous reference, and with a seqno that is one less than it should be
-// 
+//
 func MultilogTestGetFreshLogCloseThenOpenAgain(f NewLogFunc) func(*testing.T) {
 	return func(t *testing.T) {
 		a := assert.New(t)
@@ -90,7 +90,7 @@ func MultilogTestGetFreshLogCloseThenOpenAgain(f NewLogFunc) func(*testing.T) {
 		r.NoError(err)
 		r.NotNil(sublog)
 
-		for i, v := range vals  {
+		for i, v := range vals {
 			val, err := sublog.Get(int64(i))
 			r.NoError(err)
 			r.EqualValues(v, val)
@@ -454,7 +454,7 @@ func MultiLogTestSimple(f NewLogFunc) func(*testing.T) {
 			},
 		},
 
-		// BUG(cryptix): roaring does not implement reverse right now and just throws an error (https://github.com/cryptoscope/margaret/issues/7)
+		// BUG(cryptix): roaring does not implement reverse right now and just throws an error (https://github.com/ssbc/margaret/issues/7)
 		{
 			name:  "reverse",
 			tipe:  int64(0),

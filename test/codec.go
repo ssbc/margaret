@@ -5,7 +5,7 @@
 package test
 
 import (
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/margaret"
 )
 
 // NewCodecFunc is a function that returns a codec

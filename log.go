@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
-package margaret // import "go.cryptoscope.co/margaret"
+package margaret // import "github.com/ssbc/margaret"
 
 import (
 	"errors"
 
-	"go.cryptoscope.co/luigi"
+	"github.com/ssbc/go-luigi"
 )
 
 // Log stores entries sequentially, which can be queried individually using Get or as streams using Query.

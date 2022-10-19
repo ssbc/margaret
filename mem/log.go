@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package mem // import "go.cryptoscope.co/margaret/mem"
+package mem // import "github.com/ssbc/margaret/mem"
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
 )
 
 // TODO optimization idea: skip list

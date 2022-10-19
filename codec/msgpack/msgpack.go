@@ -2,14 +2,14 @@
 //
 // SPDX-License-Identifier: MIT
 
-package msgpack // import "go.cryptoscope.co/margaret/codec/msgpack"
+package msgpack // import "github.com/ssbc/margaret/codec/msgpack"
 
 import (
 	"bytes"
 	"io"
 	"reflect"
 
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/margaret"
 
 	"github.com/pkg/errors"
 	ugorjiCodec "github.com/ugorji/go/codec"

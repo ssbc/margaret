@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package margaret // import "go.cryptoscope.co/margaret"
+package margaret // import "github.com/ssbc/margaret"
 
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o mock/qry.go . Query
 

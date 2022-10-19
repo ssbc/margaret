@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/margaret/internal/persist"
+	"github.com/ssbc/margaret/internal/persist"
 	"modernc.org/kv"
 )
 

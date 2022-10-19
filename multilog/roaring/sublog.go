@@ -8,12 +8,12 @@ import (
 	"fmt"
 
 	"github.com/dgraph-io/sroar"
-	"go.cryptoscope.co/luigi"
+	"github.com/ssbc/go-luigi"
 
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/internal/persist"
-	"go.cryptoscope.co/margaret/internal/seqobsv"
-	"go.cryptoscope.co/margaret/multilog"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/internal/persist"
+	"github.com/ssbc/margaret/internal/seqobsv"
+	"github.com/ssbc/margaret/multilog"
 )
 
 type sublog struct {

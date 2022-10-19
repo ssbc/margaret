@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
-	mtest "go.cryptoscope.co/margaret/test"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
+	mtest "github.com/ssbc/margaret/test"
 )
 
 func LogTestPump(f mtest.NewLogFunc) func(*testing.T) {

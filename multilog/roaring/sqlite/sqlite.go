@@ -5,8 +5,8 @@
 package sqlite
 
 import (
-	"go.cryptoscope.co/margaret/internal/persist/sqlite"
-	"go.cryptoscope.co/margaret/multilog/roaring"
+	"github.com/ssbc/margaret/internal/persist/sqlite"
+	"github.com/ssbc/margaret/multilog/roaring"
 )
 
 func NewMultiLog(base string) (*roaring.MultiLog, error) {

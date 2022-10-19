@@ -12,12 +12,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ssbc/margaret/internal/persist"
+	"github.com/ssbc/margaret/internal/persist/badger"
+	"github.com/ssbc/margaret/internal/persist/fs"
+	"github.com/ssbc/margaret/internal/persist/mkv"
+	"github.com/ssbc/margaret/internal/persist/sqlite"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/margaret/internal/persist"
-	"go.cryptoscope.co/margaret/internal/persist/badger"
-	"go.cryptoscope.co/margaret/internal/persist/fs"
-	"go.cryptoscope.co/margaret/internal/persist/mkv"
-	"go.cryptoscope.co/margaret/internal/persist/sqlite"
 
 	_ "github.com/mattn/go-sqlite3"
 )

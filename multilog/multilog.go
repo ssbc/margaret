@@ -8,8 +8,8 @@ import (
 	"errors"
 	"io"
 
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/indexes"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/indexes"
 )
 
 var (

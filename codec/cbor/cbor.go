@@ -10,8 +10,8 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"github.com/ssbc/margaret"
 	ugorjiCodec "github.com/ugorji/go/codec"
-	"go.cryptoscope.co/margaret"
 )
 
 // New creates a msgpack codec

@@ -7,7 +7,7 @@ package test
 import (
 	"testing"
 
-	"go.cryptoscope.co/margaret/indexes/test"
+	"github.com/ssbc/margaret/indexes/test"
 )
 
 func TestMKV(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 
 	"io"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
 )
 
 // Addr is an address (or key) in the index.

@@ -11,7 +11,7 @@ import (
 	"io/ioutil"
 
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/margaret"
 )
 
 type testCodec struct{}

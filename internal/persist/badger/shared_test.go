@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/ssbc/margaret/internal/persist"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/margaret/internal/persist"
 )
 
 func TestSharedBadger(t *testing.T) {

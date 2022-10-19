@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
-	"go.cryptoscope.co/margaret/internal/persist"
+	"github.com/ssbc/margaret/internal/persist"
 )
 
 func (s BadgerSaver) Put(key persist.Key, data []byte) error {

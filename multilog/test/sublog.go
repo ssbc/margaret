@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package test // import "go.cryptoscope.co/margaret/multilog/test"
+package test // import "github.com/ssbc/margaret/multilog/test"
 
 import (
 	"errors"
@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/indexes"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/indexes"
 )
 
 func SubLogTestGet(f NewLogFunc) func(*testing.T) {

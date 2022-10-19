@@ -11,7 +11,7 @@ import (
 	"io"
 	"os"
 
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/margaret"
 )
 
 type data struct {

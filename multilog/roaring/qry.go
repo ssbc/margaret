@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
 )
 
 type query struct {

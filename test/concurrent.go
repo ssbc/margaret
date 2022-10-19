@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package test // import "go.cryptoscope.co/margaret/test"
+package test // import "github.com/ssbc/margaret/test"
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/margaret"
 )
 
 func LogTestConcurrent(f NewLogFunc) func(*testing.T) {

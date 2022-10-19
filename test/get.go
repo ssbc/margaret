@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package test // import "go.cryptoscope.co/margaret/test"
+package test // import "github.com/ssbc/margaret/test"
 
 import (
 	"fmt"

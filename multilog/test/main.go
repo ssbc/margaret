@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
-package test // import "go.cryptoscope.co/margaret/multilog/test"
+package test // import "github.com/ssbc/margaret/multilog/test"
 
 import (
 	"testing"
 
-	"go.cryptoscope.co/margaret/multilog"
+	"github.com/ssbc/margaret/multilog"
 )
 
 type NewLogFunc func(name string, tipe interface{}, testdir string) (multilog.MultiLog, string, error)
@@ -21,7 +21,7 @@ func SinkTest(f NewLogFunc) func(*testing.T) {
 func MultiLogTest(f NewLogFunc) func(*testing.T) {
 	return func(t *testing.T) {
 		// makes sure local fork reproduction doesn't make a reappearance
-		t.Run("GetFreshThenReopenAndLogSomeMore",  MultilogTestGetFreshLogCloseThenOpenAgain(f))
+		t.Run("GetFreshThenReopenAndLogSomeMore", MultilogTestGetFreshLogCloseThenOpenAgain(f))
 		t.Run("MultiSimple", MultiLogTestSimple(f))
 		t.Run("Live", MultilogLiveQueryCheck(f))
 	}

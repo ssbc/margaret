@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/dgraph-io/sroar"
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret/indexes"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret/indexes"
 
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/internal/persist"
-	"go.cryptoscope.co/margaret/internal/seqobsv"
-	"go.cryptoscope.co/margaret/multilog"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/internal/persist"
+	"github.com/ssbc/margaret/internal/seqobsv"
+	"github.com/ssbc/margaret/multilog"
 )
 
 // NewStore returns a new multilog that is only good to store sequences

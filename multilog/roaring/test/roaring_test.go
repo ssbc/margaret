@@ -7,7 +7,7 @@ package test
 import (
 	"testing"
 
-	"go.cryptoscope.co/margaret/multilog/test"
+	"github.com/ssbc/margaret/multilog/test"
 )
 
 func TestRoaringFiles(t *testing.T) {
