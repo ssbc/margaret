@@ -2,14 +2,14 @@
 //
 // SPDX-License-Identifier: MIT
 
-package json // import "go.cryptoscope.co/margaret/codec/json"
+package json // import "github.com/ssbc/margaret/codec/json"
 
 import (
 	"encoding/json"
 	"io"
 	"reflect"
 
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/margaret"
 )
 
 // New creates a json codec that decodes into values of type tipe.

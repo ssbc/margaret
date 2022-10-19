@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package test // import "go.cryptoscope.co/margaret/test"
+package test // import "github.com/ssbc/margaret/test"
 
 import (
 	"context"
@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
 )
 
 func LogTestSimple(f NewLogFunc) func(*testing.T) {
@@ -195,7 +195,7 @@ func LogTestSimple(f NewLogFunc) func(*testing.T) {
 			errStr: "end of stream",
 		},
 
-		// BUG(cryptix): the iterators needs to be improved to handle these correctly (https://github.com/cryptoscope/margaret/issues/6)
+		// BUG(cryptix): the iterators needs to be improved to handle these correctly (https://github.com/ssbc/margaret/issues/6)
 		// {
 		// 	name:   "reverse and gte",
 		// 	tipe:   0,

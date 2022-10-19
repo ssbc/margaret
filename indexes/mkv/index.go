@@ -15,9 +15,9 @@ import (
 	"reflect"
 	"sync"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/indexes"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/indexes"
 	"modernc.org/kv"
 )
 

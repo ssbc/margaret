@@ -7,7 +7,7 @@ package indexes
 import (
 	"sync"
 
-	"go.cryptoscope.co/luigi"
+	"github.com/ssbc/go-luigi"
 )
 
 // NewObservable returns a regular observable that calls f when the last registration is cancelled.

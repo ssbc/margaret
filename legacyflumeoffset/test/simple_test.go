@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/codec/json"
+	"github.com/ssbc/margaret/legacyflumeoffset"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/codec/json"
-	"go.cryptoscope.co/margaret/legacyflumeoffset"
 )
 
 func TestSimple(t *testing.T) {
@@ -194,7 +194,7 @@ func TestSimple(t *testing.T) {
 			errStr: "end of stream",
 		},
 
-		// BUG(cryptix): the iterators needs to be improved to handle these correctly (https://github.com/cryptoscope/margaret/issues/6)
+		// BUG(cryptix): the iterators needs to be improved to handle these correctly (https://github.com/ssbc/margaret/issues/6)
 		// {
 		// 	name:   "reverse and gte",
 		// 	tipe:   0,

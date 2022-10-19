@@ -5,8 +5,8 @@
 package mkv
 
 import (
-	"go.cryptoscope.co/margaret/internal/persist/mkv"
-	"go.cryptoscope.co/margaret/multilog/roaring"
+	"github.com/ssbc/margaret/internal/persist/mkv"
+	"github.com/ssbc/margaret/multilog/roaring"
 )
 
 func NewMultiLog(base string) (*roaring.MultiLog, error) {

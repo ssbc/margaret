@@ -8,9 +8,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret/indexes"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret/indexes"
 )
 
 type NewSetterIndexFunc func(name string, tipe interface{}) (indexes.SetterIndex, error)

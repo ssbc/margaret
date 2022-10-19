@@ -12,8 +12,8 @@ import (
 
 	"github.com/keks/persist"
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
 )
 
 // Func is a processing function that consumes a stream and sets values in the multilog.

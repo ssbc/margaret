@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"testing"
 
+	mtest "github.com/ssbc/margaret/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	mtest "go.cryptoscope.co/margaret/test"
 )
 
 func TestGet(t *testing.T) {

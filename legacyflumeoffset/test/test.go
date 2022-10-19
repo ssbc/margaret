@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/codec/cbor"
-	"go.cryptoscope.co/margaret/codec/json"
-	"go.cryptoscope.co/margaret/codec/msgpack"
-	lfo "go.cryptoscope.co/margaret/legacyflumeoffset"
-	mtest "go.cryptoscope.co/margaret/test"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/codec/cbor"
+	"github.com/ssbc/margaret/codec/json"
+	"github.com/ssbc/margaret/codec/msgpack"
+	lfo "github.com/ssbc/margaret/legacyflumeoffset"
+	mtest "github.com/ssbc/margaret/test"
 )
 
 var newLogFuncs map[string]mtest.NewLogFunc

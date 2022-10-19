@@ -9,9 +9,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ssbc/margaret"
+	lfo "github.com/ssbc/margaret/legacyflumeoffset"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/margaret"
-	lfo "go.cryptoscope.co/margaret/legacyflumeoffset"
 )
 
 func TestShortExample(t *testing.T) {

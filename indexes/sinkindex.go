@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
 )
 
 type StreamProcFunc func(context.Context, int64, interface{}, SetterIndex) error

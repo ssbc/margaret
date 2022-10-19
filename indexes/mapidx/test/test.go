@@ -5,9 +5,9 @@
 package test
 
 import (
-	"go.cryptoscope.co/margaret/indexes"
-	"go.cryptoscope.co/margaret/indexes/mapidx"
-	"go.cryptoscope.co/margaret/indexes/test"
+	"github.com/ssbc/margaret/indexes"
+	"github.com/ssbc/margaret/indexes/mapidx"
+	"github.com/ssbc/margaret/indexes/test"
 )
 
 func init() {

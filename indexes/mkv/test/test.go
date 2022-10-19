@@ -12,9 +12,9 @@ import (
 
 	"modernc.org/kv"
 
-	"go.cryptoscope.co/margaret/indexes"
-	libmkv "go.cryptoscope.co/margaret/indexes/mkv"
-	"go.cryptoscope.co/margaret/indexes/test"
+	"github.com/ssbc/margaret/indexes"
+	libmkv "github.com/ssbc/margaret/indexes/mkv"
+	"github.com/ssbc/margaret/indexes/test"
 )
 
 func init() {

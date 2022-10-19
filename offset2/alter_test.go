@@ -12,11 +12,11 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
+	mjson "github.com/ssbc/margaret/codec/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
-	mjson "go.cryptoscope.co/margaret/codec/json"
 )
 
 var _ margaret.Alterer = (*OffsetLog)(nil)

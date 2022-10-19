@@ -14,9 +14,9 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 
-	"go.cryptoscope.co/margaret/indexes"
-	libadger "go.cryptoscope.co/margaret/indexes/badger"
-	"go.cryptoscope.co/margaret/indexes/test"
+	"github.com/ssbc/margaret/indexes"
+	libadger "github.com/ssbc/margaret/indexes/badger"
+	"github.com/ssbc/margaret/indexes/test"
 )
 
 func init() {

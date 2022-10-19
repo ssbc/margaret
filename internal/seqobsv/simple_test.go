@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"go.cryptoscope.co/margaret/internal/seqobsv"
+	"github.com/ssbc/margaret/internal/seqobsv"
 )
 
 func ExampleInc() {

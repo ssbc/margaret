@@ -2,16 +2,16 @@
 //
 // SPDX-License-Identifier: MIT
 
-package mem // import "go.cryptoscope.co/margaret/mem"
+package mem // import "github.com/ssbc/margaret/mem"
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
-	"go.cryptoscope.co/luigi"
+	"github.com/ssbc/go-luigi"
 
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/margaret"
 )
 
 type memlogQuery struct {

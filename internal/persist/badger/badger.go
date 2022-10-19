@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
-	"go.cryptoscope.co/margaret/internal/persist"
+	"github.com/ssbc/margaret/internal/persist"
 )
 
 type BadgerSaver struct {

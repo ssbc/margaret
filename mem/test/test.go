@@ -5,9 +5,9 @@
 package test
 
 import (
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/mem"
-	mtest "go.cryptoscope.co/margaret/test"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/mem"
+	mtest "github.com/ssbc/margaret/test"
 )
 
 func init() {

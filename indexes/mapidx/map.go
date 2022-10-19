@@ -2,16 +2,16 @@
 //
 // SPDX-License-Identifier: MIT
 
-package mapidx // import "go.cryptoscope.co/margaret/indexes/mapidx"
+package mapidx // import "github.com/ssbc/margaret/indexes/mapidx"
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
-	"go.cryptoscope.co/margaret/indexes"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/indexes"
 )
 
 // New returns a new map based index

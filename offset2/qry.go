@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package offset2 // import "go.cryptoscope.co/margaret/offset2"
+package offset2 // import "github.com/ssbc/margaret/offset2"
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 	"sync"
 	"syscall"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret"
 )
 
 type offsetQuery struct {

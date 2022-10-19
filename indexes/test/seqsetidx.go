@@ -8,9 +8,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ssbc/margaret/indexes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/margaret/indexes"
 )
 
 type NewSeqSetterIndexFunc func(name string, tipe interface{}) (indexes.SeqSetterIndex, error)

@@ -13,10 +13,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ssbc/go-luigi"
+	mjson "github.com/ssbc/margaret/codec/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.cryptoscope.co/luigi"
-	mjson "go.cryptoscope.co/margaret/codec/json"
 )
 
 func TestReplace(t *testing.T) {

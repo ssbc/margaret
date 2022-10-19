@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.cryptoscope.co/luigi"
-	"go.cryptoscope.co/margaret/indexes"
-	mtest "go.cryptoscope.co/margaret/test"
+	"github.com/ssbc/go-luigi"
+	"github.com/ssbc/margaret/indexes"
+	mtest "github.com/ssbc/margaret/test"
 )
 
 type NewSinkIndexFunc func(name string, tipe interface{}, f indexes.StreamProcFunc) (indexes.SinkIndex, error)

@@ -12,13 +12,13 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 
-	"go.cryptoscope.co/margaret/internal/persist/fs"
-	"go.cryptoscope.co/margaret/multilog"
-	"go.cryptoscope.co/margaret/multilog/roaring"
-	"go.cryptoscope.co/margaret/multilog/roaring/badger"
-	"go.cryptoscope.co/margaret/multilog/roaring/mkv"
-	"go.cryptoscope.co/margaret/multilog/roaring/sqlite"
-	mltest "go.cryptoscope.co/margaret/multilog/test"
+	"github.com/ssbc/margaret/internal/persist/fs"
+	"github.com/ssbc/margaret/multilog"
+	"github.com/ssbc/margaret/multilog/roaring"
+	"github.com/ssbc/margaret/multilog/roaring/badger"
+	"github.com/ssbc/margaret/multilog/roaring/mkv"
+	"github.com/ssbc/margaret/multilog/roaring/sqlite"
+	mltest "github.com/ssbc/margaret/multilog/test"
 )
 
 func init() {

@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	"go.cryptoscope.co/margaret"
+	"github.com/ssbc/margaret"
 )
 
 type offset struct {

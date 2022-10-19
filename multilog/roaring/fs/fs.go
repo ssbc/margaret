@@ -5,8 +5,8 @@
 package fs
 
 import (
-	"go.cryptoscope.co/margaret/internal/persist/fs"
-	"go.cryptoscope.co/margaret/multilog/roaring"
+	"github.com/ssbc/margaret/internal/persist/fs"
+	"github.com/ssbc/margaret/multilog/roaring"
 )
 
 func NewMultiLog(base string) (*roaring.MultiLog, error) {

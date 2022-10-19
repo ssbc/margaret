@@ -7,7 +7,7 @@ package test
 import (
 	"testing"
 
-	mtest "go.cryptoscope.co/margaret/test"
+	mtest "github.com/ssbc/margaret/test"
 )
 
 var (
