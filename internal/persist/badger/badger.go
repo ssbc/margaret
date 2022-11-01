@@ -38,7 +38,7 @@ func NewStandalone(path string) (*BadgerSaver, error) {
 
 	var err error
 
-	o := badger.DefaultOptions(path)
+	o := BadgerOpts(path)
 	ms.db, err = badger.Open(o)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create KV %s: %w", path, err)

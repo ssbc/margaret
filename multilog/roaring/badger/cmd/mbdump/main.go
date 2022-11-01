@@ -12,6 +12,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/sroar"
 	"github.com/pkg/errors"
+	pbadger "github.com/ssbc/margaret/internal/persist/badger"
 	"go.mindeco.de/logging"
 )
 
@@ -27,7 +28,7 @@ func main() {
 
 	dir := os.Args[1]
 
-	opts := badger.DefaultOptions(dir)
+	opts := pbadger.BadgerOpts(dir)
 
 	db, err := badger.Open(opts)
 	check(errors.Wrap(err, "error opening database"))

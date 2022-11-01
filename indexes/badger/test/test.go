@@ -17,6 +17,7 @@ import (
 	"github.com/ssbc/margaret/indexes"
 	libadger "github.com/ssbc/margaret/indexes/badger"
 	"github.com/ssbc/margaret/indexes/test"
+	pbadger "github.com/ssbc/margaret/internal/persist/badger"
 )
 
 func init() {
@@ -25,7 +26,7 @@ func init() {
 		os.RemoveAll(dir)
 		os.MkdirAll(dir, 0700)
 
-		opts := badger.DefaultOptions(dir)
+		opts := pbadger.BadgerOpts(dir)
 
 		db, err := badger.Open(opts)
 		if err != nil {
@@ -47,7 +48,7 @@ func init() {
 			os.RemoveAll(dir)
 			os.MkdirAll(dir, 0700)
 
-			opts := badger.DefaultOptions(dir)
+			opts := pbadger.BadgerOpts(dir)
 
 			var err error
 			sharedDB, err = badger.Open(opts)
