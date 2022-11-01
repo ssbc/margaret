@@ -23,7 +23,7 @@ func TestSharedBadger(t *testing.T) {
 	os.RemoveAll(path)
 	os.Mkdir(path, 0700)
 
-	o := badger.DefaultOptions(path)
+	o := BadgerOpts(path)
 	db, err := badger.Open(o)
 	r.NoError(err)
 
