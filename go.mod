@@ -29,7 +29,7 @@ require (
 	github.com/ugorji/go/codec v1.2.7
 	go.mindeco.de v1.12.0
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	modernc.org/fileutil v1.1.1 // indirect
 	modernc.org/internal v1.0.5 // indirect
