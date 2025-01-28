@@ -11,7 +11,7 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/dgraph-io/sroar v0.0.0-20220527172339-b92b7eaaf6e0
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
-	github.com/golang/glog v1.0.0 // indirect
+	github.com/golang/glog v1.2.4 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
