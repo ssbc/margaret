@@ -11,7 +11,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/ssbc/margaret"
+	"github.com/ssbc/margaret/v2"
 )
 
 type data struct {

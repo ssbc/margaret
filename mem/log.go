@@ -2,177 +2,260 @@
 //
 // SPDX-License-Identifier: MIT
 
-package mem // import "github.com/ssbc/margaret/mem"
+// Package mem provides an in-memory append-only log.
+package mem
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 
-	"github.com/pkg/errors"
-	"github.com/ssbc/go-luigi"
-	"github.com/ssbc/margaret"
+	margaret "github.com/ssbc/margaret/v2"
 )
 
-// TODO optimization idea: skip list
-type memlogElem struct {
-	v    interface{}
+type memlogElem[T margaret.Encodeable] struct {
+	v    T
 	seq  int64
-	next *memlogElem
-	prev *memlogElem
-
-	wait chan struct{}
+	next *memlogElem[T]
+	prev *memlogElem[T]
+	wait chan struct{} // closed when next is set
 }
 
-func (el *memlogElem) waitNext(ctx context.Context, m *sync.Mutex) (*memlogElem, error) {
-	// closure to localize defer. We need to lock before accessing el.next in the return.
+// waitNext blocks until a new element is appended or the context is cancelled.
+// The mutex is temporarily released to allow appends.
+func (el *memlogElem[T]) waitNext(ctx context.Context, mu *sync.Mutex) (*memlogElem[T], error) {
 	err := func() error {
-		// yes, first unlock, then lock. We need to release the mutex to
-		// allow Appends to happen, but we need to lock again afterwards!
-		m.Unlock()
-		defer m.Lock()
+		mu.Unlock()
+		defer mu.Lock()
 
 		select {
-		// wait until new element has been added
 		case <-el.wait:
-		// or context is canceled
+			return nil
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-
-		return nil
 	}()
 	if err != nil {
-		// return original element in error case
 		return el, err
 	}
-
 	return el.next, nil
 }
 
-type memlog struct {
-	l sync.Mutex
-
-	seq        luigi.Observable
-	head, tail *memlogElem
-
-	closed bool
+type memlog[T margaret.Encodeable] struct {
+	mu         sync.Mutex
+	head, tail *memlogElem[T]
+	closed     bool
 }
 
-// New returns a new in-memory log
-func New() margaret.Log {
-	root := &memlogElem{
+// New returns a new in-memory log.
+func New[T margaret.Encodeable]() margaret.Log[T] {
+	root := &memlogElem[T]{
 		seq:  margaret.SeqEmpty,
 		wait: make(chan struct{}),
 	}
 
-	log := &memlog{
-		seq:  luigi.NewObservable(margaret.SeqEmpty),
+	return &memlog[T]{
 		head: root,
 		tail: root,
 	}
-
-	return log
 }
 
-func (log *memlog) Close() error {
-	log.l.Lock()
-	defer log.l.Unlock()
+func (log *memlog[T]) Close() error {
+	log.mu.Lock()
+	defer log.mu.Unlock()
 	if log.closed {
-		return io.ErrClosedPipe // already closed
+		return io.ErrClosedPipe
 	}
 	log.closed = true
 	return nil
 }
 
-func (log *memlog) Seq() int64 {
+func (log *memlog[T]) Seq() int64 {
+	log.mu.Lock()
+	defer log.mu.Unlock()
 	return log.tail.seq
 }
 
-func (log *memlog) Changes() luigi.Observable {
-	return log.seq
-}
-
-func (log *memlog) Get(s int64) (interface{}, error) {
-	log.l.Lock()
-	defer log.l.Unlock()
+func (log *memlog[T]) Get(s int64) (T, error) {
+	var empty T
+	log.mu.Lock()
+	defer log.mu.Unlock()
 	if log.closed {
-		return nil, io.ErrClosedPipe // already closed
+		return empty, io.ErrClosedPipe
 	}
 
-	var (
-		cur = log.head
-	)
-
+	cur := log.head
 	for cur.seq < s && cur.next != nil {
 		cur = cur.next
 	}
 
-	if cur.seq < s {
-		return nil, margaret.OOB
-	}
-
-	if cur.seq > s {
-		// TODO maybe better handling of this case?
-		panic("datastructure borked, sequence number missing")
+	if cur.seq != s {
+		return empty, margaret.ErrOutOfBounds
 	}
 
 	return cur.v, nil
 }
 
-func (log *memlog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
-	log.l.Lock()
-	defer log.l.Unlock()
+func (log *memlog[T]) Append(v T) (int64, error) {
+	log.mu.Lock()
+	defer log.mu.Unlock()
 	if log.closed {
-		return nil, io.ErrClosedPipe // already closed
+		return margaret.SeqErrored, io.ErrClosedPipe
 	}
 
-	qry := &memlogQuery{
-		log: log,
-		cur: log.head,
-
-		gt:  margaret.SeqEmpty,
-		gte: margaret.SeqEmpty,
-		lt:  margaret.SeqEmpty,
-		lte: margaret.SeqEmpty,
-
-		limit: -1, //i.e. no limit
-	}
-
-	for _, spec := range specs {
-		err := spec(qry)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if qry.reverse && qry.live {
-		return nil, errors.Errorf("memlog: can't do reverse and live")
-	}
-
-	return qry, nil
-}
-
-func (log *memlog) Append(v interface{}) (int64, error) {
-	log.l.Lock()
-	defer log.l.Unlock()
-	if log.closed {
-		return margaret.SeqErrored, io.ErrClosedPipe // already closed
-	}
-
-	nxt := &memlogElem{
+	nxt := &memlogElem[T]{
 		v:    v,
 		seq:  log.tail.seq + 1,
+		prev: log.tail,
 		wait: make(chan struct{}),
 	}
 
 	log.tail.next = nxt
 	oldtail := log.tail
-	nxt.prev = oldtail
-	log.tail = log.tail.next
+	log.tail = nxt
 
 	close(oldtail.wait)
-	log.seq.Set(log.tail.seq)
 
 	return log.tail.seq, nil
+}
+
+func (log *memlog[T]) Query(opts ...margaret.QueryOption) margaret.QueryIterator[T] {
+	cfg, err := margaret.ApplyQueryOptions(opts...)
+	if err != nil {
+		return margaret.NewFailedIterator[T](err)
+	}
+
+	if cfg.Reverse && cfg.Live {
+		return margaret.NewFailedIterator[T](fmt.Errorf("memlog: can't do reverse and live"))
+	}
+
+	if cfg.Live {
+		return log.queryLive(cfg)
+	}
+	return log.querySnapshot(cfg)
+}
+
+func (log *memlog[T]) querySnapshot(cfg margaret.QueryConfig) margaret.QueryIterator[T] {
+	iter := func(yield func(int64, T) bool) {
+		log.mu.Lock()
+		defer log.mu.Unlock()
+
+		if log.tail.seq == margaret.SeqEmpty {
+			return
+		}
+
+		start, end := cfg.Bounds(log.tail.seq)
+		if start > end {
+			return
+		}
+
+		count := 0
+
+		if cfg.Reverse {
+			// Find the end node
+			cur := log.tail
+			for cur.seq > end && cur.prev != nil {
+				cur = cur.prev
+			}
+
+			for cur.seq >= start {
+				if cfg.Limit > 0 && count >= cfg.Limit {
+					return
+				}
+				if cur.seq >= 0 {
+					if !yield(cur.seq, cur.v) {
+						return
+					}
+					count++
+				}
+				if cur.prev == nil {
+					break
+				}
+				cur = cur.prev
+			}
+		} else {
+			// Find the start node
+			cur := log.head
+			for cur.seq < start && cur.next != nil {
+				cur = cur.next
+			}
+
+			for cur.seq <= end {
+				if cfg.Limit > 0 && count >= cfg.Limit {
+					return
+				}
+				if cur.seq >= 0 {
+					if !yield(cur.seq, cur.v) {
+						return
+					}
+					count++
+				}
+				if cur.next == nil {
+					break
+				}
+				cur = cur.next
+			}
+		}
+	}
+
+	return margaret.NewIterWrapper(iter)
+}
+
+func (log *memlog[T]) queryLive(cfg margaret.QueryConfig) margaret.QueryIterator[T] {
+	var iterErr error
+	ctx := cfg.Ctx
+
+	iter := func(yield func(int64, T) bool) {
+		log.mu.Lock()
+		defer log.mu.Unlock()
+
+		// Determine starting position
+		start, _ := cfg.Bounds(log.tail.seq)
+
+		// Find the starting node (the node BEFORE the first one we want)
+		cur := log.head
+		for cur.next != nil && cur.next.seq < start {
+			cur = cur.next
+		}
+
+		count := 0
+
+		// Phase 1: drain existing entries
+		for cur.next != nil {
+			cur = cur.next
+
+			if cfg.Limit > 0 && count >= cfg.Limit {
+				return
+			}
+
+			if cur.seq >= start {
+				if !yield(cur.seq, cur.v) {
+					return
+				}
+				count++
+			}
+		}
+
+		// Phase 2: follow new entries via wait channels
+		for {
+			if cfg.Limit > 0 && count >= cfg.Limit {
+				return
+			}
+
+			next, err := cur.waitNext(ctx, &log.mu)
+			if err != nil {
+				iterErr = err
+				return
+			}
+			cur = next
+
+			if !yield(cur.seq, cur.v) {
+				return
+			}
+			count++
+		}
+	}
+
+	return margaret.NewLiveIterWrapper(iter, func() error { return iterErr })
 }

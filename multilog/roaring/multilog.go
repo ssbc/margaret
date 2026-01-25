@@ -2,38 +2,38 @@
 //
 // SPDX-License-Identifier: MIT
 
+// Package roaring provides a MultiLog backed by roaring bitmaps.
+//
+// Each sublog stores a set of int64 sequence numbers from a source log,
+// compressed using roaring bitmaps. This is ideal for building indexes
+// like "which entries in the main log belong to this author?"
 package roaring
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	stdlog "log"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/dgraph-io/sroar"
-	"github.com/ssbc/go-luigi"
-	"github.com/ssbc/margaret/indexes"
 
-	"github.com/ssbc/margaret"
-	"github.com/ssbc/margaret/internal/persist"
-	"github.com/ssbc/margaret/internal/seqobsv"
-	"github.com/ssbc/margaret/multilog"
+	margaret "github.com/ssbc/margaret/v2"
+	"github.com/ssbc/margaret/v2/internal/persist"
+	"github.com/ssbc/margaret/v2/internal/seqobsv"
+	"github.com/ssbc/margaret/v2/multilog"
 )
 
-// NewStore returns a new multilog that is only good to store sequences
-// It uses files to store roaring bitmaps directly.
-// for this it turns the indexes.Addrs into a hex string.
+// NewStore returns a new roaring bitmap backed multilog.
+// It uses the provided persist.Saver to store serialized bitmaps.
+// Dirty bitmaps are flushed to storage periodically (every 13s) and on close.
 func NewStore(store persist.Saver) *MultiLog {
-	ctx, cancel := context.WithCancel(context.TODO())
+	done := make(chan struct{})
 	ml := &MultiLog{
 		store:   store,
-		l:       &sync.Mutex{},
-		sublogs: make(map[indexes.Addr]*sublog),
+		sublogs: make(map[multilog.Addr]*sublog),
 
-		processing:    ctx,
-		done:          cancel,
+		done:          done,
 		batcherClosed: make(chan struct{}),
 		tickPersist:   time.NewTicker(13 * time.Second),
 	}
@@ -41,188 +41,195 @@ func NewStore(store persist.Saver) *MultiLog {
 	return ml
 }
 
-func (log *MultiLog) writeBatches() {
+func (ml *MultiLog) writeBatches() {
 	for {
 		select {
-		case <-log.tickPersist.C:
-		case <-log.processing.Done():
-			close(log.batcherClosed)
+		case <-ml.tickPersist.C:
+		case <-ml.done:
+			close(ml.batcherClosed)
 			return
 		}
-		err := log.Flush()
+		err := ml.Flush()
 		if err != nil {
-			stdlog.Println("flush trigger failed", err)
+			log.Println("roaring: flush trigger failed:", err)
 		}
 	}
 }
 
-func (log *MultiLog) Flush() error {
-	log.l.Lock()
-	defer log.l.Unlock()
-	return log.flushAllSublogs()
+// Flush persists all dirty sublogs to the store.
+func (ml *MultiLog) Flush() error {
+	ml.mu.Lock()
+	defer ml.mu.Unlock()
+	return ml.flushAllSublogs()
 }
 
-func (log *MultiLog) flushAllSublogs() error {
-	var dirtySublogs []persist.KeyValuePair
-	for addr, sublog := range log.sublogs {
-		if sublog.dirty {
-			dirtySublogs = append(dirtySublogs, persist.KeyValuePair{
+func (ml *MultiLog) flushAllSublogs() error {
+	var dirty []persist.KeyValuePair
+	for addr, sl := range ml.sublogs {
+		if sl.dirty {
+			dirty = append(dirty, persist.KeyValuePair{
 				Key:   persist.Key(addr),
-				Value: sublog.bmap.ToBuffer(),
+				Value: sl.bmap.ToBuffer(),
 			})
-			sublog.dirty = false
+			sl.dirty = false
 		}
 	}
-
-	err := log.store.PutMultiple(dirtySublogs)
-	if err != nil {
-		return err
+	if len(dirty) == 0 {
+		return nil
 	}
-
-	return nil
+	return ml.store.PutMultiple(dirty)
 }
 
+// MultiLog is a collection of sublogs backed by roaring bitmaps.
+// Each sublog stores a compressed set of int64 sequence number references.
 type MultiLog struct {
 	store persist.Saver
 
-	l       *sync.Mutex
-	sublogs map[indexes.Addr]*sublog
+	mu      sync.Mutex
+	sublogs map[multilog.Addr]*sublog
 
-	processing context.Context
-	done       context.CancelFunc
-
+	done          chan struct{}
 	batcherClosed chan struct{}
 	tickPersist   *time.Ticker
 }
 
-func (log *MultiLog) Get(addr indexes.Addr) (margaret.Log, error) {
-	log.l.Lock()
-	defer log.l.Unlock()
-	return log.openSublog(addr)
+// Get returns the sublog at addr, creating it if necessary.
+func (ml *MultiLog) Get(addr multilog.Addr) (margaret.Log[*Seq], error) {
+	ml.mu.Lock()
+	defer ml.mu.Unlock()
+	return ml.openSublog(addr)
 }
 
-// openSublog alters the sublogs map, take the lock first!
-func (log *MultiLog) openSublog(addr indexes.Addr) (*sublog, error) {
-	slog, has := log.sublogs[addr]
-	if has {
-		return slog, nil
+// openSublog opens or creates a sublog. Caller must hold ml.mu.
+func (ml *MultiLog) openSublog(addr multilog.Addr) (*sublog, error) {
+	if sl, ok := ml.sublogs[addr]; ok {
+		return sl, nil
 	}
 
 	pk := persist.Key(addr)
 
-	var seq int64
-
-	r, err := log.loadBitmap(pk)
+	bmap, err := ml.loadBitmap(pk)
 	if errors.Is(err, persist.ErrNotFound) {
-		seq = margaret.SeqEmpty
-		r = sroar.NewBitmap()
+		bmap = sroar.NewBitmap()
 	} else if err != nil {
 		return nil, err
-	} else {
-		seq = int64(r.GetCardinality())
 	}
 
+	card := bmap.GetCardinality()
 	var obsV uint64
-	if seq > 0 {
-		obsV = uint64(seq)
+	if card > 0 {
+		obsV = uint64(card)
 	}
 
-	slog = &sublog{
-		mlog:      log,
-		key:       pk,
-		seq:       seqobsv.New(obsV),
-		luigiObsv: luigi.NewObservable(seq),
-		bmap:      r,
+	sl := &sublog{
+		mlog: ml,
+		key:  pk,
+		seq:  seqobsv.New(obsV),
+		bmap: bmap,
 	}
-	// the better idea is to have a store that can collece puts
-	log.sublogs[addr] = slog
-	return slog, nil
+	ml.sublogs[addr] = sl
+	return sl, nil
 }
 
-// LoadInternalBitmap loads the raw roaringbitmap for key
-func (log *MultiLog) LoadInternalBitmap(key indexes.Addr) (*sroar.Bitmap, error) {
-	if err := log.Flush(); err != nil {
+// LoadInternalBitmap returns a copy of the raw roaring bitmap for the given address.
+// It flushes pending writes first to ensure consistency.
+func (ml *MultiLog) LoadInternalBitmap(addr multilog.Addr) (*sroar.Bitmap, error) {
+	if err := ml.Flush(); err != nil {
 		return nil, err
 	}
-	bmap, err := log.loadBitmap([]byte(key))
+	bmap, err := ml.loadBitmap([]byte(addr))
 	if err != nil {
 		if errors.Is(err, persist.ErrNotFound) {
-			return nil, multilog.ErrSublogNotFound
+			return nil, multilog.ErrNotFound
 		}
 		return nil, err
 	}
 	return bmap, nil
 }
 
-func (log *MultiLog) loadBitmap(key []byte) (*sroar.Bitmap, error) {
-	data, err := log.store.Get(key)
+func (ml *MultiLog) loadBitmap(key []byte) (*sroar.Bitmap, error) {
+	data, err := ml.store.Get(key)
 	if err != nil {
-		return nil, fmt.Errorf("roaringfiles: invalid stored bitfield %s: %w", key, err)
+		return nil, fmt.Errorf("roaring: load bitmap %s: %w", key, err)
 	}
-
 	return sroar.FromBuffer(data), nil
 }
 
-func (log *MultiLog) Delete(addr indexes.Addr) error {
-	log.l.Lock()
-	defer log.l.Unlock()
+// Has checks if a sublog exists at addr.
+func (ml *MultiLog) Has(addr multilog.Addr) (bool, error) {
+	ml.mu.Lock()
+	defer ml.mu.Unlock()
 
-	if sl, ok := log.sublogs[addr]; ok {
-		sl.deleted = true
-		sl.luigiObsv.Set(multilog.ErrSublogDeleted)
-		sl.seq = seqobsv.New(0)
-		delete(log.sublogs, addr)
+	if _, ok := ml.sublogs[addr]; ok {
+		return true, nil
 	}
 
-	return log.store.Delete(persist.Key(addr))
+	_, err := ml.store.Get(persist.Key(addr))
+	if errors.Is(err, persist.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-// List returns a list of all stored sublogs
-func (log *MultiLog) List() ([]indexes.Addr, error) {
-	log.l.Lock()
-	defer log.l.Unlock()
+// Delete removes the sublog at addr.
+func (ml *MultiLog) Delete(addr multilog.Addr) error {
+	ml.mu.Lock()
+	defer ml.mu.Unlock()
 
-	err := log.loadAll()
-	if err != nil {
+	if sl, ok := ml.sublogs[addr]; ok {
+		sl.deleted = true
+		sl.seq = seqobsv.New(0)
+		delete(ml.sublogs, addr)
+	}
+
+	return ml.store.Delete(persist.Key(addr))
+}
+
+// List returns all addresses that have sublogs.
+func (ml *MultiLog) List() ([]multilog.Addr, error) {
+	ml.mu.Lock()
+	defer ml.mu.Unlock()
+
+	if err := ml.loadAll(); err != nil {
 		return nil, err
 	}
 
-	list := make([]indexes.Addr, len(log.sublogs))
-	i := 0
-	for addr, sublog := range log.sublogs {
-		if sublog.bmap.GetCardinality() == 0 {
-			continue
+	var list []multilog.Addr
+	for addr, sl := range ml.sublogs {
+		if sl.bmap.GetCardinality() > 0 {
+			list = append(list, addr)
 		}
-		list[i] = addr
-		i++
 	}
-	list = list[:i] // cut off the skipped ones
-
 	return list, nil
 }
 
-func (log *MultiLog) loadAll() error {
-	keys, err := log.store.List()
+func (ml *MultiLog) loadAll() error {
+	keys, err := ml.store.List()
 	if err != nil {
-		return fmt.Errorf("roaringfiles: store iteration failed: %w", err)
+		return fmt.Errorf("roaring: list keys: %w", err)
 	}
-	for _, bk := range keys {
-		_, err := log.openSublog(indexes.Addr(bk))
-		if err != nil {
-			return fmt.Errorf("roaringfiles: broken bitmap file (%s): %w", bk, err)
+	for _, k := range keys {
+		if _, err := ml.openSublog(multilog.Addr(k)); err != nil {
+			return fmt.Errorf("roaring: open sublog %s: %w", k, err)
 		}
 	}
 	return nil
 }
 
-func (log *MultiLog) Close() error {
-	log.done()
-	log.tickPersist.Stop()
-	<-log.batcherClosed
+// Close flushes all dirty sublogs and closes the store.
+func (ml *MultiLog) Close() error {
+	close(ml.done)
+	ml.tickPersist.Stop()
+	<-ml.batcherClosed
 
-	if err := log.Flush(); err != nil {
-		return fmt.Errorf("roaringfiles: close failed to flush: %w", err)
+	if err := ml.Flush(); err != nil {
+		return fmt.Errorf("roaring: close flush: %w", err)
 	}
 
-	return log.store.Close()
+	return ml.store.Close()
 }
+
+var _ multilog.MultiLog[*Seq] = (*MultiLog)(nil)

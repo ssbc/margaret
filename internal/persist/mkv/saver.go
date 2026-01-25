@@ -9,8 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pkg/errors"
-	"github.com/ssbc/margaret/internal/persist"
+	"github.com/ssbc/margaret/v2/internal/persist"
 )
 
 const pageSize = 64 * 1024
@@ -25,10 +24,10 @@ func (s ModernSaver) Put(key persist.Key, data []byte) error {
 	)
 	for i, page = range splitPages(data) {
 		if i > 255 {
-			return errors.Errorf("persist/mkv: storage pageing exceeded")
+			return fmt.Errorf("persist/mkv: storage pageing exceeded")
 		}
 		if err := s.db.Set(append(key, byte(i)), page); err != nil {
-			return errors.Wrapf(err, "shard%d set failed", i)
+			return fmt.Errorf("shard%d set failed: %w", i, err)
 		}
 	}
 	olderPagers, _, err := s.db.Seek(append(key, byte(i+1)))
@@ -41,7 +40,7 @@ func (s ModernSaver) Put(key persist.Key, data []byte) error {
 			if err == io.EOF {
 				break
 			}
-			return errors.Wrap(err, "scraping old pages failed")
+			return fmt.Errorf("scraping old pages failed: %w", err)
 		}
 		err = s.db.Delete(k)
 		if err != nil {

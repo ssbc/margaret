@@ -2,13 +2,15 @@
 //
 // SPDX-License-Identifier: MIT
 
+// Package fs provides a filesystem-backed roaring bitmap multilog.
 package fs
 
 import (
-	"github.com/ssbc/margaret/internal/persist/fs"
-	"github.com/ssbc/margaret/multilog/roaring"
+	"github.com/ssbc/margaret/v2/internal/persist/fs"
+	"github.com/ssbc/margaret/v2/multilog/roaring"
 )
 
-func NewMultiLog(base string) (*roaring.MultiLog, error) {
-	return roaring.NewStore(fs.New(base)), nil
+// NewMultiLog creates a new roaring bitmap multilog backed by files at base.
+func NewMultiLog(base string) *roaring.MultiLog {
+	return roaring.NewStore(fs.New(base))
 }

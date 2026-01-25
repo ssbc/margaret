@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ssbc/margaret/internal/seqobsv"
+	"github.com/ssbc/margaret/v2/internal/seqobsv"
 )
 
-func ExampleInc() {
+func ExampleObservable_Inc() {
 	sobs := seqobsv.New(0)
 	fmt.Println(sobs.Value())
 

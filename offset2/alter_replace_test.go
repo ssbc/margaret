@@ -5,7 +5,6 @@
 package offset2
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -13,8 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ssbc/go-luigi"
-	mjson "github.com/ssbc/margaret/codec/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,13 +19,13 @@ import (
 func TestReplace(t *testing.T) {
 	os.RemoveAll("testrun")
 	tevs := []testEvent{
-		testEvent{"hello", 23},
-		testEvent{"world", 42},
-		testEvent{"world", 161},
-		testEvent{"world", 1312},
-		testEvent{"moar", 1234},
-		testEvent{strings.Repeat("ACAB", 191), 1312},
-		testEvent{"s", 1}, // small
+		{"hello", 23},
+		{"world", 42},
+		{"world", 161},
+		{"world", 1312},
+		{"moar", 1234},
+		{strings.Repeat("ACAB", 191), 1312},
+		{"s", 1}, // small
 	}
 
 	for i := 0; i < len(tevs); i++ {
@@ -37,103 +34,65 @@ func TestReplace(t *testing.T) {
 	}
 }
 
-func replaceOne(tevs []testEvent, nullSeq int64) func(*testing.T) {
+func replaceOne(tevs []testEvent, replSeq int64) func(*testing.T) {
 	return func(t *testing.T) {
-		//setup
 		r := require.New(t)
 		a := assert.New(t)
 
 		name := filepath.Join("testrun", t.Name())
 
-		log, err := Open(name, mjson.New(&testEvent{}))
+		log, err := Open[*testEvent](name)
 		r.NoError(err, "error during log creation")
 
 		for i, ev := range tevs {
-			seq, err := log.Append(ev)
+			seq, err := log.Append(&ev)
 			r.NoError(err, "failed to append event %d", i)
-			r.EqualValues(i, seq, "sequence missmatch")
+			r.EqualValues(i, seq, "sequence mismatch")
 		}
 
-		repEvt := testEvent{"REPLACE", 0}
+		repEvt := testEvent{"R", 0}
 		replaceData, err := json.Marshal(repEvt)
 		r.NoError(err)
 
 		// reopen for const check
 		r.NoError(log.Close())
-		log, err = Open(name, mjson.New(&testEvent{}))
+		log, err = Open[*testEvent](name)
 		r.NoError(err, "error reopening log")
 
 		seq := log.Seq()
-		r.EqualValues(len(tevs)-1, seq, "sequence missmatch")
+		r.EqualValues(len(tevs)-1, seq, "sequence mismatch")
 
-		err = log.Replace(nullSeq, replaceData)
-		r.NoError(err, "failed get current value")
+		err = log.Replace(replSeq, replaceData)
+		r.NoError(err, "failed to replace")
 		r.NoError(log.Close())
 
-		// reopen after null
-		log, err = Open(name, mjson.New(&testEvent{}))
+		// reopen after replace
+		log, err = Open[*testEvent](name)
 		r.NoError(err, "error reopening log #2")
 
-		// get loop
+		// get loop - verify replace
 		for i := 0; i < len(tevs); i++ {
-			v, err := log.Get(int64(i))
+			te, err := log.Get(int64(i))
 			r.NoError(err, "error reading from log")
-			te, ok := v.(*testEvent)
-			r.True(ok, "wrong type: %T %v", v, v)
-			if i == int(nullSeq) {
+			if i == int(replSeq) {
 				a.Equal(repEvt, *te)
 			} else {
 				a.Equal(tevs[i], *te)
 			}
 		}
 
-		// pump drain
-		ctx := context.TODO()
-		src, err := log.Query()
-		r.NoError(err)
-
+		// iter drain - verify replace
+		qry := log.Query()
 		i := 0
-		snk := luigi.FuncSink(func(ctx context.Context, v interface{}, err error) error {
-			if err != nil {
-				if luigi.IsEOS(err) {
-					return nil
-				}
-				return err
-			}
-			te, ok := v.(*testEvent)
-			r.True(ok, "wrong type: %T %v", v, v)
-			if i == int(nullSeq) {
-				a.Equal(repEvt, *te)
-			} else {
-				a.Equal(tevs[i], *te)
-			}
-			i++
-			return nil
-		})
-
-		err = luigi.Pump(ctx, snk, src)
-		r.NoError(err)
-		r.Equal(len(tevs), i)
-
-		// manual drain
-		src, err = log.Query()
-		r.NoError(err)
-
-		i = 0
-		for {
-			v, err := src.Next(ctx)
-			if luigi.IsEOS(err) {
-				break
-			}
-			te, ok := v.(*testEvent)
-			r.True(ok, "wrong type: %T %v", v, v)
-			if i == int(nullSeq) {
+		for _, te := range qry.Iter() {
+			if i == int(replSeq) {
 				a.Equal(repEvt, *te)
 			} else {
 				a.Equal(tevs[i], *te)
 			}
 			i++
 		}
+		r.NoError(qry.Err())
 		r.Equal(len(tevs), i)
 	}
 }

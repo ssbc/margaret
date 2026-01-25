@@ -12,14 +12,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ssbc/margaret/internal/persist"
-	"github.com/ssbc/margaret/internal/persist/badger"
-	"github.com/ssbc/margaret/internal/persist/fs"
-	"github.com/ssbc/margaret/internal/persist/mkv"
-	"github.com/ssbc/margaret/internal/persist/sqlite"
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/ssbc/margaret/v2/internal/persist"
+	"github.com/ssbc/margaret/v2/internal/persist/fs"
+	"github.com/ssbc/margaret/v2/internal/persist/mkv"
 )
 
 func SimpleSaver(mk func(*testing.T) persist.Saver) func(*testing.T) {
@@ -109,8 +106,6 @@ func makeRandData(r *require.Assertions, n int) (persist.Key, []byte) {
 
 func TestSaver(t *testing.T) {
 	t.Run("fs", SimpleSaver(makeFS))
-	t.Run("sqlite", SimpleSaver(makeSqlite))
-	t.Run("badger", SimpleSaver(makeBadger))
 	t.Run("kv", SimpleSaver(makeMKV))
 }
 
@@ -118,27 +113,6 @@ func makeFS(t *testing.T) persist.Saver {
 	base := filepath.Join("testrun", t.Name())
 	os.RemoveAll(base)
 	return fs.New(base)
-}
-
-func makeBadger(t *testing.T) persist.Saver {
-	base := filepath.Join("testrun", t.Name())
-	os.RemoveAll(base)
-	t.Log(base)
-	s, err := badger.NewStandalone(base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return s
-}
-
-func makeSqlite(t *testing.T) persist.Saver {
-	base := filepath.Join("testrun", t.Name())
-	os.RemoveAll(base)
-	s, err := sqlite.New(base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return s
 }
 
 func makeMKV(t *testing.T) persist.Saver {

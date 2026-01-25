@@ -5,187 +5,158 @@
 package offset2
 
 import (
-	"context"
-	"io/ioutil"
-	"os"
+	"encoding/json"
 	"testing"
 
-	"github.com/ssbc/go-luigi"
-	mjson "github.com/ssbc/margaret/codec/json"
 	"github.com/stretchr/testify/require"
 )
 
 type testEvent struct {
-	Foo string `json:",omitempty"`
-	Bar int    `json:",omitempty"`
+	Foo string
+	Bar int
+}
+
+func (te testEvent) MarshalBinary() ([]byte, error) {
+	return json.Marshal(te)
+}
+
+func (te *testEvent) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, te)
 }
 
 func TestReadWrite(t *testing.T) {
-	//setup
 	r := require.New(t)
-	name, err := ioutil.TempDir("", t.Name())
-	r.NoError(err)
 
-	log, err := Open(name, mjson.New(&testEvent{}))
+	log, err := Open[*testEvent](t.TempDir())
 	r.NoError(err, "error during log creation")
 
-	// cleanup
-	defer func() {
-		if t.Failed() {
-			t.Logf("log data directory at %q was not deleted due to test failure", name)
-		} else {
-			os.RemoveAll(name)
-		}
-	}()
-
-	// fill
 	tevs := []testEvent{
-		testEvent{"hello", 23},
-		testEvent{"world", 42},
-		testEvent{"world", 161},
-		testEvent{"world", 1312},
+		{"hello", 23},
+		{"world", 42},
+		{"world", 161},
+		{"world", 1312},
 	}
 	for i, ev := range tevs {
-		seq, err := log.Append(ev)
+		seq, err := log.Append(&ev)
 		r.NoError(err, "failed to append event %d", i)
-		r.Equal(int64(i), seq, "sequence missmatch")
+		r.Equal(int64(i), seq, "sequence mismatch")
 	}
 
-	// read
 	for i := 0; i < len(tevs); i++ {
-		v, err := log.Get(int64(i))
+		ev, err := log.Get(int64(i))
 		r.NoError(err, "failed to get event %d", i)
-
-		ev, ok := v.(*testEvent)
-		r.True(ok, "failed to cast event %d. got %T", i, v)
-		r.Equal(*ev, tevs[i])
+		r.Equal(tevs[i], *ev)
 	}
 }
 
 // make sure that the sequence is picked up after opening an existing log
 func TestWriteAndWriteAgain(t *testing.T) {
-	//setup
 	r := require.New(t)
-	name, err := ioutil.TempDir("", t.Name())
-	r.NoError(err)
+	where := t.TempDir()
 
-	log, err := Open(name, mjson.New(&testEvent{}))
+	log, err := Open[*testEvent](where)
 	r.NoError(err, "error during log creation")
 
-	// fill
 	tevs := []testEvent{
-		testEvent{"hello", 23},
-		testEvent{"world", 42},
-		testEvent{"world", 161},
-		testEvent{"world", 1312},
+		{"hello", 23},
+		{"world", 42},
+		{"world", 161},
+		{"world", 1312},
 	}
 	for i, ev := range tevs {
-		seq, err := log.Append(ev)
+		seq, err := log.Append(&ev)
 		r.NoError(err, "failed to append event %d", i)
-		r.Equal(int64(i), seq, "sequence missmatch")
+		r.Equal(int64(i), seq, "sequence mismatch")
 	}
 
-	log, err = Open(name, mjson.New(&testEvent{}))
-	r.NoError(err, "error during log creation")
+	// reopen
+	r.NoError(log.Close())
+	log, err = Open[*testEvent](where)
+	r.NoError(err, "error during log reopen")
+
 	// fill again
 	for i, ev := range tevs {
-		seq, err := log.Append(ev)
+		seq, err := log.Append(&ev)
 		r.NoError(err, "failed to do 2nd append %d", i)
-		r.Equal(int64(len(tevs)+i), seq, "sequence missmatch %d", i)
+		r.Equal(int64(len(tevs)+i), seq, "sequence mismatch %d", i)
 	}
 
 	// close
 	r.NoError(log.Close())
 
-	_, err = log.Append(23)
+	// cant write to closed log
+	_, err = log.Append(&testEvent{"closed", 666})
 	r.NotNil(err)
 
-	log, err = Open(name, mjson.New(&testEvent{}))
+	// reopen and verify
+	log, err = Open[*testEvent](where)
 	r.NoError(err, "error during log creation")
 
 	currSeq := log.Seq()
-	r.NoError(err, "failed to get current sequence")
 	r.EqualValues(int64(2*len(tevs)-1), currSeq)
 
 	// read by seq
 	for i := 0; i < 2*len(tevs); i++ {
 		v, err := log.Get(int64(i))
 		r.NoError(err, "failed to get event %d", i)
-
-		ev, ok := v.(*testEvent)
-		r.True(ok, "failed to cast event %d. got %T", i, v)
-		r.Equal(*ev, tevs[i%len(tevs)])
+		r.Equal(tevs[i%len(tevs)], *v)
 	}
 
-	src, err := log.Query()
-	r.NoError(err, "failed to open query")
-	var (
-		ctx = context.TODO()
-		seq int64
-	)
-	for {
-		v, err := src.Next(ctx)
-		if luigi.IsEOS(err) {
-			break
-		} else if err != nil {
-			r.NoError(err, "error during next draining")
-		}
-		t.Log(v, seq)
+	// drain via iterator
+	qry := log.Query()
+	var seq int64
+	for s, v := range qry.Iter() {
+		t.Log(s, v)
 		seq++
-		// TODO: v has no sequence unless we put it in the values ourselvs..?
 	}
+	r.NoError(qry.Err())
+	r.EqualValues(2*len(tevs), seq)
 
 	r.NoError(log.Close())
-	// cleanup
-	if t.Failed() {
-		t.Log("log was written to ", name)
-	} else {
-		os.RemoveAll(name)
-	}
 }
 
 // should be able to recover from journal in the future
 func TestRecover(t *testing.T) {
-	//setup
 	r := require.New(t)
-	name, err := ioutil.TempDir("", t.Name())
-	r.NoError(err)
+	where := t.TempDir()
 
-	log, err := Open(name, mjson.New(&testEvent{}))
+	log, err := Open[*testEvent](where)
 	r.NoError(err, "error during log creation")
 
-	// fill
 	tevs := []testEvent{
-		testEvent{"hello", 23},
-		testEvent{"world", 42},
-		testEvent{"world", 161},
-		testEvent{"world", 1312},
+		{"hello", 23},
+		{"world", 42},
+		{"world", 161},
+		{"world", 1312},
 	}
 	for i, ev := range tevs {
-		seq, err := log.Append(ev)
+		seq, err := log.Append(&ev)
 		r.NoError(err, "failed to append event %d", i)
-		r.Equal(int64(i), seq, "sequence missmatch")
+		r.Equal(int64(i), seq, "sequence mismatch")
 	}
 
 	// close
 	r.NoError(log.Close())
 
-	// reopen and corrupt
-	log, err = Open(name, mjson.New(&testEvent{}))
+	// reopen and corrupt journal by bumping sequence
+	log, err = Open[*testEvent](where)
 	r.NoError(err, "error during log open")
 
-	// assuming journal was increased only
-	seq, err := log.jrnl.bump()
-	r.NoError(err)
-	r.EqualValues(seq, len(tevs)) // +1-1
+	// simulate journal being ahead (as if a write was in progress)
+	log.mu.Lock()
+	log.seq++
+	r.NoError(log.writeJournal())
+	log.mu.Unlock()
 
 	r.NoError(log.Close())
 
-	log, err = Open(name, mjson.New(&testEvent{}))
+	// reopen should recover from journal
+	log, err = Open[*testEvent](where)
 	r.NoError(err, "error while recover")
 	r.NotNil(log)
 
 	v := log.Seq()
-	r.NoError(err, "error while recover")
-	r.EqualValues(v, len(tevs)-1)
+	r.EqualValues(len(tevs), v, "journal should reflect bumped seq")
+
+	r.NoError(log.Close())
 }

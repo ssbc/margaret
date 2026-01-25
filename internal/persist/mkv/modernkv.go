@@ -5,11 +5,12 @@
 package mkv
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
-	"github.com/ssbc/margaret/internal/persist"
 	"modernc.org/kv"
+
+	"github.com/ssbc/margaret/v2/internal/persist"
 )
 
 type ModernSaver struct {
@@ -30,14 +31,14 @@ func New(path string) (*ModernSaver, error) {
 	if os.IsNotExist(err) {
 		ms.db, err = kv.Create(path, opts)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create KV")
+			return nil, fmt.Errorf("failed to create KV: %w", err)
 		}
 	} else if err != nil {
-		return nil, errors.Wrap(err, "failed to stat path location")
+		return nil, fmt.Errorf("failed to stat path location: %w", err)
 	} else {
 		ms.db, err = kv.Open(path, opts)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to open KV")
+			return nil, fmt.Errorf("failed to open KV %w", err)
 		}
 	}
 

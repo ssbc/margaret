@@ -2,11 +2,10 @@
 //
 // SPDX-License-Identifier: MIT
 
-// Package seqobsv wants to supply an observable value sepcialized for sequence numbers in append-only logs.
+// Package seqobsv wants to supply an observable value specialized for sequence numbers in append-only logs.
 // It should be fine for access from multiple goroutines.
 //
 // These values only go up by one. For margaret they start with 0.
-//
 package seqobsv
 
 import (

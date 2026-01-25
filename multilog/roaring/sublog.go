@@ -5,134 +5,216 @@
 package roaring
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
 	"github.com/dgraph-io/sroar"
-	"github.com/ssbc/go-luigi"
 
-	"github.com/ssbc/margaret"
-	"github.com/ssbc/margaret/internal/persist"
-	"github.com/ssbc/margaret/internal/seqobsv"
-	"github.com/ssbc/margaret/multilog"
+	margaret "github.com/ssbc/margaret/v2"
+	"github.com/ssbc/margaret/v2/internal/persist"
+	"github.com/ssbc/margaret/v2/internal/seqobsv"
 )
 
 type sublog struct {
 	mlog *MultiLog
 
-	key       persist.Key
-	seq       *seqobsv.Observable
-	luigiObsv luigi.Observable
-	bmap      *sroar.Bitmap
-
-	dirty bool
-
+	key     persist.Key
+	seq     *seqobsv.Observable
+	bmap    *sroar.Bitmap
+	dirty   bool
 	deleted bool
 }
 
-func (log *sublog) Seq() int64 {
-	return log.seq.Seq() - 1
-}
-
-func (log *sublog) Changes() luigi.Observable {
-	return log.luigiObsv
-}
-
-func (log *sublog) Get(seq int64) (interface{}, error) {
-	log.mlog.l.Lock()
-	defer log.mlog.l.Unlock()
-	return log.get(seq)
-}
-
-func (log *sublog) get(seq int64) (interface{}, error) {
-	if log.deleted {
-		return nil, multilog.ErrSublogDeleted
+// Seq returns the latest sequence number (cardinality - 1), or SeqEmpty if empty.
+func (sl *sublog) Seq() int64 {
+	v := sl.seq.Seq()
+	if v == 0 {
+		return margaret.SeqEmpty
 	}
+	return v - 1
+}
 
+// Get returns the seq-th sequence number stored in the bitmap.
+func (sl *sublog) Get(seq int64) (*Seq, error) {
+	sl.mlog.mu.Lock()
+	defer sl.mlog.mu.Unlock()
+
+	if sl.deleted {
+		return nil, fmt.Errorf("roaring: sublog deleted")
+	}
 	if seq < 0 {
-		return nil, luigi.EOS{}
+		return nil, margaret.ErrOutOfBounds
 	}
 
-	v, err := log.bmap.Select(uint64(seq))
+	v, err := sl.bmap.Select(uint64(seq))
 	if err != nil {
-		return nil, luigi.EOS{}
+		return nil, margaret.ErrOutOfBounds
 	}
-	return int64(v), err
+	r := Seq(v)
+	return &r, nil
 }
 
-func (log *sublog) Query(specs ...margaret.QuerySpec) (luigi.Source, error) {
-	log.mlog.l.Lock()
-	defer log.mlog.l.Unlock()
-	if log.deleted {
-		return nil, multilog.ErrSublogDeleted
-	}
-	qry := &query{
-		log: log,
+// Append adds a sequence number to the bitmap.
+// The value must be a *Seq with a non-negative int64 value.
+func (sl *sublog) Append(v *Seq) (int64, error) {
+	sl.mlog.mu.Lock()
+	defer sl.mlog.mu.Unlock()
 
-		lt:      margaret.SeqEmpty,
-		nextSeq: margaret.SeqEmpty,
-
-		limit: -1, //i.e. no limit
+	if sl.deleted {
+		return margaret.SeqEmpty, fmt.Errorf("roaring: sublog deleted")
 	}
 
-	for _, spec := range specs {
-		err := spec(qry)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return qry, nil
-}
-
-func (log *sublog) Append(v interface{}) (int64, error) {
-	log.mlog.l.Lock()
-	defer log.mlog.l.Unlock()
-	if log.deleted {
-		return margaret.SeqSublogDeleted, multilog.ErrSublogDeleted
-	}
-	val, ok := v.(int64)
-	if !ok {
-		switch tv := v.(type) {
-		case int:
-			val = int64(tv)
-		case int64:
-			val = int64(tv)
-		case uint32:
-			val = int64(tv)
-		default:
-			return int64(-2), fmt.Errorf("roaringfiles: not a sequence (%T)", v)
-		}
-	}
+	val := int64(*v)
 	if val < 0 {
-		return margaret.SeqErrored, fmt.Errorf("roaringfiles can only store positive numbers")
+		return margaret.SeqEmpty, fmt.Errorf("roaring: can only store non-negative numbers")
 	}
 
-	log.bmap.Set(uint64(val))
+	sl.bmap.Set(uint64(val))
+	sl.dirty = true
+	sl.seq.Inc()
 
-	log.dirty = true
-	log.seq.Inc()
-
-	count := log.bmap.GetCardinality() - 1
-	newSeq := int64(count)
-
-	err := log.luigiObsv.Set(newSeq)
-	if err != nil {
-		err = fmt.Errorf("roaringfiles: failed to update sequence: %w", err)
-		return margaret.SeqErrored, err
-	}
+	newSeq := int64(sl.bmap.GetCardinality()) - 1
 	return newSeq, nil
 }
 
-func (log *sublog) store() error {
-	if log.deleted {
-		return multilog.ErrSublogDeleted
-	}
-	data := log.bmap.ToBuffer()
-
-	var err error
-	err = log.mlog.store.Put(log.key, data)
+// Query returns an iterator over the sequence numbers in this sublog.
+func (sl *sublog) Query(opts ...margaret.QueryOption) margaret.QueryIterator[*Seq] {
+	cfg, err := margaret.ApplyQueryOptions(opts...)
 	if err != nil {
-		return fmt.Errorf("roaringfiles: file write failed: %w", err)
+		return margaret.NewFailedIterator[*Seq](err)
 	}
+
+	sl.mlog.mu.Lock()
+	if sl.deleted {
+		sl.mlog.mu.Unlock()
+		return margaret.NewFailedIterator[*Seq](fmt.Errorf("roaring: sublog deleted"))
+	}
+
+	card := int64(sl.bmap.GetCardinality())
+	sl.mlog.mu.Unlock()
+
+	if cfg.Live {
+		return sl.liveQuery(cfg, card)
+	}
+	return sl.staticQuery(cfg, card)
+}
+
+func (sl *sublog) staticQuery(cfg margaret.QueryConfig, card int64) margaret.QueryIterator[*Seq] {
+	start, end := cfg.Bounds(card - 1)
+	if card == 0 {
+		return margaret.NewIterWrapper[*Seq](func(yield func(int64, *Seq) bool) {})
+	}
+
+	var iterErr error
+	iter := func(yield func(int64, *Seq) bool) {
+		count := 0
+		if cfg.Reverse {
+			for i := end; i >= start; i-- {
+				if cfg.Limit > 0 && count >= cfg.Limit {
+					return
+				}
+				sl.mlog.mu.Lock()
+				v, err := sl.bmap.Select(uint64(i))
+				sl.mlog.mu.Unlock()
+				if err != nil {
+					if strings.Contains(err.Error(), "is not less than the cardinality:") {
+						return
+					}
+					iterErr = fmt.Errorf("roaring: select %d: %w", i, err)
+					return
+				}
+				r := Seq(v)
+				count++
+				if !yield(i, &r) {
+					return
+				}
+			}
+		} else {
+			for i := start; i <= end; i++ {
+				if cfg.Limit > 0 && count >= cfg.Limit {
+					return
+				}
+				sl.mlog.mu.Lock()
+				v, err := sl.bmap.Select(uint64(i))
+				sl.mlog.mu.Unlock()
+				if err != nil {
+					if strings.Contains(err.Error(), "is not less than the cardinality:") {
+						return
+					}
+					iterErr = fmt.Errorf("roaring: select %d: %w", i, err)
+					return
+				}
+				r := Seq(v)
+				count++
+				if !yield(i, &r) {
+					return
+				}
+			}
+		}
+	}
+	return margaret.NewLiveIterWrapper[*Seq](iter, func() error { return iterErr })
+}
+
+func (sl *sublog) liveQuery(cfg margaret.QueryConfig, card int64) margaret.QueryIterator[*Seq] {
+	ctx := cfg.Ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	start := int64(0)
+	if cfg.Gt != nil {
+		start = *cfg.Gt + 1
+	}
+	if cfg.Gte != nil && *cfg.Gte > start {
+		start = *cfg.Gte
+	}
+
+	var liveErr error
+	iter := func(yield func(int64, *Seq) bool) {
+		nextSeq := start
+		count := 0
+		for {
+			if cfg.Limit > 0 && count >= cfg.Limit {
+				return
+			}
+
+			sl.mlog.mu.Lock()
+			v, err := sl.bmap.Select(uint64(nextSeq))
+			sl.mlog.mu.Unlock()
+
+			if err != nil {
+				if !strings.Contains(err.Error(), "is not less than the cardinality:") {
+					liveErr = fmt.Errorf("roaring: select %d: %w", nextSeq, err)
+					return
+				}
+				// Wait for new data
+				select {
+				case <-sl.seq.WaitFor(uint64(nextSeq)):
+					continue
+				case <-ctx.Done():
+					liveErr = ctx.Err()
+					return
+				}
+			}
+
+			r := Seq(v)
+			count++
+			if !yield(nextSeq, &r) {
+				return
+			}
+			nextSeq++
+		}
+	}
+
+	return margaret.NewLiveIterWrapper[*Seq](iter, func() error {
+		return liveErr
+	})
+}
+
+// Close is a no-op for sublogs; the parent MultiLog manages persistence.
+func (sl *sublog) Close() error {
 	return nil
 }
+
+var _ margaret.Log[*Seq] = (*sublog)(nil)

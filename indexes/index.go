@@ -5,69 +5,41 @@
 package indexes
 
 import (
-	"context"
-	"fmt"
-
+	"errors"
 	"io"
-
-	"github.com/ssbc/go-luigi"
-	"github.com/ssbc/margaret"
 )
 
-// Addr is an address (or key) in the index.
-// TODO maybe not use a string but a Stringer or
+var ErrNotFound = errors.New("indexes: key not found")
+
+// Addr is a key in the index.
 type Addr string
 
-func (a Addr) String() string {
-	return fmt.Sprintf("index-address:%q", string(a))
-}
+func (a Addr) String() string { return string(a) }
 
-// Index provides an index table keyed by Addr.
-// Often also implements Setter.
-type Index interface {
-	// Get returns the an observable of the value stored at the address.
-	// Getting an unset value retuns a valid Observable with a value
-	// of type Unset and a nil error.
-	Get(context.Context, Addr) (luigi.Observable, error)
-}
+// Index provides key-value lookups.
+type Index[V any] interface {
+	// Get retrieves the value at addr.
+	Get(Addr) (V, error)
 
-// UnsetValue is the value of observable returned by idx.Get() when the
-// requested address has not been set yet.
-type UnsetValue struct {
-	Addr Addr
-}
+	// Set stores a value at addr.
+	Set(Addr, V) error
 
-type Setter interface {
-	// Set sets a value in the index
-	Set(context.Context, Addr, interface{}) error
+	// Delete removes the value at addr.
+	Delete(Addr) error
 
-	// Delete deletes a value from the index
-	Delete(context.Context, Addr) error
-}
-
-// SetterIndex is an index that can be updated using calls to Set and Delete.
-type SetterIndex interface {
-	Index
-	Setter
-
-	Flush() error
-}
-
-// SinkIndex is an index that is updated by processing a stream.
-type SinkIndex interface {
-	luigi.Sink
-
-	QuerySpec() margaret.QuerySpec
-}
-
-type SeqSetterIndex interface {
-	SetterIndex
-
-	SetSeq(int64) error
-	GetSeq() (int64, error)
+	// Has checks if a key exists.
+	Has(Addr) (bool, error)
 
 	io.Closer
 }
 
-// TODO maybe provide other index builders as well, e.g. for managing
-// sets: add and remove values from and to sets, stored at address
+// SeqIndex stores int64 sequence numbers as values and tracks indexing progress.
+type SeqIndex interface {
+	Index[int64]
+
+	// GetSeq returns the current indexed sequence.
+	GetSeq() (int64, error)
+
+	// SetSeq updates the current indexed sequence.
+	SetSeq(int64) error
+}

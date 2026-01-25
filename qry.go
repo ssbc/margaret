@@ -1,113 +1,121 @@
-// SPDX-FileCopyrightText: 2021 The margaret Authors
+// SPDX-FileCopyrightText: 2021-2026 The margaret Authors
 //
 // SPDX-License-Identifier: MIT
 
-package margaret // import "github.com/ssbc/margaret"
+package margaret
 
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o mock/qry.go . Query
+import (
+	"context"
+	"fmt"
+)
 
-// Query is the interface implemented by the concrete log implementations that collects the constraints of the query.
-type Query interface {
-	// Gt makes the source return only items with sequence numbers > seq.
-	Gt(seq int64) error
-	// Gte makes the source return only items with sequence numbers >= seq.
-	Gte(seq int64) error
-	// Lt makes the source return only items with sequence numbers < seq.
-	Lt(seq int64) error
-	// Lte makes the source return only items with sequence numbers <= seq.
-	Lte(seq int64) error
-	// Limit makes the source return only up to n items.
-	Limit(n int) error
+// QueryOption configures a query.
+type QueryOption func(*QueryConfig) error
 
-	// Reverse makes the source return the lastest values first
-	Reverse(yes bool) error
-
-	// Live makes the source block at the end of the log and wait for new values
-	// that are being appended.
-	Live(bool) error
-
-	// SeqWrap makes the source return values that contain both the item and its
-	// sequence number, instead of the item alone.
-	SeqWrap(bool) error
+// QueryConfig holds query parameters.
+type QueryConfig struct {
+	Gt      *int64 // Greater than
+	Gte     *int64 // Greater than or equal
+	Lt      *int64 // Less than
+	Lte     *int64 // Less than or equal
+	Limit   int    // Max entries (0 = unlimited)
+	Reverse bool   // Iterate in reverse order
+	Live    bool   // Follow new entries as they are appended
+	Ctx     context.Context
 }
 
-// QuerySpec is a constraint on the query.
-type QuerySpec func(Query) error
-
-// MergeQuerySpec collects several contraints and merges them into one.
-func MergeQuerySpec(spec ...QuerySpec) QuerySpec {
-	return func(qry Query) error {
-		for _, f := range spec {
-			err := f(qry)
-			if err != nil {
-				return err
-			}
-		}
-
+// Gt returns only entries with seq > n.
+func Gt(n int64) QueryOption {
+	return func(q *QueryConfig) error {
+		q.Gt = &n
 		return nil
 	}
 }
 
-// ErrorQuerySpec makes the log.Query call return the passed error.
-func ErrorQuerySpec(err error) QuerySpec {
-	return func(Query) error {
-		return err
+// Gte returns only entries with seq >= n.
+func Gte(n int64) QueryOption {
+	return func(q *QueryConfig) error {
+		q.Gte = &n
+		return nil
 	}
 }
 
-// Gt makes the source return only items with sequence numbers > seq.
-func Gt(s int64) QuerySpec {
-	return func(q Query) error {
-		return q.Gt(s)
+// Lt returns only entries with seq < n.
+func Lt(n int64) QueryOption {
+	return func(q *QueryConfig) error {
+		q.Lt = &n
+		return nil
 	}
 }
 
-// Gte makes the source return only items with sequence numbers >= seq.
-func Gte(s int64) QuerySpec {
-	return func(q Query) error {
-		return q.Gte(s)
+// Lte returns only entries with seq <= n.
+func Lte(n int64) QueryOption {
+	return func(q *QueryConfig) error {
+		q.Lte = &n
+		return nil
 	}
 }
 
-// Lt makes the source return only items with sequence numbers < seq.
-func Lt(s int64) QuerySpec {
-	return func(q Query) error {
-		return q.Lt(s)
+// Limit returns at most n entries.
+func Limit(n int) QueryOption {
+	return func(q *QueryConfig) error {
+		q.Limit = n
+		return nil
 	}
 }
 
-// Lte makes the source return only items with sequence numbers <= seq.
-func Lte(s int64) QuerySpec {
-	return func(q Query) error {
-		return q.Lte(s)
+// Reverse iterates from newest to oldest.
+func Reverse(yes bool) QueryOption {
+	return func(q *QueryConfig) error {
+		q.Reverse = yes
+		return nil
 	}
 }
 
-// Limit makes the source return only up to n items.
-func Limit(n int) QuerySpec {
-	return func(q Query) error {
-		return q.Limit(n)
+// Live follows new entries as they are appended.
+// The iterator blocks waiting for new entries until ctx is cancelled.
+// Lt and Lte are ignored in live mode (there is no upper bound).
+func Live(ctx context.Context) QueryOption {
+	return func(q *QueryConfig) error {
+		q.Live = true
+		q.Ctx = ctx
+		return nil
 	}
 }
 
-// Live makes the source block at the end of the log and wait for new values
-// that are being appended.
-func Live(live bool) QuerySpec {
-	return func(q Query) error {
-		return q.Live(live)
+// ApplyQueryOptions builds a QueryConfig from options.
+func ApplyQueryOptions(opts ...QueryOption) (QueryConfig, error) {
+	var cfg QueryConfig
+	for _, opt := range opts {
+		if err := opt(&cfg); err != nil {
+			return cfg, err
+		}
 	}
+	if cfg.Live && cfg.Reverse {
+		return cfg, fmt.Errorf("margaret: can't do reverse and live")
+	}
+	return cfg, nil
 }
 
-// SeqWrap makes the source return values that contain both the item and its
-// sequence number, instead of the item alone.
-func SeqWrap(wrap bool) QuerySpec {
-	return func(q Query) error {
-		return q.SeqWrap(wrap)
-	}
-}
+// Bounds calculates the effective start/end sequence from config and log length.
+func (cfg QueryConfig) Bounds(logSeq int64) (start, end int64) {
+	start = 0
+	end = logSeq
 
-func Reverse(yes bool) QuerySpec {
-	return func(q Query) error {
-		return q.Reverse(yes)
+	if cfg.Gt != nil && *cfg.Gt+1 > start {
+		start = *cfg.Gt + 1
 	}
+	if cfg.Gte != nil && *cfg.Gte > start {
+		start = *cfg.Gte
+	}
+	if !cfg.Live {
+		if cfg.Lt != nil && *cfg.Lt-1 < end {
+			end = *cfg.Lt - 1
+		}
+		if cfg.Lte != nil && *cfg.Lte < end {
+			end = *cfg.Lte
+		}
+	}
+
+	return start, end
 }

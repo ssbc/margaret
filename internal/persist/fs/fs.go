@@ -7,13 +7,13 @@ package fs
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/ssbc/margaret/internal/persist"
+
+	"github.com/ssbc/margaret/v2/internal/persist"
 )
 
 type Saver struct {
@@ -42,7 +42,7 @@ func (s Saver) fnameForKey(k []byte) string {
 }
 
 func (s Saver) Put(key persist.Key, data []byte) error {
-	err := ioutil.WriteFile(s.fnameForKey(key), data, 0700)
+	err := os.WriteFile(s.fnameForKey(key), data, 0700)
 	if err != nil {
 		return errors.Wrap(err, "roaringfiles: file write failed")
 	}
@@ -60,7 +60,7 @@ func (s Saver) PutMultiple(values []persist.KeyValuePair) error {
 }
 
 func (s Saver) Get(key persist.Key) ([]byte, error) {
-	d, err := ioutil.ReadFile(s.fnameForKey(key))
+	d, err := os.ReadFile(s.fnameForKey(key))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, persist.ErrNotFound
