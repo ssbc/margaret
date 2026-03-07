@@ -121,6 +121,17 @@ type Alterable[T Encodeable] interface {
 	ReplaceableLog[T]
 }
 
+// BatchAppender extends a log with atomic multi-entry append.
+// Implementations write all entries under a single lock and fsync once.
+type BatchAppender[T Encodeable] interface {
+	// AppendBatch appends multiple values atomically.
+	// Returns the sequence number of each appended entry.
+	// If any write fails mid-batch, the log is rolled back to its
+	// pre-batch state and an error is returned.
+	// An empty batch (len(values) == 0) returns nil, nil.
+	AppendBatch(values []T) ([]int64, error)
+}
+
 // AppendHook is called after a successful append.
 // Useful for building live subscriptions on top.
 type AppendHook[T Encodeable] func(seq int64, value T)

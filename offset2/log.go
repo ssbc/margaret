@@ -201,6 +201,114 @@ func (l *Log[T]) Append(value T) (int64, error) {
 	return newSeq, nil
 }
 
+// AppendBatch appends multiple values atomically with a single lock and fsync.
+// The hook is fired once after the entire batch with the last entry's sequence
+// and value, so live queries wake up once and drain all new entries.
+// On write failure, the data and offset files are truncated to pre-batch state.
+func (l *Log[T]) AppendBatch(values []T) ([]int64, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+
+	// Pre-encode all values before taking the lock to fail fast on marshal errors.
+	encoded := make([][]byte, len(values))
+	for i, v := range values {
+		data, err := v.MarshalBinary()
+		if err != nil {
+			return nil, fmt.Errorf("offset2: marshal entry %d: %w", i, err)
+		}
+		encoded[i] = data
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.closed {
+		return nil, ErrClosed
+	}
+
+	// Record pre-batch positions for rollback.
+	dataPos, err := l.data.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, fmt.Errorf("offset2: seek data: %w", err)
+	}
+	ofstPos, err := l.ofst.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, fmt.Errorf("offset2: seek ofst: %w", err)
+	}
+	origSeq := l.seq
+
+	seqs := make([]int64, len(values))
+	currentDataPos := dataPos
+
+	for i, data := range encoded {
+		// Write length-prefixed data.
+		var lenBuf [8]byte
+		binary.BigEndian.PutUint64(lenBuf[:], uint64(len(data)))
+		if _, err := l.data.Write(lenBuf[:]); err != nil {
+			l.rollback(dataPos, ofstPos, origSeq)
+			return nil, fmt.Errorf("offset2: write len %d: %w", i, err)
+		}
+		if _, err := l.data.Write(data); err != nil {
+			l.rollback(dataPos, ofstPos, origSeq)
+			return nil, fmt.Errorf("offset2: write data %d: %w", i, err)
+		}
+
+		// Write offset entry.
+		var ofstBuf [8]byte
+		binary.BigEndian.PutUint64(ofstBuf[:], uint64(currentDataPos))
+		if _, err := l.ofst.Write(ofstBuf[:]); err != nil {
+			l.rollback(dataPos, ofstPos, origSeq)
+			return nil, fmt.Errorf("offset2: write ofst %d: %w", i, err)
+		}
+
+		l.seq++
+		seqs[i] = l.seq
+		currentDataPos += 8 + int64(len(data))
+	}
+
+	// Single journal write + fsync for the whole batch.
+	if err := l.writeJournal(); err != nil {
+		l.rollback(dataPos, ofstPos, origSeq)
+		return nil, fmt.Errorf("offset2: write journal: %w", err)
+	}
+	if err := l.data.Sync(); err != nil {
+		l.rollback(dataPos, ofstPos, origSeq)
+		return nil, fmt.Errorf("offset2: sync data: %w", err)
+	}
+	if err := l.ofst.Sync(); err != nil {
+		// Data is already synced; best-effort rollback.
+		l.rollback(dataPos, ofstPos, origSeq)
+		return nil, fmt.Errorf("offset2: sync ofst: %w", err)
+	}
+
+	// Fire hooks once for the last entry (live queries drain by seq range).
+	lastSeq := seqs[len(seqs)-1]
+	lastVal := values[len(values)-1]
+
+	l.hooksMu.RLock()
+	hooks := make([]margaret.AppendHook[T], 0, len(l.hooks))
+	for _, h := range l.hooks {
+		hooks = append(hooks, h)
+	}
+	l.hooksMu.RUnlock()
+
+	for _, h := range hooks {
+		h(lastSeq, lastVal)
+	}
+
+	return seqs, nil
+}
+
+// rollback truncates data and offset files to their pre-batch positions
+// and restores the sequence counter. Best-effort; errors are ignored
+// because we are already in an error path.
+func (l *Log[T]) rollback(dataPos, ofstPos int64, seq int64) {
+	_ = l.data.Truncate(dataPos)
+	_ = l.ofst.Truncate(ofstPos)
+	l.seq = seq
+}
+
 // Get retrieves the value at seq.
 func (l *Log[T]) Get(seq int64) (T, error) {
 	l.mu.RLock()
@@ -423,4 +531,5 @@ var (
 	_ margaret.ReplaceableLog[*testValue] = (*Log[*testValue])(nil)
 	_ margaret.Alterable[*testValue]      = (*Log[*testValue])(nil)
 	_ margaret.HookableLog[*testValue]    = (*Log[*testValue])(nil)
+	_ margaret.BatchAppender[*testValue]  = (*Log[*testValue])(nil)
 )

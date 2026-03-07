@@ -120,6 +120,37 @@ func (log *memlog[T]) Append(v T) (int64, error) {
 	return log.tail.seq, nil
 }
 
+func (log *memlog[T]) AppendBatch(values []T) ([]int64, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	if log.closed {
+		return nil, io.ErrClosedPipe
+	}
+
+	seqs := make([]int64, len(values))
+	for i, v := range values {
+		nxt := &memlogElem[T]{
+			v:    v,
+			seq:  log.tail.seq + 1,
+			prev: log.tail,
+			wait: make(chan struct{}),
+		}
+
+		log.tail.next = nxt
+		oldtail := log.tail
+		log.tail = nxt
+
+		close(oldtail.wait)
+
+		seqs[i] = log.tail.seq
+	}
+	return seqs, nil
+}
+
 func (log *memlog[T]) Query(opts ...margaret.QueryOption) margaret.QueryIterator[T] {
 	cfg, err := margaret.ApplyQueryOptions(opts...)
 	if err != nil {

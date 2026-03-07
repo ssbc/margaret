@@ -64,20 +64,36 @@ func (ml *MultiLog) Flush() error {
 }
 
 func (ml *MultiLog) flushAllSublogs() error {
+	// collect dirty sublogs but DON'T clear the dirty flag yet
 	var dirty []persist.KeyValuePair
+	var dirtyAddrs []multilog.Addr
 	for addr, sl := range ml.sublogs {
 		if sl.dirty {
 			dirty = append(dirty, persist.KeyValuePair{
 				Key:   persist.Key(addr),
 				Value: sl.bmap.ToBuffer(),
 			})
-			sl.dirty = false
+			dirtyAddrs = append(dirtyAddrs, addr)
 		}
 	}
 	if len(dirty) == 0 {
 		return nil
 	}
-	return ml.store.PutMultiple(dirty)
+
+	// persist first, THEN clear dirty flags.
+	// Previously dirty was cleared before PutMultiple, so a crash during
+	// persist would lose data permanently (dirty=false means no retry).
+	err := ml.store.PutMultiple(dirty)
+	if err != nil {
+		return err
+	}
+
+	for _, addr := range dirtyAddrs {
+		if sl, ok := ml.sublogs[addr]; ok {
+			sl.dirty = false
+		}
+	}
+	return nil
 }
 
 // MultiLog is a collection of sublogs backed by roaring bitmaps.
