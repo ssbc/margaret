@@ -379,6 +379,69 @@ func TestLiveQuery(t *testing.T) {
 	a.Equal([]int64{10, 20, 30}, got)
 }
 
+func TestDuplicateAppend(t *testing.T) {
+	r := require.New(t)
+	a := assert.New(t)
+
+	ml := newTestMultiLog(t)
+	defer ml.Close()
+
+	sub, err := ml.Get("test")
+	r.NoError(err)
+
+	// Append three values
+	_, err = sub.Append(seq(10))
+	r.NoError(err)
+	_, err = sub.Append(seq(20))
+	r.NoError(err)
+	_, err = sub.Append(seq(30))
+	r.NoError(err)
+	a.EqualValues(2, sub.Seq()) // 3 entries → seq 2
+
+	// Re-append duplicates (simulates reindexing)
+	newSeq, err := sub.Append(seq(10))
+	r.NoError(err)
+	a.EqualValues(2, newSeq, "duplicate should not change seq")
+
+	newSeq, err = sub.Append(seq(20))
+	r.NoError(err)
+	a.EqualValues(2, newSeq)
+
+	newSeq, err = sub.Append(seq(30))
+	r.NoError(err)
+	a.EqualValues(2, newSeq)
+
+	// Seq must still match bitmap cardinality
+	a.EqualValues(2, sub.Seq(), "Seq must not drift after duplicate appends")
+
+	// Get must still work for all valid indices
+	val, err := sub.Get(0)
+	r.NoError(err)
+	a.EqualValues(10, *val)
+
+	val, err = sub.Get(1)
+	r.NoError(err)
+	a.EqualValues(20, *val)
+
+	val, err = sub.Get(2)
+	r.NoError(err)
+	a.EqualValues(30, *val)
+
+	// Out of bounds must still fail
+	_, err = sub.Get(3)
+	a.ErrorIs(err, margaret.ErrOutOfBounds)
+
+	// Appending a new value after duplicates still works
+	newSeq, err = sub.Append(seq(40))
+	r.NoError(err)
+	a.EqualValues(3, newSeq)
+	a.EqualValues(3, sub.Seq())
+
+	val, err = sub.Get(3)
+	r.NoError(err)
+	a.EqualValues(40, *val)
+}
+
 func TestWithSink(t *testing.T) {
 	r := require.New(t)
 	a := assert.New(t)

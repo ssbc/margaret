@@ -70,6 +70,12 @@ func (sl *sublog) Append(v *Seq) (int64, error) {
 		return margaret.SeqEmpty, fmt.Errorf("roaring: can only store non-negative numbers")
 	}
 
+	// Skip duplicates: bitmap Set is idempotent but Observable must stay in sync
+	if sl.bmap.Contains(uint64(val)) {
+		newSeq := int64(sl.bmap.GetCardinality()) - 1
+		return newSeq, nil
+	}
+
 	sl.bmap.Set(uint64(val))
 	sl.dirty = true
 	sl.seq.Inc()
