@@ -341,6 +341,10 @@ func (l *Log[T]) Get(seq int64) (T, error) {
 	return val, nil
 }
 
+// maxEntrySize is the upper bound on a single entry payload (64 MiB).
+// Anything larger is treated as corruption.
+const maxEntrySize = 64 << 20
+
 func (l *Log[T]) readEntry(seq int64) ([]byte, error) {
 	// Read offset
 	var ofstBuf [8]byte
@@ -348,6 +352,10 @@ func (l *Log[T]) readEntry(seq int64) ([]byte, error) {
 		return nil, fmt.Errorf("offset2: read ofst: %w", err)
 	}
 	offset := int64(binary.BigEndian.Uint64(ofstBuf[:]))
+
+	if offset < 0 {
+		return nil, fmt.Errorf("offset2: corrupt offset for seq %d: %d", seq, offset)
+	}
 
 	// Read length
 	var lenBuf [8]byte
@@ -358,6 +366,10 @@ func (l *Log[T]) readEntry(seq int64) ([]byte, error) {
 
 	if length == 0 {
 		return nil, nil // Nulled entry
+	}
+
+	if length > maxEntrySize {
+		return nil, fmt.Errorf("offset2: corrupt entry at offset %d: invalid length %d", offset, length)
 	}
 
 	// Read data

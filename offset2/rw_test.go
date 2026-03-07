@@ -5,7 +5,10 @@
 package offset2
 
 import (
+	"encoding/binary"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -159,4 +162,37 @@ func TestRecover(t *testing.T) {
 	r.EqualValues(len(tevs), v, "journal should reflect bumped seq")
 
 	r.NoError(log.Close())
+}
+
+func TestReadCorruptLength(t *testing.T) {
+	r := require.New(t)
+	dir := t.TempDir()
+
+	log, err := Open[*testEvent](dir)
+	r.NoError(err)
+
+	// Write one valid entry.
+	_, err = log.Append(&testEvent{"good", 1})
+	r.NoError(err)
+	r.NoError(log.Close())
+
+	// Corrupt the length prefix of the first entry to an absurd value.
+	dataPath := filepath.Join(dir, "data")
+	f, err := os.OpenFile(dataPath, os.O_RDWR, 0644)
+	r.NoError(err)
+	var buf [8]byte
+	binary.BigEndian.PutUint64(buf[:], 0xFFFFFFFFFFFFFFFF)
+	_, err = f.WriteAt(buf[:], 0)
+	r.NoError(err)
+	r.NoError(f.Close())
+
+	// Reopen — the log should open fine (corruption is in data, not journal).
+	log, err = Open[*testEvent](dir)
+	r.NoError(err)
+	defer log.Close()
+
+	// Get should return an error, not panic.
+	_, err = log.Get(0)
+	r.Error(err)
+	r.Contains(err.Error(), "corrupt entry")
 }
