@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ssbc/margaret/v2/internal/persist"
+	pbadger "github.com/ssbc/margaret/v2/internal/persist/badger"
+	"github.com/ssbc/margaret/v2/internal/persist/bbolt"
 	"github.com/ssbc/margaret/v2/internal/persist/fs"
 	"github.com/ssbc/margaret/v2/internal/persist/mkv"
 )
@@ -107,6 +109,8 @@ func makeRandData(r *require.Assertions, n int) (persist.Key, []byte) {
 func TestSaver(t *testing.T) {
 	t.Run("fs", SimpleSaver(makeFS))
 	t.Run("kv", SimpleSaver(makeMKV))
+	t.Run("bbolt", SimpleSaver(makeBBolt))
+	t.Run("badger", SimpleSaver(makeBadger))
 }
 
 func makeFS(t *testing.T) persist.Saver {
@@ -119,6 +123,26 @@ func makeMKV(t *testing.T) persist.Saver {
 	base := filepath.Join("testrun", t.Name())
 	os.RemoveAll(base)
 	s, err := mkv.New(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+func makeBBolt(t *testing.T) persist.Saver {
+	base := filepath.Join("testrun", t.Name())
+	os.RemoveAll(base)
+	s, err := bbolt.New(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+func makeBadger(t *testing.T) persist.Saver {
+	base := filepath.Join("testrun", t.Name())
+	os.RemoveAll(base)
+	s, err := pbadger.New(base)
 	if err != nil {
 		t.Fatal(err)
 	}
