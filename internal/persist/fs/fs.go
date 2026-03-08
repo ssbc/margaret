@@ -82,7 +82,7 @@ func (s Saver) List() ([]persist.Key, error) {
 		}
 
 		name := strings.TrimPrefix(path, s.base+"/")
-		if name[5] == '/' {
+		if len(name) > 5 && name[5] == '/' {
 			var b = []byte(name)
 			b = append(b[:5], b[6:]...)
 			name = string(b)

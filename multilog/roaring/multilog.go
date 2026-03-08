@@ -248,4 +248,93 @@ func (ml *MultiLog) Close() error {
 	return ml.store.Close()
 }
 
+// SublogStats holds statistics for a single sublog bitmap.
+type SublogStats struct {
+	Addr           multilog.Addr
+	Cardinality    int     // number of set bits
+	SerializedSize int     // bytes when serialized via ToBuffer
+	MinValue       uint64  // smallest sequence number in bitmap
+	MaxValue       uint64  // largest sequence number in bitmap
+	Density        float64 // cardinality / (max - min + 1), 1.0 = fully dense
+}
+
+// Stats holds aggregate statistics for the entire multilog.
+type Stats struct {
+	NumSublogs          int
+	TotalCardinality    int64
+	TotalSerializedSize int64
+	AvgCardinality      float64
+	AvgSerializedSize   float64
+	AvgDensity          float64
+	MinCardinality      int
+	MaxCardinality      int
+	MinSerializedSize   int
+	MaxSerializedSize   int
+	Sublogs             []SublogStats
+}
+
+// Stats returns statistics about all loaded sublogs.
+// Call after loading sublogs (e.g. via List or Get) for complete results.
+func (ml *MultiLog) Stats() Stats {
+	ml.mu.Lock()
+	defer ml.mu.Unlock()
+
+	var s Stats
+	s.MinCardinality = int(^uint(0) >> 1) // max int
+	s.MinSerializedSize = int(^uint(0) >> 1)
+
+	for addr, sl := range ml.sublogs {
+		card := sl.bmap.GetCardinality()
+		buf := sl.bmap.ToBuffer()
+		serialSize := len(buf)
+
+		ss := SublogStats{
+			Addr:           addr,
+			Cardinality:    card,
+			SerializedSize: serialSize,
+		}
+
+		if card > 0 {
+			ss.MinValue = sl.bmap.Minimum()
+			ss.MaxValue = sl.bmap.Maximum()
+			span := ss.MaxValue - ss.MinValue + 1
+			ss.Density = float64(card) / float64(span)
+		}
+
+		s.Sublogs = append(s.Sublogs, ss)
+		s.TotalCardinality += int64(card)
+		s.TotalSerializedSize += int64(serialSize)
+
+		if card < s.MinCardinality {
+			s.MinCardinality = card
+		}
+		if card > s.MaxCardinality {
+			s.MaxCardinality = card
+		}
+		if serialSize < s.MinSerializedSize {
+			s.MinSerializedSize = serialSize
+		}
+		if serialSize > s.MaxSerializedSize {
+			s.MaxSerializedSize = serialSize
+		}
+	}
+
+	s.NumSublogs = len(s.Sublogs)
+	if s.NumSublogs > 0 {
+		s.AvgCardinality = float64(s.TotalCardinality) / float64(s.NumSublogs)
+		s.AvgSerializedSize = float64(s.TotalSerializedSize) / float64(s.NumSublogs)
+
+		var totalDensity float64
+		for _, ss := range s.Sublogs {
+			totalDensity += ss.Density
+		}
+		s.AvgDensity = totalDensity / float64(s.NumSublogs)
+	} else {
+		s.MinCardinality = 0
+		s.MinSerializedSize = 0
+	}
+
+	return s
+}
+
 var _ multilog.MultiLog[*Seq] = (*MultiLog)(nil)
